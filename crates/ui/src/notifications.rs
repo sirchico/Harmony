@@ -4,11 +4,11 @@ use egui::{Align2, Color32, FontId};
 use model::Id;
 
 /// Fixed width of the server rail column.
-pub(super) const RAIL_WIDTH: f32 = 64.0;
+pub(super) const RAIL_WIDTH: f32 = 72.0;
 /// Home, server and folder tiles on the rail.
 pub(super) const RAIL_TILE: f32 = 40.0;
 /// Direct-message avatars, a touch larger than server tiles like Discord's.
-pub(super) const RAIL_AVATAR: f32 = 42.0;
+pub(super) const RAIL_AVATAR: f32 = 40.0;
 /// Inset from the rail edge; centres a tile in the column.
 const RAIL_MARGIN: i8 = ((RAIL_WIDTH - RAIL_TILE) / 2.0) as i8;
 

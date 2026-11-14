@@ -1750,7 +1750,7 @@ impl MessagingUi {
 								.find(|(group_id, _)| group_id == id)
 								.map(|(_, count)| *count)
 								.or_else(|| thread_rows.as_ref().and_then(|rows| rows[index].1))
-								.map(|count| format!("{name} - {count}"))
+								.map(|count| format!("{name} — {count}"))
 								.unwrap_or(name);
 							let (rect, _) = ui.allocate_exact_size(
 								egui::vec2(ui.available_width(), 42.0),
@@ -1759,7 +1759,7 @@ impl MessagingUi {
 							let mut header = ui.new_child(
 								egui::UiBuilder::new()
 									.max_rect(egui::Rect::from_min_max(
-										rect.left_top() + egui::vec2(8.0, 16.0),
+										rect.left_top() + egui::vec2(8.0, 20.0),
 										rect.right_bottom() - egui::vec2(8.0, 0.0),
 									))
 									.layout(egui::Layout::left_to_right(egui::Align::Center)),
@@ -1769,11 +1769,11 @@ impl MessagingUi {
 									egui::Label::new(crate::role_names::galley(
 										&header,
 										&text,
-										egui::FontId::new(12.0, design::medium_family(ui.ctx())),
+										egui::FontId::new(14.0, design::medium_family(ui.ctx())),
 										// Group headers stay neutral; role colours belong to names.
 										None,
-										colors.sidebar,
-										colors.text,
+										colors.chat,
+										colors.muted,
 										header.available_width(),
 									))
 									.truncate(),
@@ -1864,14 +1864,14 @@ impl MessagingUi {
 									.typing_users(std::time::Instant::now())
 									.any(|typist| typist == member.user.id)
 								{
-									profiles::typing_badge(ui, avatar.rect, status, colors.sidebar);
+									profiles::typing_badge(ui, avatar.rect, status, colors.chat);
 								} else if let Some(status) = status {
 									profiles::presence_badge(
 										ui,
 										avatar.rect,
 										status,
 										clients,
-										colors.sidebar,
+										colors.chat,
 									);
 								}
 								let role_colors = online
@@ -1884,7 +1884,15 @@ impl MessagingUi {
 										})
 									})
 									.flatten();
-								let text_color = if online { colors.text } else { colors.muted };
+								// Discord greys names without a role colour, brightens the hovered row and
+								// fades offline members.
+								let text_color = if !online {
+									colors.muted.gamma_multiply(0.4)
+								} else if focused {
+									colors.text
+								} else {
+									colors.muted
+								};
 								let mut show_name = |ui: &mut egui::Ui| {
 									ui.allocate_ui_with_layout(
 										egui::vec2(ui.available_width(), 18.0),
@@ -1906,7 +1914,7 @@ impl MessagingUi {
 														ui,
 														&member.user,
 														name,
-														15.0,
+														16.0,
 														(
 															text_color,
 															role_colors,
@@ -1915,7 +1923,7 @@ impl MessagingUi {
 															{
 																colors.hover
 															} else {
-																colors.sidebar
+																colors.chat
 															},
 														),
 														egui::Sense::hover(),
@@ -2270,7 +2278,7 @@ impl MessagingUi {
 				let mut avatar_rect = None;
 				let mut avatar_focused = false;
 				egui::Frame::new()
-					.inner_margin(egui::Margin::symmetric(8, 6))
+					.inner_margin(egui::Margin::symmetric(12, 12))
 					.show(ui, |ui| {
 						ui.set_width(ui.available_width());
 						ui.horizontal(|ui| {
@@ -2663,8 +2671,14 @@ impl MessagingUi {
 						);
 					} else {
 						// Search pill.
+						// Discord's search field: 244x32, narrower when the header is tight.
+						let width = if ui.available_width() > 600.0 {
+							244.0
+						} else {
+							144.0
+						};
 						let (pill, response) =
-							ui.allocate_exact_size(egui::vec2(144.0, 28.0), egui::Sense::click());
+							ui.allocate_exact_size(egui::vec2(width, 32.0), egui::Sense::click());
 						let enabled = state.can_search();
 						response.widget_info(|| {
 							egui::WidgetInfo::labeled(
@@ -2673,7 +2687,13 @@ impl MessagingUi {
 								language.text("search"),
 							)
 						});
-						ui.painter().rect_filled(pill, 6, colors.raised);
+						ui.painter().rect(
+							pill,
+							8,
+							colors.raised,
+							egui::Stroke::new(1.0, colors.border),
+							egui::StrokeKind::Inside,
+						);
 						let pill_text = if enabled {
 							colors.muted
 						} else {
@@ -2870,7 +2890,7 @@ impl MessagingUi {
 						ui.spacing_mut().interact_size.y = 0.0;
 						ui.add(
 							egui::Label::new(
-								design::semibold(ui, name, 16.0).color(colors.text_strong),
+								design::medium(ui, name, 16.0).color(colors.text_strong),
 							)
 							.truncate(),
 						);
@@ -3677,7 +3697,7 @@ impl MessagingUi {
 			// The cap and the input form one block: undo the automatic vertical item gap.
 			ui.add_space(-ui.spacing().item_spacing.y);
 		}
-		design::glass_frame(ui, colors.raised, egui::Margin::symmetric(10, 6))
+		design::glass_frame(ui, colors.raised, egui::Margin::symmetric(10, 12))
             .corner_radius(if cap_top.is_some() {
                 egui::CornerRadius { nw: 0, ne: 0, sw: 8, se: 8 }
             } else {
@@ -3687,7 +3707,7 @@ impl MessagingUi {
                 // Outer frame bounds for the autocomplete popout: undo the inner margin and
                 // include the reply/edit cap so the popout never covers it.
                 let composer_anchor = egui::Rect::from_min_max(
-                    egui::pos2(ui.max_rect().left() - 10.0, cap_top.unwrap_or(ui.max_rect().top() - 6.0)),
+                    egui::pos2(ui.max_rect().left() - 10.0, cap_top.unwrap_or(ui.max_rect().top() - 12.0)),
                     egui::pos2(ui.max_rect().right() + 10.0, ui.max_rect().top()),
                 );
                 if !editing_here && (self.attachment.is_some() || self.attachment_loading > 0) {
@@ -3727,7 +3747,7 @@ impl MessagingUi {
                     } else {
                         Some(ui
                             .add_enabled_ui(can_attach || can_create_poll, |ui| {
-                                icons::button(ui, icons::Icon::Attach, 28.0, &crate::i18n::translate("lib-ime-updates-text-attach-files"))
+                                icons::button(ui, icons::Icon::Attach, 32.0, &crate::i18n::translate("lib-ime-updates-text-attach-files"))
                             })
                             .inner
                             .on_hover_text(crate::i18n::translate("lib-ime-updates-text-choose-drop-or-paste-files-ctrl-cmd-option-v-up")))
@@ -5016,7 +5036,7 @@ impl MessagingUi {
 					lists,
 					if rounded {
 						egui::CornerRadius {
-							nw: 8,
+							nw: 12,
 							sw: 8,
 							..Default::default()
 						}
@@ -5146,7 +5166,7 @@ impl MessagingUi {
 					egui::Frame::new()
 						.fill(design::section_surface(
 							ui,
-							background.sidebar,
+							background.chat,
 							design::ImageSection::MemberList,
 						))
 						.inner_margin(egui::Margin::same(12)),
@@ -5202,12 +5222,12 @@ impl MessagingUi {
 				egui::Panel::right("people-pane")
 					.resizable(false)
 					.show_separator_line(!design::has_window_background(ui))
-					.exact_size(240.0)
+					.exact_size(264.0)
 					.frame(
 						egui::Frame::new()
 							.fill(design::section_surface(
 								ui,
-								background.sidebar,
+								background.chat,
 								design::ImageSection::MemberList,
 							))
 							.inner_margin(egui::Margin {
@@ -5437,8 +5457,8 @@ impl MessagingUi {
 							// The bottom inset matches the account card's, so the input and the
 							// account pill sit on one line across the window.
 							.inner_margin(egui::Margin {
-								left: 16,
-								right: 16,
+								left: 8,
+								right: 8,
 								top: 2,
 								bottom: 8,
 							}),
@@ -9064,9 +9084,9 @@ mod composer_tests {
 			"BOT",
 			"APP",
 			"WEBHOOK",
-			"Founders - 2",
-			"Online - 1",
-			"Offline - 97",
+			"Founders — 2",
+			"Online — 1",
+			"Offline — 97",
 		] {
 			assert!(
 				text.iter().any(|label| label == heading),
