@@ -1128,7 +1128,7 @@ mod tests {
 			}
 			let text = frame(&ctx, &mut view, &mut state, size, vec![]);
 			let listed = |label: &str| text.iter().any(|(value, _)| value == label);
-			assert!(listed("SWITCH ACCOUNTS"));
+			assert!(listed("Switch accounts"));
 			assert!(listed("Synthetic Alt"));
 			assert!(listed("synthetic-alt"));
 			assert!(listed("Add an account"));

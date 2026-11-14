@@ -1530,8 +1530,10 @@ fn account_row(ui: &mut egui::Ui, label: &str, value: &str) {
 pub(super) fn nav_item(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
 	let label = crate::i18n::translate_if_key(label);
 	let colors = design::palette(ui);
-	let (rect, response) =
-		ui.allocate_exact_size(egui::vec2(ui.available_width(), 34.0), egui::Sense::click());
+	// Discord's settings rows: 36px tall on a 40px pitch.
+	let (slot, response) =
+		ui.allocate_exact_size(egui::vec2(ui.available_width(), 38.0), egui::Sense::click());
+	let rect = slot.shrink2(egui::vec2(0.0, 1.0));
 	response.widget_info(|| {
 		egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), selected, &label)
 	});
@@ -1551,18 +1553,6 @@ pub(super) fn nav_item(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::
 			.lerp_to_gamma(colors.selected, chosen);
 		ui.painter().rect_filled(rect, 8, fill);
 	}
-	if chosen > 0.0 {
-		// Discord marks the open page with an accent rail at the left edge.
-		let height = 16.0 * egui::emath::easing::cubic_out(chosen);
-		ui.painter().rect_filled(
-			egui::Rect::from_min_size(
-				egui::pos2(rect.left(), rect.center().y - height * 0.5),
-				egui::vec2(3.0, height),
-			),
-			2,
-			colors.accent,
-		);
-	}
 	if response.has_focus() {
 		ui.painter().rect_stroke(
 			rect.shrink(1.0),
@@ -1581,7 +1571,7 @@ pub(super) fn nav_item(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::
 	// Long localized page names elide inside the row; hovering shows the full name.
 	let mut job = egui::text::LayoutJob::simple_singleline(
 		label.clone(),
-		egui::FontId::new(15.0, design::medium_family(ui.ctx())),
+		egui::FontId::new(16.0, design::medium_family(ui.ctx())),
 		color,
 	);
 	job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width() - 24.0);
@@ -1599,7 +1589,7 @@ pub(super) fn nav_item(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::
 	}
 }
 
-/// Discord's round close button with the "ESC" hint underneath.
+/// Discord's square close button.
 pub(super) fn close_control(ui: &mut egui::Ui) -> egui::Response {
 	let colors = design::palette(ui);
 	let (rect, response) = ui.allocate_exact_size(egui::vec2(40.0, 56.0), egui::Sense::click());
@@ -1612,32 +1602,23 @@ pub(super) fn close_control(ui: &mut egui::Ui) -> egui::Response {
 	});
 	let hot = response.hovered() || response.has_focus();
 	let center = egui::pos2(rect.center().x, rect.top() + 18.0);
-	ui.painter().circle(
-		center,
-		18.0,
-		if hot {
-			colors.hover
-		} else {
-			egui::Color32::TRANSPARENT
-		},
-		egui::Stroke::new(2.0, if hot { colors.text } else { colors.muted }),
-	);
+	// Discord's close control: a 32px rounded square that fills on hover.
+	if hot {
+		ui.painter().rect_filled(
+			egui::Rect::from_center_size(center, egui::Vec2::splat(32.0)),
+			8,
+			colors.hover,
+		);
+	}
 	icons::paint(
 		ui.painter(),
 		icons::Icon::Close,
-		egui::Rect::from_center_size(center, egui::Vec2::splat(16.0)),
+		egui::Rect::from_center_size(center, egui::Vec2::splat(20.0)),
 		if hot {
 			colors.text_strong
 		} else {
 			colors.muted
 		},
-	);
-	ui.painter().text(
-		egui::pos2(rect.center().x, rect.bottom() - 6.0),
-		egui::Align2::CENTER_CENTER,
-		"ESC",
-		egui::FontId::new(11.0, design::semibold_family(ui.ctx())),
-		colors.muted,
 	);
 	response.on_hover_text(crate::i18n::translate(
 		"settings-close-control-close-settings-esc",

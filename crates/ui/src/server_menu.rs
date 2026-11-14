@@ -648,7 +648,7 @@ mod tests {
 						.1;
 					let footer = text
 						.iter()
-						.find(|(t, _)| t == "OR, SEND A SERVER INVITE LINK TO A FRIEND")
+						.find(|(t, _)| t == "Or, send a server invite link to a friend")
 						.unwrap()
 						.1;
 					assert!(
