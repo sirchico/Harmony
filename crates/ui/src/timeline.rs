@@ -422,11 +422,18 @@ pub(crate) fn compact_header(
 		),
 	));
 }
-const GROUPED_ROW_SAVINGS: f32 = 52.0;
+const GROUPED_ROW_SAVINGS: f32 = 50.0;
 
 /// Space above a new message group: cozy by default, tighter when compact spacing is on.
+/// Cozy is Discord's 17px group margin plus the row's own 2px top padding.
 pub(crate) fn group_gap(compact_messages: bool) -> i8 {
-	if compact_messages { 4 } else { 16 }
+	if compact_messages { 4 } else { 19 }
+}
+/// Vertical padding of a cozy message row (Discord's 0.125rem on each side).
+pub(crate) const ROW_PAD: i8 = 2;
+/// Discord sets the author line directly on the first body line; undo the row's item spacing.
+pub(crate) fn close_header_gap(ui: &mut egui::Ui) {
+	ui.add_space(-ui.spacing().item_spacing.y);
 }
 
 fn reserved_chrome(ui: &egui::Ui, message: &Message, width: f32) -> f32 {
@@ -861,7 +868,7 @@ fn starter_row(
 								ui,
 								&message.author,
 								state.message_author_name(message),
-								15.5,
+								16.0,
 								(
 									colors.text_strong,
 									state.message_author_colors(message),
@@ -872,8 +879,7 @@ fn starter_row(
 							);
 							let time = timestamp(message.id);
 							ui.label(
-								RichText::new(crate::local_time::header(time))
-									.size(12.0)
+								crate::design::medium(ui, crate::local_time::header(time), 12.0)
 									.color(colors.muted),
 							)
 							.on_hover_text_with(|| crate::local_time::full(time));
@@ -1702,8 +1708,9 @@ fn deleted_message_actions(popup: egui::Popup<'_>, action: &mut Option<DeletedLo
 	popup.show(|ui| {
 		ui.set_min_width(160.0);
 		if ui
-			.button(crate::i18n::translate(
-				"timeline-deleted-message-actions-toggle-deleted-highlight",
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::EyeSlash,
+				crate::i18n::translate("timeline-deleted-message-actions-toggle-deleted-highlight"),
 			))
 			.clicked()
 		{
@@ -1711,8 +1718,9 @@ fn deleted_message_actions(popup: egui::Popup<'_>, action: &mut Option<DeletedLo
 			ui.close();
 		}
 		if ui
-			.button(crate::i18n::translate(
-				"timeline-deleted-message-actions-remove-message",
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Trash,
+				crate::i18n::translate("timeline-deleted-message-actions-remove-message"),
 			))
 			.clicked()
 		{
@@ -1770,10 +1778,19 @@ fn message_actions(
 		ui.set_min_width(160.0);
 		if !extension_actions.is_empty() {
 			ui.menu_button(
-				crate::i18n::translate("timeline-message-actions-extensions"),
+				crate::icons::menu_label(
+					crate::icons::Icon::Activities,
+					crate::i18n::translate("timeline-message-actions-extensions"),
+				),
 				|ui| {
 					for action in extension_actions {
-						if ui.button(&action.label).clicked() {
+						if ui
+							.add(crate::icons::menu_item(
+								crate::icons::Icon::Activities,
+								&action.label,
+							))
+							.clicked()
+						{
 							*extension_request = Some((
 								action.clone(),
 								message.display_text().into_owned(),
@@ -1790,45 +1807,28 @@ fn message_actions(
 			);
 			ui.separator();
 		}
-		if crate::select::has_selection(ui.ctx())
+		if own
 			&& ui
-				.button(crate::i18n::translate("timeline-message-actions-copy"))
+				.add_enabled(
+					can_edit,
+					crate::icons::menu_item(
+						crate::icons::Icon::Pencil,
+						crate::i18n::translate("timeline-message-actions-edit-message"),
+					),
+				)
 				.clicked()
 		{
-			crate::select::request_copy(ui.ctx());
-			ui.close();
-		}
-		if ui
-			.button(crate::i18n::translate("message-menu-copy"))
-			.clicked()
-		{
-			ui.ctx()
-				.copy_text(crate::i18n::message_text(message).into_owned());
-			ui.close();
-		}
-		if let Some(link) = link
-			&& ui
-				.button(crate::i18n::translate(
-					"timeline-message-actions-copy-message-link",
-				))
-				.clicked()
-		{
-			ui.ctx().copy_text(link.to_owned());
-			ui.close();
-		}
-		if ui
-			.button(crate::i18n::translate(
-				"timeline-message-actions-copy-message-id",
-			))
-			.clicked()
-		{
-			ui.ctx().copy_text(message.id.to_string());
+			*editing = Some((message.channel, message.id, message.content.clone()));
+			*edit_started = true;
 			ui.close();
 		}
 		if ui
 			.add_enabled(
 				can_reply,
-				egui::Button::new(crate::i18n::translate("timeline-message-actions-reply")),
+				crate::icons::menu_item(
+					crate::icons::Icon::Reply,
+					crate::i18n::translate("timeline-message-actions-reply"),
+				),
 			)
 			.clicked()
 		{
@@ -1838,7 +1838,10 @@ fn message_actions(
 		if ui
 			.add_enabled(
 				forward.0,
-				egui::Button::new(crate::i18n::translate("timeline-message-actions-forward")),
+				crate::icons::menu_item(
+					crate::icons::Icon::Forward,
+					crate::i18n::translate("timeline-message-actions-forward"),
+				),
 			)
 			.clicked()
 		{
@@ -1847,8 +1850,9 @@ fn message_actions(
 		}
 		if can_thread
 			&& ui
-				.button(crate::i18n::translate(
-					"timeline-message-actions-create-thread",
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Thread,
+					crate::i18n::translate("timeline-message-actions-create-thread"),
 				))
 				.clicked()
 		{
@@ -1857,20 +1861,62 @@ fn message_actions(
 		}
 		if let Some((emoji, view)) = view_reactions
 			&& ui
-				.button(crate::i18n::translate(
-					"timeline-message-actions-view-reactions",
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Smile,
+					crate::i18n::translate("timeline-message-actions-view-reactions"),
 				))
 				.clicked()
 		{
 			*view = Some((message.id, emoji, true));
 			ui.close();
 		}
+		ui.separator();
+		if crate::select::has_selection(ui.ctx())
+			&& ui
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Copy,
+					crate::i18n::translate("timeline-message-actions-copy"),
+				))
+				.clicked()
+		{
+			crate::select::request_copy(ui.ctx());
+			ui.close();
+		}
+		if ui
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Copy,
+				crate::i18n::translate("message-menu-copy"),
+			))
+			.clicked()
+		{
+			ui.ctx()
+				.copy_text(crate::i18n::message_text(message).into_owned());
+			ui.close();
+		}
+		if ui
+			.add_enabled(
+				can_pin,
+				crate::icons::menu_item(
+					crate::icons::Icon::Pin,
+					crate::i18n::translate_if_key(if pinned {
+						"timeline-message-actions-unpin-message"
+					} else {
+						"timeline-message-actions-pin-message"
+					}),
+				),
+			)
+			.clicked()
+		{
+			*pin_request = Some((message.channel, message.id, !pinned));
+			ui.close();
+		}
 		if ui
 			.add_enabled(
 				mark_read.is_some(),
-				egui::Button::new(crate::i18n::translate(
-					"timeline-message-actions-mark-read-through-here",
-				)),
+				crate::icons::menu_item(
+					crate::icons::Icon::Check,
+					crate::i18n::translate("timeline-message-actions-mark-read-through-here"),
+				),
 			)
 			.clicked()
 		{
@@ -1882,9 +1928,10 @@ fn message_actions(
 		if ui
 			.add_enabled(
 				mark_unread.is_some(),
-				egui::Button::new(crate::i18n::translate(
-					"timeline-message-actions-mark-unread",
-				)),
+				crate::icons::menu_item(
+					crate::icons::Icon::Envelope,
+					crate::i18n::translate("timeline-message-actions-mark-unread"),
+				),
 			)
 			.clicked()
 		{
@@ -1893,48 +1940,46 @@ fn message_actions(
 			}
 			ui.close();
 		}
-		if ui
-			.add_enabled(
-				can_pin,
-				egui::Button::new(crate::i18n::translate_if_key(if pinned {
-					"timeline-message-actions-unpin-message"
-				} else {
-					"timeline-message-actions-pin-message"
-				})),
-			)
-			.clicked()
+		if let Some(link) = link
+			&& ui
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Link,
+					crate::i18n::translate("timeline-message-actions-copy-message-link"),
+				))
+				.clicked()
 		{
-			*pin_request = Some((message.channel, message.id, !pinned));
+			ui.ctx().copy_text(link.to_owned());
+			ui.close();
+		}
+		ui.separator();
+		if (own || can_delete)
+			&& ui
+				.add_enabled(
+					can_delete,
+					crate::icons::menu_item_danger(
+						crate::icons::Icon::Trash,
+						RichText::new(crate::i18n::translate(
+							"timeline-message-actions-delete-message",
+						))
+						.color(crate::design::palette(ui).danger),
+					),
+				)
+				.clicked()
+		{
+			*deleting = Some((message.channel, message.id));
 			ui.close();
 		}
 		if own || can_delete {
 			ui.separator();
 		}
-		if own
-			&& ui
-				.add_enabled(
-					can_edit,
-					egui::Button::new(crate::i18n::translate(
-						"timeline-message-actions-edit-message",
-					)),
-				)
-				.clicked()
+		if ui
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::IdCard,
+				crate::i18n::translate("timeline-message-actions-copy-message-id"),
+			))
+			.clicked()
 		{
-			*editing = Some((message.channel, message.id, message.content.clone()));
-			*edit_started = true;
-			ui.close();
-		}
-		if (own || can_delete)
-			&& ui
-				.add_enabled(
-					can_delete,
-					egui::Button::new(crate::i18n::translate(
-						"timeline-message-actions-delete-message",
-					)),
-				)
-				.clicked()
-		{
-			*deleting = Some((message.channel, message.id));
+			ui.ctx().copy_text(message.id.to_string());
 			ui.close();
 		}
 	});
@@ -2271,8 +2316,7 @@ fn show_system(
 			ui.add_space(8.0);
 			let stamp = ui
 				.label(
-					RichText::new(crate::local_time::header(time))
-						.size(12.0)
+					crate::design::medium(ui, crate::local_time::header(time), 12.0)
 						.color(colors.muted),
 				)
 				.on_hover_text_with(|| crate::local_time::full(time));
@@ -2723,7 +2767,7 @@ impl TimelineView {
 						(width - 88.0).max(1.0),
 					) + 58.0 + 18.0 * lines.min(128.0);
 					if self.compact_messages || grouped(prior, m, self.unread_boundary) {
-						estimate = (estimate - GROUPED_ROW_SAVINGS).max(24.0);
+						estimate = (estimate - GROUPED_ROW_SAVINGS).max(26.0);
 					}
 					estimate += reserved_chrome(ui, m, width);
 					let height = match self.heights.get(&m.id) {
@@ -3239,14 +3283,8 @@ impl TimelineView {
 						.inner_margin(egui::Margin {
 							left: 16,
 							right: 16,
-							top: if self.compact_messages {
-								3
-							} else if compact {
-								1
-							} else {
-								2
-							},
-							bottom: 1,
+							top: if self.compact_messages { 3 } else { ROW_PAD },
+							bottom: if self.compact_messages { 1 } else { ROW_PAD },
 						})
 						.show(ui, |ui| {
 							let mut surface = crate::select::Surface::new(ui, "row");
@@ -3622,7 +3660,7 @@ impl TimelineView {
 										ui,
 										width,
 										egui::FontId::new(
-											15.5,
+											16.0,
 											crate::design::medium_family(ui.ctx()),
 										),
 										|ui| {
@@ -3634,7 +3672,7 @@ impl TimelineView {
 														ui,
 														&message.author,
 														state.message_author_name(message),
-														15.5,
+														16.0,
 														(
 															colors.text_strong,
 															author_colors,
@@ -3680,8 +3718,14 @@ impl TimelineView {
 										.0,
 									);
 								} else {
-									let avatar = avatars
-										.show(ui, &message.author, 40.0, state.demo)
+									// Discord drops the avatar 2px below the top of the name line.
+									let avatar = ui
+										.vertical(|ui| {
+											ui.spacing_mut().item_spacing.y = 0.0;
+											ui.add_space(2.0);
+											avatars.show(ui, &message.author, 40.0, state.demo)
+										})
+										.inner
 										.on_hover_cursor(egui::CursorIcon::PointingHand);
 									avatar_hot = avatar.hovered();
 									thread_gutter = Some(avatar.rect);
@@ -3712,7 +3756,7 @@ impl TimelineView {
 															ui,
 															&message.author,
 															state.message_author_name(message),
-															15.5,
+															16.0,
 															(
 																colors.text_strong,
 																author_colors,
@@ -3750,10 +3794,11 @@ impl TimelineView {
 												let time = timestamp(id);
 												let time = ui
 													.label(
-														RichText::new(crate::local_time::header(
-															time,
-														))
-														.size(12.0)
+														crate::design::medium(
+															ui,
+															crate::local_time::header(time),
+															12.0,
+														)
 														.color(colors.muted),
 													)
 													.on_hover_text_with(|| {
@@ -3762,6 +3807,7 @@ impl TimelineView {
 												surface.exclude(time.rect);
 											},
 										);
+										close_header_gap(ui);
 									}
 									if let Some(system) = &system {
 										// Only a thread-start row carries the thread affordances.
