@@ -1324,7 +1324,13 @@ fn argument(
 					.show(ui, |ui| {
 						if matches!(option.kind, 6 | 9) {
 							for user in mentions::known_users(state, channel) {
-								if ui.button(format!("@{}", user.name)).clicked() {
+								if ui
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::At,
+										format!("@{}", user.name),
+									))
+									.clicked()
+								{
 									*value = user.id.to_string();
 									ui.close();
 								}
@@ -1332,7 +1338,13 @@ fn argument(
 						}
 						if matches!(option.kind, 8 | 9) {
 							for role in mentions::known_roles(state, channel) {
-								if ui.button(format!("@{}", role.name)).clicked() {
+								if ui
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::At,
+										format!("@{}", role.name),
+									))
+									.clicked()
+								{
 									*value = role.id.to_string();
 									ui.close();
 								}
@@ -1353,7 +1365,13 @@ fn argument(
 								})
 								.take(256)
 							{
-								if ui.button(format!("#{}", target.name)).clicked() {
+								if ui
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::Hash,
+										format!("#{}", target.name),
+									))
+									.clicked()
+								{
 									*value = target.id.to_string();
 									ui.close();
 								}

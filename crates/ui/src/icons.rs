@@ -130,13 +130,27 @@ pub enum Icon {
 	Cut,
 	Paste,
 	SelectAll,
+	At,
+	BellSlash,
+	Prohibit,
+	NotePencil,
+	IdCard,
+	Envelope,
+	SignOut,
+	UserMinus,
+	Tag,
+	Eye,
+	Gavel,
+	Clock,
+	SpeakerSlash,
+	Palette,
 	/// Horizontally mirrored reply glyph from the shared atlas.
 	Forward,
 }
 
 impl Icon {
 	/// Canonical atlas cells; Forward reuses the mirrored Reply cell.
-	pub const ALL: [Icon; 111] = [
+	pub const ALL: [Icon; 125] = [
 		Icon::ChevronDown,
 		Icon::ChevronRight,
 		Icon::Gear,
@@ -248,6 +262,20 @@ impl Icon {
 		Icon::Cut,
 		Icon::Paste,
 		Icon::SelectAll,
+		Icon::At,
+		Icon::BellSlash,
+		Icon::Prohibit,
+		Icon::NotePencil,
+		Icon::IdCard,
+		Icon::Envelope,
+		Icon::SignOut,
+		Icon::UserMinus,
+		Icon::Tag,
+		Icon::Eye,
+		Icon::Gavel,
+		Icon::Clock,
+		Icon::SpeakerSlash,
+		Icon::Palette,
 	];
 	/// Upstream icon name recorded in `index.tsv`.
 	fn asset(self) -> &'static str {
@@ -363,6 +391,20 @@ impl Icon {
 			Icon::Cut => "scissors",
 			Icon::Paste => "clipboard-text",
 			Icon::SelectAll => "selection-all",
+			Icon::At => "at",
+			Icon::BellSlash => "bell-slash",
+			Icon::Prohibit => "prohibit",
+			Icon::NotePencil => "note-pencil",
+			Icon::IdCard => "identification-card",
+			Icon::Envelope => "envelope-simple",
+			Icon::SignOut => "sign-out",
+			Icon::UserMinus => "user-minus",
+			Icon::Tag => "tag",
+			Icon::Eye => "eye",
+			Icon::Gavel => "gavel",
+			Icon::Clock => "clock",
+			Icon::SpeakerSlash => "speaker-slash",
+			Icon::Palette => "palette",
 		}
 	}
 	fn cell(self) -> usize {
@@ -467,6 +509,97 @@ pub fn atom(icon: Icon, size: f32, color: Color32) -> egui::Atom<'static> {
 	egui::Atom::paint(Vec2::splat(size), move |ui, args| {
 		paint(ui.painter(), icon, args.rect, color);
 	})
+}
+
+/// Glyph size and gap of a menu row, as Discord draws them.
+const MENU_GLYPH: f32 = 20.0;
+
+/// Leading glyph of a menu row; it follows the row's text colour, so it dims when disabled.
+pub fn menu_glyph(icon: Icon) -> egui::Atom<'static> {
+	egui::Atom::paint(Vec2::splat(MENU_GLYPH), move |ui, args| {
+		paint(ui.painter(), icon, args.rect, args.fallback_text_color);
+	})
+}
+
+/// A menu row: `icon` on the left, then the label.
+pub fn menu_item<'a>(icon: Icon, text: impl Into<egui::Atom<'a>>) -> egui::Button<'a> {
+	egui::Button::new((menu_glyph(icon), text.into()))
+}
+
+/// A destructive menu row: the glyph takes the palette's danger colour like its label.
+pub fn menu_item_danger<'a>(icon: Icon, text: impl Into<egui::Atom<'a>>) -> egui::Button<'a> {
+	egui::Button::new((
+		egui::Atom::paint(Vec2::splat(MENU_GLYPH), move |ui, args| {
+			let color = crate::design::palette(ui).danger;
+			paint(
+				ui.painter(),
+				icon,
+				args.rect,
+				if ui.is_enabled() {
+					color
+				} else {
+					color.gamma_multiply(0.5)
+				},
+			);
+		}),
+		text.into(),
+	))
+}
+
+/// A submenu label: `icon` on the left, then the text.
+pub fn menu_label<'a>(
+	icon: Icon,
+	text: impl Into<egui::Atom<'a>>,
+) -> (egui::Atom<'a>, egui::Atom<'a>) {
+	(menu_glyph(icon), text.into())
+}
+
+/// Glyph for a channel, post or group menu row, chosen from its label key.
+pub fn for_menu_key(key: &str) -> Icon {
+	let has = |part: &str| key.contains(part);
+	if has("delete") {
+		Icon::Trash
+	} else if has("leave") {
+		Icon::SignOut
+	} else if has("copy") && key.ends_with("-id") {
+		Icon::IdCard
+	} else if has("copy-link") {
+		Icon::Link
+	} else if has("copy") || has("duplicate") {
+		Icon::Copy
+	} else if has("mark-as-read") {
+		Icon::Check
+	} else if has("favorites") {
+		Icon::Star
+	} else if has("invite") {
+		Icon::AddPeople
+	} else if has("hide") {
+		Icon::EyeSlash
+	} else if has("unmute") || has("unfollow") {
+		Icon::Bell
+	} else if has("mute") {
+		Icon::BellSlash
+	} else if has("follow") || has("notification") {
+		Icon::Bell
+	} else if has("minutes") || has("hour") || has("until") {
+		Icon::Clock
+	} else if has("create-category") {
+		Icon::Folder
+	} else if has("create") {
+		Icon::Plus
+	} else if has("edit") {
+		Icon::Pencil
+	} else if has("pin") {
+		Icon::Pin
+	} else if has("lock") {
+		Icon::Lock
+	} else if has("close") {
+		Icon::Close
+	} else if has("open") {
+		Icon::External
+	} else {
+		Icon::Gear
+	}
 }
 
 /// Glyph for a channel row: threads, forums, voice, announcements and direct messages.

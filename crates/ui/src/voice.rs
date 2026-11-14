@@ -260,11 +260,14 @@ impl MessagingUi {
 					if ui
 						.add_enabled(
 							enabled,
-							egui::Button::new(crate::i18n::translate(if stop {
-								"voice-recipient-stop-ringing"
-							} else {
-								"voice-recipient-ring"
-							})),
+							crate::icons::menu_item(
+								crate::icons::Icon::InCall,
+								crate::i18n::translate(if stop {
+									"voice-recipient-stop-ringing"
+								} else {
+									"voice-recipient-ring"
+								}),
+							),
 						)
 						.clicked()
 					{
@@ -279,12 +282,15 @@ impl MessagingUi {
 				{
 					let muted = self.voice_user_locally_muted(entry.participant.user);
 					if ui
-						.button(crate::i18n::translate_if_key(
-							&(if muted {
-								crate::i18n::translate("voice-voice-participant-menu-unmute")
-							} else {
-								crate::i18n::translate("voice-voice-participant-menu-mute")
-							}),
+						.add(crate::icons::menu_item(
+							crate::icons::Icon::MicrophoneSlash,
+							crate::i18n::translate_if_key(
+								&(if muted {
+									crate::i18n::translate("voice-voice-participant-menu-unmute")
+								} else {
+									crate::i18n::translate("voice-voice-participant-menu-mute")
+								}),
+							),
 						))
 						.on_hover_text(crate::i18n::translate(
 							"voice-voice-participant-menu-silence-this-person-on-this-device-only-nobody-else-is",
@@ -304,9 +310,10 @@ impl MessagingUi {
 					let reset = ui
 						.add_enabled(
 							volume != 100,
-							egui::Button::new(crate::i18n::translate(
-								"voice-voice-participant-menu-reset-volume",
-							)),
+							crate::icons::menu_item(
+								crate::icons::Icon::Speaker,
+								crate::i18n::translate("voice-voice-participant-menu-reset-volume"),
+							),
 						)
 						.clicked();
 					if changed || reset {
@@ -330,11 +337,14 @@ impl MessagingUi {
 					ui.add_enabled_ui(enabled, |ui| {
 						if can_mute
 							&& ui
-								.button(crate::i18n::translate(if muted {
-									"voice-server-unmute"
-								} else {
-									"voice-server-mute"
-								}))
+								.add(crate::icons::menu_item(
+									crate::icons::Icon::SpeakerSlash,
+									crate::i18n::translate(if muted {
+										"voice-server-unmute"
+									} else {
+										"voice-server-mute"
+									}),
+								))
 								.clicked()
 						{
 							self.voice_moderation =
@@ -342,30 +352,44 @@ impl MessagingUi {
 							ui.close();
 						}
 						if can_move {
-							ui.menu_button(crate::i18n::translate("voice-move-to"), |ui| {
-								egui::ScrollArea::vertical()
-									.max_height(240.0)
-									.show(ui, |ui| {
-										for target in state.channels.iter().filter(|target| {
-											target.guild == Some(guild)
-												&& target.kind == 2 && target.id != channel
-										}) {
-											let change = VoiceChange::Move(Some(target.id));
-											if state.can_view(target.id)
-												&& state.permission(
-													target.id,
-													model::permissions::CONNECT,
-												) == Some(true) && ui.button(&target.name).clicked()
-											{
-												self.voice_moderation =
-													Some((guild, channel, user, change));
-												ui.close();
+							ui.menu_button(
+								crate::icons::menu_label(
+									crate::icons::Icon::ArrowRight,
+									crate::i18n::translate("voice-move-to"),
+								),
+								|ui| {
+									egui::ScrollArea::vertical()
+										.max_height(240.0)
+										.show(ui, |ui| {
+											for target in state.channels.iter().filter(|target| {
+												target.guild == Some(guild)
+													&& target.kind == 2 && target.id != channel
+											}) {
+												let change = VoiceChange::Move(Some(target.id));
+												if state.can_view(target.id)
+													&& state.permission(
+														target.id,
+														model::permissions::CONNECT,
+													) == Some(true) && ui
+													.add(crate::icons::menu_item(
+														crate::icons::Icon::Speaker,
+														&target.name,
+													))
+													.clicked()
+												{
+													self.voice_moderation =
+														Some((guild, channel, user, change));
+													ui.close();
+												}
 											}
-										}
-									});
-							});
+										});
+								},
+							);
 							if ui
-								.button(crate::i18n::translate("voice-disconnect-member"))
+								.add(crate::icons::menu_item(
+									crate::icons::Icon::HangUp,
+									crate::i18n::translate("voice-disconnect-member"),
+								))
 								.clicked()
 							{
 								self.voice_moderation =
@@ -1414,7 +1438,13 @@ impl MessagingUi {
 					.show(|ui| {
 						self.stream_audio_controls(ui);
 						ui.separator();
-						if ui.button("Stop watching").clicked() {
+						if ui
+							.add(crate::icons::menu_item(
+								crate::icons::Icon::StopScreenShare,
+								"Stop watching",
+							))
+							.clicked()
+						{
 							self.watch_request = Some(None);
 							ui.close();
 						}
@@ -3566,7 +3596,10 @@ impl MessagingUi {
 							"Deafen"
 						});
 						if ui
-							.add_enabled(voice_toggles, egui::Button::new(label))
+							.add_enabled(
+								voice_toggles,
+								crate::icons::menu_item(crate::icons::Icon::HeadphonesSlash, label),
+							)
 							.clicked()
 						{
 							deafen_clicked = true;

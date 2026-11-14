@@ -512,8 +512,11 @@ impl Admin {
 									);
 									egui::Popup::menu(&button).show(|ui| {
 										if ui
-											.button(crate::i18n::translate(
-												"server-admin-emojis-rename",
+											.add(crate::icons::menu_item(
+												crate::icons::Icon::Pencil,
+												crate::i18n::translate(
+													"server-admin-emojis-rename",
+												),
 											))
 											.clicked()
 										{
@@ -524,12 +527,13 @@ impl Admin {
 											ui.close();
 										}
 										if ui
-											.button(
+											.add(crate::icons::menu_item_danger(
+												crate::icons::Icon::Trash,
 												RichText::new(crate::i18n::translate(
 													"server-admin-emojis-delete-emoji",
 												))
 												.color(colors.danger),
-											)
+											))
 											.clicked()
 										{
 											self.dialog = Some(Dialog::Delete {
@@ -1013,7 +1017,10 @@ impl Admin {
 		ui.set_width(190.0);
 		let colors = design::palette(ui);
 		if ui
-			.button(crate::i18n::translate("server-admin-member-menu-profile"))
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Profile,
+				crate::i18n::translate("server-admin-member-menu-profile"),
+			))
 			.clicked()
 		{
 			profile.command_open(member.user.clone());
@@ -1026,7 +1033,10 @@ impl Admin {
 					.iter()
 					.any(|user| user.id == member.user.id)
 		}) && ui
-			.button(crate::i18n::translate("server-admin-member-menu-message"))
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Forum,
+				crate::i18n::translate("server-admin-member-menu-message"),
+			))
 			.clicked()
 		{
 			self.message = Some(dm.id);
@@ -1035,8 +1045,9 @@ impl Admin {
 		ui.separator();
 		if state.can_edit_guild_nickname(guild, member.user.id)
 			&& ui
-				.button(crate::i18n::translate(
-					"server-admin-member-menu-change-nickname",
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Tag,
+					crate::i18n::translate("server-admin-member-menu-change-nickname"),
 				))
 				.clicked()
 		{
@@ -1055,7 +1066,8 @@ impl Admin {
 			if ui
 				.add_enabled(
 					!state.user_action_pending(),
-					egui::Button::new(
+					crate::icons::menu_item_danger(
+						crate::icons::Icon::Prohibit,
 						RichText::new(crate::i18n::translate_if_key(if blocked {
 							"server-admin-member-menu-unblock"
 						} else {
@@ -1079,7 +1091,10 @@ impl Admin {
 		{
 			ui.separator();
 			ui.menu_button(
-				crate::i18n::translate("server-admin-member-menu-roles"),
+				crate::icons::menu_label(
+					crate::icons::Icon::ShieldWarning,
+					crate::i18n::translate("server-admin-member-menu-roles"),
+				),
 				|ui| {
 					for role in roles.iter().filter(|role| {
 						state.can_edit_member_role(guild, member.user.id, role.role.id)
@@ -1105,14 +1120,15 @@ impl Admin {
 		}
 		if state.can_kick_guild_member(guild, member.user.id)
 			&& ui
-				.button(
+				.add(crate::icons::menu_item_danger(
+					crate::icons::Icon::UserMinus,
 					RichText::new(format!(
 						"{} {}",
 						crate::i18n::translate("server-admin-member-menu-kick"),
 						member.user.name
 					))
 					.color(colors.danger),
-				)
+				))
 				.clicked()
 		{
 			self.dialog = Some(Dialog::Kick {
@@ -1123,8 +1139,9 @@ impl Admin {
 		}
 		ui.separator();
 		if ui
-			.button(crate::i18n::translate(
-				"server-admin-member-menu-copy-user-id",
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::IdCard,
+				crate::i18n::translate("server-admin-member-menu-copy-user-id"),
 			))
 			.clicked()
 		{

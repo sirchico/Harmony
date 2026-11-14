@@ -658,9 +658,12 @@ impl MessagingUi {
 						if ui
 							.add_enabled(
 								!state.folders_pending,
-								egui::Button::new(crate::i18n::translate(
-									"guild-folders-server-folders-refresh-folders-from-discord",
-								)),
+								crate::icons::menu_item(
+									crate::icons::Icon::Reload,
+									crate::i18n::translate(
+										"guild-folders-server-folders-refresh-folders-from-discord",
+									),
+								),
 							)
 							.clicked()
 						{
@@ -670,8 +673,11 @@ impl MessagingUi {
 						ui.add_enabled_ui(enabled, |ui| match item {
 							Item::Folder(id) => {
 								if ui
-									.button(crate::i18n::translate(
-										"guild-folders-server-folders-folder-name-and-color",
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::Palette,
+										crate::i18n::translate(
+											"guild-folders-server-folders-folder-name-and-color",
+										),
 									))
 									.clicked()
 								{
@@ -692,8 +698,11 @@ impl MessagingUi {
 									ui.close();
 								}
 								if ui
-									.button(crate::i18n::translate(
-										"guild-folders-server-folders-ungroup-servers",
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::FolderOpen,
+										crate::i18n::translate(
+											"guild-folders-server-folders-ungroup-servers",
+										),
 									))
 									.clicked()
 								{
@@ -703,8 +712,11 @@ impl MessagingUi {
 							}
 							Item::Server(id) => {
 								if ui
-									.button(crate::i18n::translate(
-										"guild-folders-server-folders-move-outside-folders",
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::ArrowRight,
+										crate::i18n::translate(
+											"guild-folders-server-folders-move-outside-folders",
+										),
 									))
 									.clicked()
 								{
@@ -712,12 +724,21 @@ impl MessagingUi {
 									ui.close();
 								}
 								ui.menu_button(
-									crate::i18n::translate(
-										"guild-folders-server-folders-group-with-server",
+									crate::icons::menu_label(
+										crate::icons::Icon::Folder,
+										crate::i18n::translate(
+											"guild-folders-server-folders-group-with-server",
+										),
 									),
 									|ui| {
 										for guild in state.guilds.iter().filter(|g| g.id != id) {
-											if ui.button(&guild.name).clicked() {
+											if ui
+												.add(crate::icons::menu_item(
+													crate::icons::Icon::Servers,
+													&guild.name,
+												))
+												.clicked()
+											{
 												change = Some(Edit::Drop(
 													item,
 													Item::Server(guild.id),

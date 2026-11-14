@@ -171,7 +171,10 @@ pub(crate) fn show(
 		});
 	response.context_menu(|ui| {
 		if ui
-			.button(crate::i18n::translate("emoji-details-show-copy-emoji"))
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Copy,
+				crate::i18n::translate("emoji-details-show-copy-emoji"),
+			))
 			.clicked()
 		{
 			ui.ctx().copy_text(text.to_owned());

@@ -6,9 +6,9 @@
 fetched through the jsDelivr npm mirror on September 10, 2026. The unmodified license is
 `LICENSE` and is staged in both packages as `licenses/Phosphor-Icons-MIT.txt`.
 
-Ninety-four unmodified Phosphor `assets/fill/*.svg` and `assets/bold/*.svg` files are scaled
+One hundred and eight unmodified Phosphor `assets/fill/*.svg` and `assets/bold/*.svg` files are scaled
 to 56×56 pixels, filled white, and rasterized by `resvg` 0.45.1 into one transparent PNG atlas
-with 64×64 cells (8 columns, 14 rows). `headphones-slash` is derived from `headphones-fill.svg`
+with 64×64 cells (8 columns, 16 rows). `headphones-slash` is derived from `headphones-fill.svg`
 by masking a diagonal knockout and adding a 16-unit round-capped stroke, matching the style of
 Phosphor's own `*-slash` icons. The application tints glyphs at draw time; no icon font,
 JavaScript or per-icon file is bundled.
@@ -30,10 +30,11 @@ grid), marks threads; it is rasterized with the Phosphor set and carries no upst
 (MIT, same pinned 2.1.1 package, fetched November 10, 2026) with a 16-unit round-capped X masked
 out of the screen where `monitor-arrow-up` draws its arrow, so it pairs with the share glyph.
 
-- `atlas.png`: 512×896 RGBA, 27,326 bytes after lossless `oxipng -o max --strip all`.
-  SHA-256 `4640a87f8aedbe48af687404ac8f51c63cd7f1d1a782e46bdcf5bd98a07fa929`.
+- `atlas.png`: 512×1024 RGBA, 139,260 bytes as written by `resvg` (not yet passed through
+  `oxipng`; the last regeneration ran without it). SHA-256
+  `2e55b5806ec65425eacae776e7dc494bc7f5e41ab670dc807fde50825c2760dd`.
 - `index.tsv`: icon name, tab, zero-based cell; SHA-256
-  `06cabde3334f728e164e18f0057b47a0e6c1db1657ff677fa6bca157f3fb824a`.
+  `e4031b3a7d37718639a7d563149e3f68fd4da508087d234dbca14c4b0002f7c8`.
 
 Every upstream SVG's SHA-256 is pinned in `tools/generate-icons.py`, which refuses to build
 from mismatching files. Regenerate from the repository root:
@@ -58,6 +59,12 @@ same pinned 2.1.1 package on September 27, 2026.
 
 The text context-menu glyphs are unmodified Phosphor `scissors-bold.svg`, `clipboard-text-bold.svg`
 and `selection-all-bold.svg`, fetched from the same pinned 2.1.1 package on November 6, 2026.
+
+The menu-row glyphs are unmodified Phosphor `at-bold.svg`, `bell-slash-fill.svg`,
+`prohibit-bold.svg`, `note-pencil-fill.svg`, `identification-card-fill.svg`,
+`envelope-simple-fill.svg`, `sign-out-bold.svg`, `user-minus-fill.svg`, `tag-fill.svg`,
+`eye-fill.svg`, `gavel-fill.svg`, `clock-fill.svg`, `speaker-slash-fill.svg` and
+`palette-fill.svg`, fetched from the same pinned 2.1.1 package on November 14, 2026.
 
 The `serein-mark` cell is our own artwork, not an upstream icon: it is the solid silhouette of
 the Serein chat-wave from `assets/brand/serein-mark.svg`, trimmed to its bounding box so it

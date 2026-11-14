@@ -214,7 +214,10 @@ impl Cards {
 							if ui
 								.add_enabled(
 									enabled,
-									egui::Button::new(translate("polls-card-end-now")),
+									crate::icons::menu_item(
+										crate::icons::Icon::Close,
+										translate("polls-card-end-now"),
+									),
 								)
 								.clicked()
 							{

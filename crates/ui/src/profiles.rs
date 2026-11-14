@@ -350,8 +350,9 @@ pub(crate) fn activity_card(
 					);
 					egui::Popup::menu(&more).show(|ui| {
 						if ui
-							.button(crate::i18n::translate(
-								"profiles-activity-card-copy-activity",
+							.add(crate::icons::menu_item(
+								crate::icons::Icon::Copy,
+								crate::i18n::translate("profiles-activity-card-copy-activity"),
 							))
 							.clicked()
 						{
@@ -928,7 +929,10 @@ pub(crate) fn copy_username_button(ui: &mut egui::Ui, state: &State, user: &User
 	if ui
 		.add_enabled(
 			username.is_some(),
-			egui::Button::new(crate::i18n::translate("profiles-copy-username")),
+			crate::icons::menu_item(
+				crate::icons::Icon::Copy,
+				crate::i18n::translate("profiles-copy-username"),
+			),
 		)
 		.on_disabled_hover_text(crate::i18n::translate("profiles-username-unavailable"))
 		.clicked()
@@ -954,7 +958,7 @@ pub(crate) fn ignore_button(
 	let clicked = ui
 		.add_enabled(
 			enabled && ignored.is_some() && state.user_blocked(user.id) == Some(false),
-			egui::Button::new(crate::i18n::translate(label)),
+			crate::icons::menu_item(crate::icons::Icon::EyeSlash, crate::i18n::translate(label)),
 		)
 		.on_hover_text(crate::i18n::translate("profiles-ignore-hint"))
 		.clicked();
@@ -971,10 +975,11 @@ pub(crate) fn ignore_button(
 pub(crate) fn report_button(ui: &mut egui::Ui, user: &User) {
 	let colors = design::palette(ui);
 	if ui
-		.button(
+		.add(crate::icons::menu_item_danger(
+			crate::icons::Icon::ShieldWarning,
 			RichText::new(crate::i18n::translate("profiles-report-user-profile"))
 				.color(colors.danger),
-		)
+		))
 		.on_hover_text(crate::i18n::translate("profiles-report-hint"))
 		.clicked()
 	{
@@ -1118,7 +1123,10 @@ fn more_menu(
 	// The footer owns message composition, so the menu does not repeat it.
 	if user.webhook
 		&& ui
-			.button(crate::i18n::translate("profiles-more-menu-copy-webhook-id"))
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::IdCard,
+				crate::i18n::translate("profiles-more-menu-copy-webhook-id"),
+			))
 			.clicked()
 	{
 		ui.ctx().copy_text(user.id.to_string());
@@ -1127,7 +1135,10 @@ fn more_menu(
 	if !user.webhook {
 		if !*full
 			&& ui
-				.button(crate::i18n::translate("profiles-view-full-profile"))
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Profile,
+					crate::i18n::translate("profiles-view-full-profile"),
+				))
 				.clicked()
 		{
 			*full = true;
@@ -1144,7 +1155,10 @@ fn more_menu(
 	if ui
 		.add_enabled(
 			enabled,
-			egui::Button::new(crate::i18n::translate("profiles-more-menu-add-note")),
+			crate::icons::menu_item(
+				crate::icons::Icon::NotePencil,
+				crate::i18n::translate("profiles-more-menu-add-note"),
+			),
 		)
 		.clicked()
 	{
@@ -1154,13 +1168,16 @@ fn more_menu(
 	if ui
 		.add_enabled(
 			enabled && friend,
-			egui::Button::new(crate::i18n::translate_if_key(
-				&(if state.friend_nickname(user.id).is_some() {
-					crate::i18n::translate("profiles-more-menu-edit-friend-nickname")
-				} else {
-					crate::i18n::translate("profiles-more-menu-add-friend-nickname")
-				}),
-			)),
+			crate::icons::menu_item(
+				crate::icons::Icon::Tag,
+				crate::i18n::translate_if_key(
+					&(if state.friend_nickname(user.id).is_some() {
+						crate::i18n::translate("profiles-more-menu-edit-friend-nickname")
+					} else {
+						crate::i18n::translate("profiles-more-menu-add-friend-nickname")
+					}),
+				),
+			),
 		)
 		.on_disabled_hover_text(crate::i18n::translate(
 			"profiles-more-menu-private-nicknames-are-available-for-confirmed-friends",
@@ -1178,13 +1195,16 @@ fn more_menu(
 		if ui
 			.add_enabled(
 				enabled,
-				egui::Button::new(crate::i18n::translate_if_key(
-					&(if muted {
-						crate::i18n::translate("profiles-more-menu-unmute")
-					} else {
-						crate::i18n::translate("profiles-more-menu-mute")
-					}),
-				)),
+				crate::icons::menu_item(
+					crate::icons::Icon::BellSlash,
+					crate::i18n::translate_if_key(
+						&(if muted {
+							crate::i18n::translate("profiles-more-menu-unmute")
+						} else {
+							crate::i18n::translate("profiles-more-menu-mute")
+						}),
+					),
+				),
 			)
 			.on_hover_text(crate::i18n::translate(
 				"profiles-more-menu-mute-this-direct-message-s-notifications-until-you-unmute-it",
@@ -1200,7 +1220,10 @@ fn more_menu(
 	} else {
 		ui.add_enabled(
 			false,
-			egui::Button::new(crate::i18n::translate("profiles-more-menu-mute")),
+			crate::icons::menu_item(
+				crate::icons::Icon::BellSlash,
+				crate::i18n::translate("profiles-more-menu-mute"),
+			),
 		)
 		.on_disabled_hover_text(crate::i18n::translate(
 			"profiles-more-menu-no-open-direct-message-with-this-user",
@@ -1210,7 +1233,10 @@ fn more_menu(
 		&& ui
 			.add_enabled(
 				enabled,
-				egui::Button::new(crate::i18n::translate("profiles-more-menu-remove-friend")),
+				crate::icons::menu_item(
+					crate::icons::Icon::UserMinus,
+					crate::i18n::translate("profiles-more-menu-remove-friend"),
+				),
 			)
 			.clicked()
 	{
@@ -1225,7 +1251,8 @@ fn more_menu(
 	if ui
 		.add_enabled(
 			enabled,
-			egui::Button::new(
+			crate::icons::menu_item_danger(
+				crate::icons::Icon::Prohibit,
 				RichText::new(crate::i18n::translate_if_key(
 					&(if blocked {
 						crate::i18n::translate("profiles-more-menu-unblock")

@@ -373,8 +373,11 @@ impl StickersUi {
 											);
 											egui::Popup::menu(&button).show(|ui| {
 												if ui
-													.button(crate::i18n::translate(
-														"server-stickers-show-edit",
+													.add(crate::icons::menu_item(
+														crate::icons::Icon::Pencil,
+														crate::i18n::translate(
+															"server-stickers-show-edit",
+														),
 													))
 													.clicked()
 												{
@@ -390,12 +393,13 @@ impl StickersUi {
 													ui.close();
 												}
 												if ui
-													.button(
+													.add(crate::icons::menu_item_danger(
+														crate::icons::Icon::Trash,
 														RichText::new(crate::i18n::translate(
 															"server-stickers-show-delete-sticker",
 														))
 														.color(design::palette(ui).danger),
-													)
+													))
 													.clicked()
 												{
 													self.dialog = Some(Dialog::Delete {

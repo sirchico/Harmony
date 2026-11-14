@@ -538,7 +538,10 @@ pub(crate) fn show_menu(ctx: &egui::Context) {
 	.kind(egui::PopupKind::Menu)
 	.show(|ui| {
 		if ui
-			.button(crate::i18n::translate("select-on-end-pass-copy"))
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Copy,
+				crate::i18n::translate("select-on-end-pass-copy"),
+			))
 			.clicked()
 		{
 			request_copy(ui.ctx());

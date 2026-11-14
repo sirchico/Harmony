@@ -195,9 +195,12 @@ impl PermissionsUi {
 						if ui
 							.add_enabled(
 								id.is_some(),
-								egui::Button::new(crate::i18n::translate(
-									"channel-permissions-targets-add-member",
-								)),
+								crate::icons::menu_item(
+									crate::icons::Icon::AddPeople,
+									crate::i18n::translate(
+										"channel-permissions-targets-add-member",
+									),
+								),
 							)
 							.clicked()
 						{

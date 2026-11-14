@@ -632,7 +632,10 @@ fn media_menu(
 		};
 		for (copy, label) in actions {
 			if ui
-				.add_enabled(idle, egui::Button::new(label))
+				.add_enabled(
+					idle,
+					crate::icons::menu_item(crate::icons::Icon::Download, label),
+				)
 				.on_disabled_hover_text(crate::i18n::translate_if_key(
 					&(if demo {
 						crate::i18n::translate(
@@ -653,8 +656,9 @@ fn media_menu(
 		if let Some(url) = url.and_then(external_url) {
 			if video
 				&& ui
-					.button(crate::i18n::translate(
-						"attachments-media-menu-open-original",
+					.add(crate::icons::menu_item(
+						crate::icons::Icon::External,
+						crate::i18n::translate("attachments-media-menu-open-original"),
 					))
 					.clicked()
 			{
@@ -662,7 +666,10 @@ fn media_menu(
 				ui.close();
 			}
 			if ui
-				.button(crate::i18n::translate("attachments-media-menu-copy-link"))
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::Link,
+					crate::i18n::translate("attachments-media-menu-copy-link"),
+				))
 				.clicked()
 			{
 				ui.ctx().copy_text(url);
@@ -1351,7 +1358,10 @@ pub fn viewer(
 									ui.ctx().copy_text(target.clone());
 								}
 								ui.menu_button(
-									crate::i18n::translate("attachments-viewer-view-details"),
+									crate::icons::menu_label(
+										crate::icons::Icon::Image,
+										crate::i18n::translate("attachments-viewer-view-details"),
+									),
 									|ui| {
 										ui.set_min_width(200.0);
 										for (key, value) in [

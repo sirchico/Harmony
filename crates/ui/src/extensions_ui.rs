@@ -147,7 +147,10 @@ pub(crate) fn context_menu_targets(ui: &mut egui::Ui, targets: &[extensions::Men
 		return;
 	}
 	ui.menu_button(
-		crate::i18n::translate("timeline-message-actions-extensions"),
+		crate::icons::menu_label(
+			crate::icons::Icon::Activities,
+			crate::i18n::translate("timeline-message-actions-extensions"),
+		),
 		|ui| {
 			for (index, target) in offered.iter().enumerate() {
 				if offered.len() > 1 {
@@ -196,7 +199,13 @@ pub(crate) fn context_menu_entries(ui: &mut egui::Ui, target: &extensions::MenuT
 		.iter()
 		.filter(|(s, _)| *s == surface)
 	{
-		if ui.button(&action.label).clicked() {
+		if ui
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Activities,
+				&action.label,
+			))
+			.clicked()
+		{
 			ui.ctx().data_mut(|data| {
 				data.insert_temp::<Option<MenuChoice>>(
 					egui::Id::unique(CONTEXT_CHOICE),
@@ -1134,7 +1143,10 @@ impl ExtensionUi {
 		}
 		let mut selected = None;
 		ui.menu_button(
-			crate::i18n::translate("extensions-ui-composer-menu-tools"),
+			crate::icons::menu_label(
+				crate::icons::Icon::Activities,
+				crate::i18n::translate("extensions-ui-composer-menu-tools"),
+			),
 			|ui| {
 				for entry in self.entries.iter().filter(|entry| entry.enabled) {
 					for action in entry
@@ -1146,10 +1158,10 @@ impl ExtensionUi {
 						if ui
 							.add_enabled(
 								!self.busy,
-								egui::Button::new(format!(
-									"{} · {}",
-									entry.manifest.name, action.label
-								)),
+								crate::icons::menu_item(
+									crate::icons::Icon::Activities,
+									format!("{} · {}", entry.manifest.name, action.label),
+								),
 							)
 							.clicked()
 						{
@@ -1292,9 +1304,10 @@ impl ExtensionUi {
 					if ui
 						.add_enabled(
 							!self.busy,
-							egui::Button::new(crate::i18n::translate(
-								"extensions-ui-toolbar-import-theme",
-							)),
+							crate::icons::menu_item(
+								crate::icons::Icon::Download,
+								crate::i18n::translate("extensions-ui-toolbar-import-theme"),
+							),
 						)
 						.clicked()
 					{
@@ -1305,9 +1318,10 @@ impl ExtensionUi {
 					if ui
 						.add_enabled(
 							!self.busy,
-							egui::Button::new(crate::i18n::translate(
-								"extensions-ui-toolbar-refresh-catalog",
-							)),
+							crate::icons::menu_item(
+								crate::icons::Icon::Reload,
+								crate::i18n::translate("extensions-ui-toolbar-refresh-catalog"),
+							),
 						)
 						.clicked()
 					{
@@ -1996,11 +2010,20 @@ impl ExtensionUi {
 					visuals.widgets.open.weak_bg_fill = neutral.linear_multiply(1.12);
 					ui.spacing_mut().button_padding.x = (each / 2.0 - 30.0).max(6.0);
 					ui.menu_button(
-						crate::i18n::translate("extensions-ui-card-body-open-tool"),
+						crate::icons::menu_label(
+							crate::icons::Icon::Activities,
+							crate::i18n::translate("extensions-ui-card-body-open-tool"),
+						),
 						|ui| {
 							for action in &panel_actions {
 								if ui
-									.add_enabled(!self.busy, egui::Button::new(&action.label))
+									.add_enabled(
+										!self.busy,
+										crate::icons::menu_item(
+											crate::icons::Icon::Activities,
+											&action.label,
+										),
+									)
 									.clicked()
 								{
 									*invoke = Some((entry.manifest.id.clone(), action.id.clone()));

@@ -189,7 +189,10 @@ impl ChannelMenu {
 					intent = Some(Intent::Write(Action::Mute(Mute::Unmute)));
 				}
 				ui.menu_button(
-					crate::i18n::translate("channel-menu-context-mute-channel"),
+					crate::icons::menu_label(
+						crate::icons::Icon::BellSlash,
+						crate::i18n::translate("channel-menu-context-mute-channel"),
+					),
 					|ui| {
 						for (label, seconds) in [
 							("channel-menu-report-capacity-for-15-minutes", 900),
@@ -215,7 +218,10 @@ impl ChannelMenu {
 					},
 				);
 				ui.menu_button(
-					crate::i18n::translate("channel-menu-context-notification-settings"),
+					crate::icons::menu_label(
+						crate::icons::Icon::Bell,
+						crate::i18n::translate("channel-menu-context-notification-settings"),
+					),
 					|ui| {
 						let level = state.channel_notification_level(channel.id);
 						for (value, label) in [
@@ -1219,18 +1225,20 @@ fn toggle_row(ui: &mut egui::Ui, label: &str, value: &mut bool) -> egui::Respons
 
 pub(super) fn row(ui: &mut egui::Ui, label: &str, enabled: bool, danger: bool) -> egui::Response {
 	let colors = design::palette(ui);
+	let icon = crate::icons::for_menu_key(label);
 	let label = crate::i18n::translate_if_key(label);
+	let text =
+		design::medium(ui, label, 14.0).color(if danger { colors.danger } else { colors.text });
 	ui.add_enabled(
 		enabled,
-		egui::Button::new(())
-			.left_text(design::medium(ui, label, 14.0).color(if danger {
-				colors.danger
-			} else {
-				colors.text
-			}))
-			.min_size(egui::vec2(ui.available_width(), 34.0))
-			.frame_when_inactive(false)
-			.corner_radius(4),
+		if danger {
+			crate::icons::menu_item_danger(icon, text)
+		} else {
+			crate::icons::menu_item(icon, text)
+		}
+		.min_size(egui::vec2(ui.available_width(), 34.0))
+		.frame_when_inactive(false)
+		.corner_radius(4),
 	)
 }
 
@@ -1881,8 +1889,8 @@ mod tests {
 				PointerButton::Primary,
 			);
 			let (_, text) = h.frame(&ctx, vec![]);
-			assert!(text.iter().any(|(s, _)| s == "CHANNEL NAME"));
-			assert!(!text.iter().any(|(s, _)| s == "CATEGORY NAME"));
+			assert!(text.iter().any(|(s, _)| s == "Channel name"));
+			assert!(!text.iter().any(|(s, _)| s == "Category name"));
 			let viewport = Rect::from_min_size(Pos2::ZERO, egui::vec2(width, 760.0));
 			for choice in ["Text", "Voice", "Forum"] {
 				assert!(viewport.contains_rect(text.iter().find(|(s, _)| s == choice).unwrap().1));

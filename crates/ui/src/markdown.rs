@@ -3022,7 +3022,10 @@ impl Formatted {
 		if let Some(text) = ui.data(|data| data.get_temp::<Option<String>>(menu).flatten()) {
 			egui::Popup::context_menu(&response).id(menu).show(|ui| {
 				if ui
-					.button(crate::i18n::translate("markdown-show-emoji-copy-emoji"))
+					.add(crate::icons::menu_item(
+						crate::icons::Icon::Copy,
+						crate::i18n::translate("markdown-show-emoji-copy-emoji"),
+					))
 					.clicked()
 				{
 					ui.ctx().copy_text(text);

@@ -128,6 +128,20 @@ ICONS = [
     ("scissors", "bold/scissors-bold.svg", "10d7c433d8284923caa353edbfa984be5c9b12aab331c36d3f250f3bd7656a1d"),
     ("clipboard-text", "bold/clipboard-text-bold.svg", "3d1f047a9ea53283cada888642cc9427e3ec7ac766beeefee19581454b4b26b4"),
     ("selection-all", "bold/selection-all-bold.svg", "a5db79d398382ba9c9bf0abe75290e46cf11c41464be439b66c8e3ee30a716a3"),    ("monitor-x", "repo:assets/icons/monitor-x.svg", "5850e9e31daefe53ac6e117abd690e5171c055b40cbdd9337948bd2fbbfc11a9"),
+    ("at", "bold/at-bold.svg", "1c1ede3364fe072f606d30f3ffd098b6e40c56e36ac4161961d283b68eb1c8c2"),
+    ("bell-slash", "fill/bell-slash-fill.svg", "3d874ce4d52dcc3bd861d76f3b4b4e38d464fcfeef380a34181fe9ebe708fd02"),
+    ("prohibit", "bold/prohibit-bold.svg", "fba9bed853d84c9fc94860cb3b1504a2077ffa2da2cb99cc9e7e943636097285"),
+    ("note-pencil", "fill/note-pencil-fill.svg", "6ea560be3a27f7c11d7ba5800cad720fb221a13b11d42c631148fceef1c4bff3"),
+    ("identification-card", "fill/identification-card-fill.svg", "1ab3b4b94b739bdfb871cdae5455be56e0ad59639d3f3b23f908858a5e0c7b69"),
+    ("envelope-simple", "fill/envelope-simple-fill.svg", "6cde9c0a359e967e36a6d3e54b720c67df75ce78f39e9adc7f29a7799bd09b54"),
+    ("sign-out", "bold/sign-out-bold.svg", "7e7a96557804b578ec40ce2365f4bcea7c8fdec4f49068724d27fc03272d0156"),
+    ("user-minus", "fill/user-minus-fill.svg", "2ed888f2c19b2f6c6d23f660678bb5cfbf0325ab2522df0dce57b72644b3ea9f"),
+    ("tag", "fill/tag-fill.svg", "e47e31e6769f655f8a58ad4d243c6fdba13902b02eb70fa3126e58d9b5febb5b"),
+    ("eye", "fill/eye-fill.svg", "86381b51cb6f305019503b4c5d4b02fe8df5941bab3f1475ee873006a8708420"),
+    ("gavel", "fill/gavel-fill.svg", "3c9016ec3e37ed09090f38cffb6247fadf0cab18ddcd3cbb23bf2609e0e05c18"),
+    ("clock", "fill/clock-fill.svg", "4abe98cfc61350de60baf70ce93e85b3a9acbb80e34f9cf19688661aaddbc140"),
+    ("speaker-slash", "fill/speaker-slash-fill.svg", "029fae09171e356142aef7db03006e84e6bd1534960e2f9cc4a2b73e8325004c"),
+    ("palette", "fill/palette-fill.svg", "c8f6bdc5d4ddff5ad039a926e13efe7ceb92f5a57e6a755df516ca05deadba53"),
 ]
 LICENSE_SHA256 = "ddbe6082ec3cf979db47e5af549d2849c5d6182b3e005ef91ce1dbb9eb122f11"
 

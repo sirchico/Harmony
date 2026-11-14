@@ -542,8 +542,9 @@ impl Picker {
 				}
 				if removable
 					&& ui
-						.button(crate::i18n::translate(
-							"emoji-picker-unicode-button-with-remove-emoji",
+						.add(crate::icons::menu_item(
+							crate::icons::Icon::Trash,
+							crate::i18n::translate("emoji-picker-unicode-button-with-remove-emoji"),
 						))
 						.clicked()
 				{

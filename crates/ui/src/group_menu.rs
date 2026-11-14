@@ -430,13 +430,18 @@ impl MessagingUi {
 	}
 }
 fn row(ui: &mut egui::Ui, label: &str, color: egui::Color32) -> egui::Response {
+	let icon = crate::icons::for_menu_key(label);
 	let label = crate::i18n::translate_if_key(label);
+	let text = design::medium(ui, label, 14.0).color(color);
 	ui.add_sized(
-		[ui.available_width(), 40.0],
-		egui::Button::new(())
-			.left_text(design::medium(ui, label, 14.0).color(color))
-			.frame_when_inactive(false)
-			.corner_radius(4),
+		[ui.available_width(), 36.0],
+		if color == design::palette(ui).danger {
+			crate::icons::menu_item_danger(icon, text)
+		} else {
+			crate::icons::menu_item(icon, text)
+		}
+		.frame_when_inactive(false)
+		.corner_radius(4),
 	)
 }
 

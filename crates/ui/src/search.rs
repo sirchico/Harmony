@@ -1597,10 +1597,19 @@ impl SearchUi {
 			if readable && !self.extension_actions.is_empty() {
 				let mut chosen = None;
 				ui.menu_button(
-					crate::i18n::translate("timeline-message-actions-extensions"),
+					crate::icons::menu_label(
+						crate::icons::Icon::Activities,
+						crate::i18n::translate("timeline-message-actions-extensions"),
+					),
 					|ui| {
 						for action in self.extension_actions.iter() {
-							if ui.button(&action.label).clicked() {
+							if ui
+								.add(crate::icons::menu_item(
+									crate::icons::Icon::Activities,
+									&action.label,
+								))
+								.clicked()
+							{
 								chosen = Some(action.clone());
 								ui.close();
 							}
@@ -1624,7 +1633,10 @@ impl SearchUi {
 			if readable
 				&& crate::select::has_selection_in(ui.ctx(), response.rect)
 				&& ui
-					.button(crate::i18n::translate("timeline-message-actions-copy"))
+					.add(crate::icons::menu_item(
+						crate::icons::Icon::Copy,
+						crate::i18n::translate("timeline-message-actions-copy"),
+					))
 					.clicked()
 			{
 				crate::select::request_copy(ui.ctx());
@@ -1632,7 +1644,10 @@ impl SearchUi {
 			}
 			if readable
 				&& ui
-					.button(crate::i18n::translate("message-menu-copy"))
+					.add(crate::icons::menu_item(
+						crate::icons::Icon::Copy,
+						crate::i18n::translate("message-menu-copy"),
+					))
 					.clicked()
 			{
 				ui.ctx().copy_text(text.clone());
@@ -1642,8 +1657,9 @@ impl SearchUi {
 				.channel(hit.channel)
 				.and_then(|channel| crate::markdown::discord_url(channel, Some(hit.id)))
 				&& ui
-					.button(crate::i18n::translate(
-						"timeline-message-actions-copy-message-link",
+					.add(crate::icons::menu_item(
+						crate::icons::Icon::Link,
+						crate::i18n::translate("timeline-message-actions-copy-message-link"),
 					))
 					.clicked()
 			{
@@ -1651,8 +1667,9 @@ impl SearchUi {
 				ui.close();
 			}
 			if ui
-				.button(crate::i18n::translate(
-					"timeline-message-actions-copy-message-id",
+				.add(crate::icons::menu_item(
+					crate::icons::Icon::IdCard,
+					crate::i18n::translate("timeline-message-actions-copy-message-id"),
 				))
 				.clicked()
 			{

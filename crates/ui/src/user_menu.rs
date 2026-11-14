@@ -211,7 +211,10 @@ pub(super) fn contents(
 		crate::extensions_ui::context_menu_targets(ui, &targets);
 	}
 	if ui
-		.button(crate::i18n::translate("user-menu-contents-profile"))
+		.add(crate::icons::menu_item(
+			crate::icons::Icon::Profile,
+			crate::i18n::translate("user-menu-contents-profile"),
+		))
 		.clicked()
 	{
 		profile.command_open(user.clone());
@@ -219,7 +222,10 @@ pub(super) fn contents(
 	}
 	if !user.webhook
 		&& ui
-			.button(crate::i18n::translate("profiles-view-full-profile"))
+			.add(crate::icons::menu_item(
+				crate::icons::Icon::Profile,
+				crate::i18n::translate("profiles-view-full-profile"),
+			))
 			.clicked()
 	{
 		profile.open_full(user.clone());
@@ -231,7 +237,10 @@ pub(super) fn contents(
 				.channel(id)
 				.is_some_and(|channel| channel.supports_text())
 		}) && ui
-		.button(crate::i18n::translate("user-menu-contents-mention"))
+		.add(crate::icons::menu_item(
+			crate::icons::Icon::At,
+			crate::i18n::translate("user-menu-contents-mention"),
+		))
 		.clicked()
 	{
 		*action = Some(Action::Mention(user.clone()));
@@ -263,7 +272,10 @@ pub(super) fn contents(
 	if ui
 		.add_enabled(
 			state.can_open_user_dm(user),
-			egui::Button::new(crate::i18n::translate("friends-message")),
+			crate::icons::menu_item(
+				crate::icons::Icon::Forum,
+				crate::i18n::translate("friends-message"),
+			),
 		)
 		.clicked()
 	{
@@ -281,7 +293,10 @@ pub(super) fn contents(
 					.as_ref()
 					.is_none_or(|call| dm.is_none_or(|channel| call.channel != channel.id))
 				&& dm.is_none_or(|channel| state.can_call(channel.id)),
-			egui::Button::new(crate::i18n::translate("user-menu-contents-start-a-call")),
+			crate::icons::menu_item(
+				crate::icons::Icon::Phone,
+				crate::i18n::translate("user-menu-contents-start-a-call"),
+			),
 		)
 		.clicked()
 	{
@@ -312,7 +327,10 @@ pub(super) fn contents(
 					&& reachable && state.friends_known()
 					&& state.friend_requests_known()
 					&& friend_action.is_some(),
-				egui::Button::new(crate::i18n::translate(label)),
+				crate::icons::menu_item(
+					crate::icons::Icon::AddPeople,
+					crate::i18n::translate(label),
+				),
 			)
 			.clicked()
 		{
@@ -324,7 +342,10 @@ pub(super) fn contents(
 	if ui
 		.add_enabled(
 			enabled,
-			egui::Button::new(crate::i18n::translate("user-menu-contents-add-note")),
+			crate::icons::menu_item(
+				crate::icons::Icon::NotePencil,
+				crate::i18n::translate("user-menu-contents-add-note"),
+			),
 		)
 		.clicked()
 	{
@@ -334,13 +355,16 @@ pub(super) fn contents(
 	if ui
 		.add_enabled(
 			enabled && state.friends().any(|friend| friend.id == user.id),
-			egui::Button::new(crate::i18n::translate_if_key(
-				&(if state.friend_nickname(user.id).is_some() {
-					crate::i18n::translate("user-menu-contents-edit-friend-nickname")
-				} else {
-					crate::i18n::translate("user-menu-contents-add-friend-nickname")
-				}),
-			)),
+			crate::icons::menu_item(
+				crate::icons::Icon::Tag,
+				crate::i18n::translate_if_key(
+					&(if state.friend_nickname(user.id).is_some() {
+						crate::i18n::translate("user-menu-contents-edit-friend-nickname")
+					} else {
+						crate::i18n::translate("user-menu-contents-add-friend-nickname")
+					}),
+				),
+			),
 		)
 		.on_disabled_hover_text(crate::i18n::translate(
 			"user-menu-contents-private-nicknames-are-available-for-confirmed-friends",
@@ -357,13 +381,16 @@ pub(super) fn contents(
 			if ui
 				.add_enabled(
 					view.available(),
-					egui::Button::new(crate::i18n::translate_if_key(
-						&(if pinned {
-							crate::i18n::translate("user-menu-contents-unpin-dm")
-						} else {
-							crate::i18n::translate("user-menu-contents-pin-dm")
-						}),
-					)),
+					crate::icons::menu_item(
+						crate::icons::Icon::Pin,
+						crate::i18n::translate_if_key(
+							&(if pinned {
+								crate::i18n::translate("user-menu-contents-unpin-dm")
+							} else {
+								crate::i18n::translate("user-menu-contents-pin-dm")
+							}),
+						),
+					),
 				)
 				.on_hover_text(crate::i18n::translate(
 					"user-menu-contents-pinned-direct-messages-are-saved-on-this-device",
@@ -378,13 +405,16 @@ pub(super) fn contents(
 		if ui
 			.add_enabled(
 				enabled,
-				egui::Button::new(crate::i18n::translate_if_key(
-					&(if muted {
-						crate::i18n::translate("user-menu-contents-unmute-conversation")
-					} else {
-						crate::i18n::translate("user-menu-contents-mute-conversation")
-					}),
-				)),
+				crate::icons::menu_item(
+					crate::icons::Icon::BellSlash,
+					crate::i18n::translate_if_key(
+						&(if muted {
+							crate::i18n::translate("user-menu-contents-unmute-conversation")
+						} else {
+							crate::i18n::translate("user-menu-contents-mute-conversation")
+						}),
+					),
+				),
 			)
 			.on_hover_text(crate::i18n::translate(
 				"user-menu-contents-mute-this-direct-message-s-notifications-until-you-unmute-it",
@@ -400,7 +430,10 @@ pub(super) fn contents(
 		if ui
 			.add_enabled(
 				enabled,
-				egui::Button::new(crate::i18n::translate("user-menu-contents-close-dm")),
+				crate::icons::menu_item(
+					crate::icons::Icon::Close,
+					crate::i18n::translate("user-menu-contents-close-dm"),
+				),
 			)
 			.on_hover_text(crate::i18n::translate(
 				"user-menu-contents-remove-this-conversation-from-your-dm-list-messages-are-kept",
@@ -413,9 +446,10 @@ pub(super) fn contents(
 	} else {
 		ui.add_enabled(
 			false,
-			egui::Button::new(crate::i18n::translate(
-				"user-menu-contents-mute-conversation",
-			)),
+			crate::icons::menu_item(
+				crate::icons::Icon::BellSlash,
+				crate::i18n::translate("user-menu-contents-mute-conversation"),
+			),
 		)
 		.on_disabled_hover_text(crate::i18n::translate(
 			"user-menu-contents-no-open-direct-message-with-this-user",
@@ -429,7 +463,8 @@ pub(super) fn contents(
 	if ui
 		.add_enabled(
 			enabled,
-			egui::Button::new(
+			crate::icons::menu_item_danger(
+				crate::icons::Icon::Prohibit,
 				egui::RichText::new(crate::i18n::translate_if_key(if blocked {
 					"user-menu-contents-unblock"
 				} else {
@@ -477,7 +512,10 @@ fn moderation_menu(
 	for kind in kinds {
 		let label = crate::i18n::translate_args(kind.menu_key(), &[("name", &user.name)]);
 		if ui
-			.button(egui::RichText::new(label).color(danger))
+			.add(crate::icons::menu_item_danger(
+				crate::icons::Icon::Gavel,
+				egui::RichText::new(label).color(danger),
+			))
 			.clicked()
 		{
 			*action = Some(Action::Moderate {
@@ -508,34 +546,41 @@ fn roles_menu(
 			|| (state.gateway_connected
 				&& state.auth == client_core::auth::AuthState::Authenticated));
 	let text = crate::design::palette(ui).text;
-	ui.menu_button(crate::i18n::translate("user-menu-contents-roles"), |ui| {
-		ui.set_min_width(180.0);
-		let background = ui.visuals().window_fill;
-		egui::ScrollArea::vertical()
-			.max_height(320.0)
-			.show(ui, |ui| {
-				for (role, assigned) in roles {
-					let mut checked = assigned;
-					let mut name = egui::RichText::new(&role.name);
-					if role.color != 0 {
-						name = name
-							.color(crate::design::role_name_color(role.color, background, text));
+	ui.menu_button(
+		crate::icons::menu_label(
+			crate::icons::Icon::ShieldWarning,
+			crate::i18n::translate("user-menu-contents-roles"),
+		),
+		|ui| {
+			ui.set_min_width(180.0);
+			let background = ui.visuals().window_fill;
+			egui::ScrollArea::vertical()
+				.max_height(320.0)
+				.show(ui, |ui| {
+					for (role, assigned) in roles {
+						let mut checked = assigned;
+						let mut name = egui::RichText::new(&role.name);
+						if role.color != 0 {
+							name = name.color(crate::design::role_name_color(
+								role.color, background, text,
+							));
+						}
+						if ui
+							.add_enabled(enabled, egui::Checkbox::new(&mut checked, name))
+							.clicked()
+						{
+							*action = Some(Action::SetRole {
+								guild,
+								user,
+								role: role.id,
+								assigned: !assigned,
+							});
+							ui.close();
+						}
 					}
-					if ui
-						.add_enabled(enabled, egui::Checkbox::new(&mut checked, name))
-						.clicked()
-					{
-						*action = Some(Action::SetRole {
-							guild,
-							user,
-							role: role.id,
-							assigned: !assigned,
-						});
-						ui.close();
-					}
-				}
-			});
-	});
+				});
+		},
+	);
 }
 
 #[cfg(test)]

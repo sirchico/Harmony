@@ -533,7 +533,10 @@ impl RolesUi {
 							boxed_icon(ui, icons::Icon::More, "server-roles-list-role-actions");
 						egui::Popup::menu(&menu).show(|ui| {
 							if ui
-								.button(crate::i18n::translate("server-roles-list-edit-role-2"))
+								.add(crate::icons::menu_item(
+									crate::icons::Icon::Pencil,
+									crate::i18n::translate("server-roles-list-edit-role-2"),
+								))
 								.clicked()
 							{
 								self.switch(Some(role.id), guild);
@@ -541,7 +544,10 @@ impl RolesUi {
 							}
 							if state.can_move_guild_role(guild, role.id, role.position + 1)
 								&& ui
-									.button(crate::i18n::translate("server-roles-list-move-up"))
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::ArrowUp,
+										crate::i18n::translate("server-roles-list-move-up"),
+									))
 									.clicked()
 							{
 								action = Some(Action::Move {
@@ -552,7 +558,10 @@ impl RolesUi {
 							}
 							if state.can_move_guild_role(guild, role.id, role.position - 1)
 								&& ui
-									.button(crate::i18n::translate("server-roles-list-move-down"))
+									.add(crate::icons::menu_item(
+										crate::icons::Icon::ArrowDown,
+										crate::i18n::translate("server-roles-list-move-down"),
+									))
 									.clicked()
 							{
 								action = Some(Action::Move {
@@ -563,12 +572,13 @@ impl RolesUi {
 							}
 							if state.can_delete_guild_role(guild, role.id)
 								&& ui
-									.button(
+									.add(crate::icons::menu_item_danger(
+										crate::icons::Icon::Trash,
 										RichText::new(crate::i18n::translate(
 											"server-roles-list-delete-role",
 										))
 										.color(colors.danger),
-									)
+									))
 									.clicked()
 							{
 								self.delete = Some(role.id);
@@ -678,12 +688,13 @@ impl RolesUi {
 				);
 				egui::Popup::menu(&button).show(|ui| {
 					if ui
-						.button(
+						.add(crate::icons::menu_item_danger(
+							crate::icons::Icon::Trash,
 							RichText::new(crate::i18n::translate(
 								"server-roles-editor-delete-role",
 							))
 							.color(colors.danger),
-						)
+						))
 						.clicked()
 					{
 						self.delete = Some(role);
