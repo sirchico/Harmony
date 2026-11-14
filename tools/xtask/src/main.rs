@@ -372,7 +372,7 @@ fn package() -> Result<(), String> {
 		"NotoSansArabic-OFL.txt",
 		"NotoSansMath-OFL.txt",
 		"NotoSansSymbols2-OFL.txt",
-		"Inter-OFL.txt",
+		"NotoSans-OFL.txt",
 		"Bangers-OFL.txt",
 		"BioRhyme-OFL.txt",
 		"CherryBombOne-OFL.txt",

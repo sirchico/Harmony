@@ -1035,7 +1035,7 @@ extensions-ui-toolbar-working-on-your-last-action = Trabalhando em sua última a
 # Context: show
 fonts-show-import-font = Importar fonte…
 # Context: show
-fonts-show-inter-default = Inter (padrão)
+fonts-show-inter-default = Noto Sans (padrão)
 # Context: show
 fonts-show-interface-font = Fonte da interface
 # Context: show

@@ -1035,7 +1035,7 @@ extensions-ui-toolbar-working-on-your-last-action = Pracuję nad ostatnią akcj�
 # Context: show
 fonts-show-import-font = Importuj czcionkę…
 # Context: show
-fonts-show-inter-default = Inter (domyślny)
+fonts-show-inter-default = Noto Sans (domyślny)
 # Context: show
 fonts-show-interface-font = Czcionka interfejsu
 # Context: show

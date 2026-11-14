@@ -1,4 +1,4 @@
-No Discord logos or proprietary fonts are bundled. The notification sounds are Discord audio assets; see [sound provenance and redistribution limitations](sounds/README.md). The interface leads proportional text with three unmodified SIL Open Font License 1.1 Inter faces (Regular, Medium, SemiBold; the heavier two form the `medium`/`semibold` families because egui has no synthetic bold), keeps egui's default faces as fallbacks, and appends four OFL fallback fonts (CJK collection, Arabic, Math, Symbols 2) to every family. The first three are unmodified; Symbols 2 is a modified subset covering punctuation, arrows, technical, miscellaneous symbols and dingbats (including U+2726). They are embedded once in the executable (the CJK collection as a zstd archive inflated on first use); there is no runtime font download or render-time filesystem access.
+No Discord logos or proprietary fonts are bundled. The notification sounds are Discord audio assets; see [sound provenance and redistribution limitations](sounds/README.md). The interface leads proportional text with three unmodified SIL Open Font License 1.1 Noto Sans faces (Regular, Medium, SemiBold; the heavier two form the `medium`/`semibold` families because egui has no synthetic bold), keeps egui's default faces as fallbacks, and appends four OFL fallback fonts (CJK collection, Arabic, Math, Symbols 2) to every family. The first three are unmodified; Symbols 2 is a modified subset covering punctuation, arrows, technical, miscellaneous symbols and dingbats (including U+2726). They are embedded once in the executable (the CJK collection as a zstd archive inflated on first use); there is no runtime font download or render-time filesystem access.
 
 | Asset | Upstream version | Bytes | Copyright and license |
 |---|---|---:|---|
@@ -6,9 +6,9 @@ No Discord logos or proprietary fonts are bundled. The notification sounds are D
 | `fonts/NotoSansArabic.ttf` | 2.012 | 844,676 | Copyright 2022 The Noto Project Authors; [OFL 1.1](fonts/NotoSansArabic-OFL.txt) |
 | `fonts/NotoSansMath-Regular.otf` | 3.000 (unhinted) | 479,308 | Copyright 2022 The Noto Project Authors; [OFL 1.1](fonts/NotoSansMath-OFL.txt) |
 | `fonts/NotoSansSymbols2-Regular.ttf` | 2.008 (modified subset, unhinted) | 87,460 | Copyright 2022 The Noto Project Authors; [OFL 1.1](fonts/NotoSansSymbols2-OFL.txt) |
-| `fonts/Inter-Regular.ttf` | 3.19 (hinted) | 680,240 | Copyright (c) 2016-2020 The Inter Project Authors; [OFL 1.1](fonts/Inter-OFL.txt) |
-| `fonts/Inter-Medium.ttf` | 3.19 (hinted) | 694,512 | Copyright (c) 2016-2020 The Inter Project Authors; [OFL 1.1](fonts/Inter-OFL.txt) |
-| `fonts/Inter-SemiBold.ttf` | 3.19 (hinted) | 710,040 | Copyright (c) 2016-2020 The Inter Project Authors; [OFL 1.1](fonts/Inter-OFL.txt) |
+| `fonts/NotoSans-Regular.ttf` | 2.015 (hinted) | 621,572 | Copyright 2022 The Noto Project Authors; [OFL 1.1](fonts/NotoSans-OFL.txt) |
+| `fonts/NotoSans-Medium.ttf` | 2.015 (hinted) | 619,976 | Copyright 2022 The Noto Project Authors; [OFL 1.1](fonts/NotoSans-OFL.txt) |
+| `fonts/NotoSans-SemiBold.ttf` | 2.015 (hinted) | 625,052 | Copyright 2022 The Noto Project Authors; [OFL 1.1](fonts/NotoSans-OFL.txt) |
 
 Downloaded from pinned upstream sources (September 10, 2026 unless specified):
 
@@ -17,13 +17,13 @@ Downloaded from pinned upstream sources (September 10, 2026 unless specified):
 - [Noto Sans Math 3.000](https://github.com/notofonts/math/releases/tag/NotoSansMath-v3.000) unhinted OpenType face from the official release archive (SHA-256 `ac351837b41f8a897f020b97fb0f075ad574c1e9669fb5839ada1f92fd748356`). The font bytes are unchanged. SHA-256: `a3a3904ede36039d4ba8177ec0aa9cf90653e7c7927d74d766bf31ea26e2a7c1`.
 - [Noto Sans Symbols 2 2.008](https://github.com/google/fonts/blob/7b6724ac7ececc713e9ba93af309f7520c9a80a3/ofl/notosanssymbols2/NotoSansSymbols2-Regular.ttf), downloaded October 4, 2026 (upstream SHA-256 `7d5fb73b7ca67a6798101741f5d280a3d016a56a197afcd4199dbb57b4b82a21`, 1,233,128 bytes; [license](https://github.com/google/fonts/blob/7b6724ac7ececc713e9ba93af309f7520c9a80a3/ofl/notosanssymbols2/OFL.txt)). Modified with `pyftsubset NotoSansSymbols2-Regular.ttf --unicodes="U+2000-206F,U+20A0-20CF,U+2190-21FF,U+2300-23FF,U+2600-26FF,U+2700-27BF,U+2B00-2BFF,U+FE0F,U+200D" --layout-features=* --no-hinting` to 87,460 bytes (SHA-256 `e468ff9d90a79cd8be88aeed26bf6a27f7bc6d37011e1846e96b2e987485f960`). FontTools 4.66.1 reproduced the bundled subset byte-for-byte on October 7, 2026. Coverage and hinting are reduced; retained glyph outlines are unchanged.
 
-- [Inter 3.19](https://github.com/rsms/inter/releases/tag/v3.19) static TrueType instances `Inter-Regular.ttf`, `Inter-Medium.ttf`, `Inter-SemiBold.ttf`, taken from the `Inter Hinted for Windows/Desktop/` directory of the official `Inter-3.19.zip` release archive (SHA-256 `150ab6230d1762a57bebf35dfc04d606ff91598a31d785f7f100356ecdcc0032`), re-fetched September 15, 2026. The archive's `LICENSE.txt` is byte-identical to the bundled `fonts/Inter-OFL.txt`. SHA-256: Regular `529be850e06f62f8904f22bda77e45bde4834498fdbec4ff4201fa3177447a3a`, Medium `6df88fcb83ac96582350f801355c6eff55f15710093e9627fb431caa40521151`, SemiBold `2de533bda937a063c595b07c6bd9b70c8c5087d0649a1c8330f7ac11fcc05602`.
+- Noto Sans 2.015 hinted static TrueType instances `NotoSans-Regular.ttf`, `NotoSans-Medium.ttf`, `NotoSans-SemiBold.ttf`, taken from `fonts/NotoSans/hinted/ttf/` of [notofonts/notofonts.github.io](https://github.com/notofonts/notofonts.github.io) (`main`), fetched November 14, 2026; `fonts/NotoSans-OFL.txt` is `OFL.txt` from [notofonts/latin-greek-cyrillic](https://github.com/notofonts/latin-greek-cyrillic). Noto Sans is the first fallback the Discord stylesheet names after its proprietary gg sans. SHA-256: Regular `478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823`, Medium `635d93d1131d791f2576de90b3bb0f7cdf61929906e8420a61b5f7f8e76420bb`, SemiBold `a4e91fd530ac2b4ef5367240144ff37d7d65d66cf76f2e9a2187b93c676f92d0`.
 
   These are the hinted TrueType builds. Upstream also ships CFF outlines. egui paints
   grayscale coverage, not DirectWrite ClearType. Serein leaves the TrueType interpreter
   off and keeps sub-pixel binning on. Dark mode remaps coverage with
   `FontColorTransferFunction::Gamma(0.5)`. Light mode leaves the transfer function off.
-  Inter faces set `FontTweak.hinting` to `Some(false)`. The files stay the hinted
+  Noto Sans faces set `FontTweak.hinting` to `Some(false)`. The files stay the hinted
   TrueType builds. The interpreter does not run. Glyph designs and advance widths are
   unchanged, so layout is unaffected.
 

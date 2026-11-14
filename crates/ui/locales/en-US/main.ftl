@@ -1060,7 +1060,7 @@ extensions-ui-toolbar-working-on-your-last-action = Working on your last action
 ## crates/ui/src/fonts.rs
 # Context: show
 # Context: show
-fonts-show-inter-default = Inter (default)
+fonts-show-inter-default = Noto Sans (default)
 # Context: show
 fonts-show-interface-font = Interface font
 # Context: show

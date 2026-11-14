@@ -104,8 +104,8 @@ pub fn debug_check() {
 	use std::path::Path;
 	use ui::fonts::MAX_CUSTOM_FONT_BYTES;
 	let assets = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts");
-	let font = read(&assets.join("Inter-Regular.ttf")).unwrap();
-	let replacement = read(&assets.join("Inter-SemiBold.ttf")).unwrap();
+	let font = read(&assets.join("NotoSans-Regular.ttf")).unwrap();
+	let replacement = read(&assets.join("NotoSans-SemiBold.ttf")).unwrap();
 	assert!(CustomFont::new("Invalid".into(), b"not a font".to_vec()).is_err());
 	let mut random = [0_u8; 8];
 	getrandom::fill(&mut random).unwrap();
@@ -183,11 +183,11 @@ pub fn debug_check() {
 		);
 	});
 	ui::fonts::apply_custom(&ctx, None);
-	frame("Back to Inter");
+	frame("Back to Noto Sans");
 	ctx.fonts(|fonts| {
 		assert_eq!(
 			fonts.definitions().families[&FontFamily::Proportional][0],
-			"Inter"
+			"Noto Sans"
 		);
 		assert!(fonts.definitions().font_data.contains_key("Noto Sans CJK"));
 		assert!(!fonts.definitions().font_data.contains_key("Serein Custom"));

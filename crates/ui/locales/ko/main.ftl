@@ -1060,7 +1060,7 @@ extensions-ui-toolbar-working-on-your-last-action = 마지막 작업 처리 중
 ## crates/ui/src/fonts.rs
 # Context: show
 # Context: show
-fonts-show-inter-default = Inter(기본값)
+fonts-show-inter-default = Noto Sans(기본값)
 # Context: show
 fonts-show-interface-font = 인터페이스 글꼴
 # Context: show

@@ -373,7 +373,7 @@ cargo xtask package
 | **Context Menus & Shortcuts** | Implemented | Right-click context menus for messages, media (save/copy), server channels, and members |
 | **Typing Indicators** | Implemented | Displays incoming typing with short expiry; Serein strictly avoids emitting outgoing typing signals |
 | **Persistence & Drafts** | Implemented | Bounded SQLite cache for history, drafts, settings, and diagnostics; OS credential store for auth tokens; sanitary logout |
-| **Internationalization** | Partial | Bundled Inter font, CJK and Arabic font fallbacks included; full IME and bidirectional editing unverified |
+| **Internationalization** | Partial | Bundled Noto Sans font, CJK and Arabic font fallbacks included; full IME and bidirectional editing unverified |
 
 ---
 
@@ -441,7 +441,7 @@ Original Serein code is dual-licensed under either:
 - **MIT License** ([LICENSE-MIT](LICENSE-MIT))
 - **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE))
 
-at your option. Third-party library notices, bundled font licenses (Inter, Noto Sans CJK/Arabic), and Twemoji graphics licenses are cataloged in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+at your option. Third-party library notices, bundled font licenses (Noto Sans, Noto Sans CJK/Arabic), and Twemoji graphics licenses are cataloged in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Demo fixtures and simulated actions are excluded from normal app and CI packages.
 Build with `--features demo` and launch with `--demo` to enable them; `--demo-*`

@@ -55,7 +55,7 @@ def stage_payload(root, stage, prefix="usr"):
     copy(Path("packaging/linux/hicolor"), stage / prefix / "share/icons/hicolor")
     for name in ["README.md", "LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY_NOTICES.md"]:
         copy(root / name, doc / name)
-    for name in ["NotoSansCJK-LICENSE.txt", "NotoSansArabic-OFL.txt", "NotoSansMath-OFL.txt", "NotoSansSymbols2-OFL.txt", "Inter-OFL.txt",
+    for name in ["NotoSansCJK-LICENSE.txt", "NotoSansArabic-OFL.txt", "NotoSansMath-OFL.txt", "NotoSansSymbols2-OFL.txt", "NotoSans-OFL.txt",
                  "Bangers-OFL.txt", "BioRhyme-OFL.txt", "CherryBombOne-OFL.txt", "Chicle-OFL.txt",
                  "Compagnon-OFL.txt", "MuseoModerno-OFL.txt", "PixelifySans-OFL.txt", "Ribes-OFL.txt",
                  "Sinistre-OFL.txt", "ZillaSlab-OFL.txt", "PlaypenSans-OFL.txt", "Orbitron-OFL.txt",

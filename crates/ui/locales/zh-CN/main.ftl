@@ -1047,7 +1047,7 @@ extensions-ui-toolbar-working-on-your-last-action = 正在处理你上次的动�
 ## crates/ui/src/fonts.rs
 # Context: show
 # Context: show
-fonts-show-inter-default = Inter（预设）
+fonts-show-inter-default = Noto Sans（预设）
 # Context: show
 fonts-show-interface-font = 界面字体
 # Context: show

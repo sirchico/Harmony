@@ -1036,7 +1036,7 @@ extensions-ui-toolbar-working-on-your-last-action = Son eyleminiz üzerinde çal
 # Context: show
 fonts-show-import-font = Yazı tipini içe aktar…
 # Context: show
-fonts-show-inter-default = Inter (varsayılan)
+fonts-show-inter-default = Noto Sans (varsayılan)
 # Context: show
 fonts-show-interface-font = Arayüz yazı tipi
 # Context: show

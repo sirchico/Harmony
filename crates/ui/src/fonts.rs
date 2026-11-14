@@ -407,13 +407,13 @@ const CJK_BYTES: usize = 19_484_784;
 const ARABIC: &[u8] = include_bytes!("../../../assets/fonts/NotoSansArabic.ttf");
 const MATH: &[u8] = include_bytes!("../../../assets/fonts/NotoSansMath-Regular.otf");
 /// Subset of Noto Sans Symbols 2 (punctuation, arrows, technical, miscellaneous
-/// symbols and dingbats incl. U+2726 BLACK FOUR POINTED STAR). Inter, the CJK,
+/// symbols and dingbats incl. U+2726 BLACK FOUR POINTED STAR). Noto Sans, the CJK,
 /// Arabic and Math faces all lack that scalar, so without this fallback egui
-/// paints Inter's `.notdef` (a stack of horizontal bars) wherever it appears.
+/// paints Noto Sans's `.notdef` (a stack of horizontal bars) wherever it appears.
 const SYMBOLS: &[u8] = include_bytes!("../../../assets/fonts/NotoSansSymbols2-Regular.ttf");
-const INTER: &[u8] = include_bytes!("../../../assets/fonts/Inter-Regular.ttf");
-const INTER_MEDIUM: &[u8] = include_bytes!("../../../assets/fonts/Inter-Medium.ttf");
-const INTER_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf");
+const NOTO_SANS: &[u8] = include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf");
+const NOTO_SANS_MEDIUM: &[u8] = include_bytes!("../../../assets/fonts/NotoSans-Medium.ttf");
+const NOTO_SANS_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/NotoSans-SemiBold.ttf");
 
 /// Discord display-name fonts by `display_name_styles.font_id`. Each is installed the first time
 /// a styled name needs it, so sessions with name styles off never parse them. Néo-Castel (7) is
@@ -719,19 +719,19 @@ fn cjk() -> Vec<u8> {
 
 fn definitions(with_cjk: bool) -> FontDefinitions {
 	let mut definitions = FontDefinitions::default();
-	// Inter leads proportional text; two heavier faces provide Discord-style emphasis
+	// Noto Sans (Discord's declared fallback for gg sans) leads proportional text; two heavier faces provide Discord-style emphasis
 	// (egui has no synthetic bold). Each weight family falls back to egui's defaults.
 	let weights = [
-		(FontFamily::Proportional, "Inter", INTER),
+		(FontFamily::Proportional, "Noto Sans", NOTO_SANS),
 		(
 			FontFamily::Name(crate::design::MEDIUM.into()),
-			"Inter Medium",
-			INTER_MEDIUM,
+			"Noto Sans Medium",
+			NOTO_SANS_MEDIUM,
 		),
 		(
 			FontFamily::Name(crate::design::SEMIBOLD.into()),
-			"Inter SemiBold",
-			INTER_SEMIBOLD,
+			"Noto Sans SemiBold",
+			NOTO_SANS_SEMIBOLD,
 		),
 	];
 	let defaults = definitions.families[&FontFamily::Proportional].clone();
@@ -840,7 +840,7 @@ mod tests {
 		ctx.run_ui(Default::default(), |ui| {
 			let list = &ui.fonts(|fonts| fonts.definitions().families[&family].clone());
 			assert_eq!(list[0], "Serein Name Bangers");
-			assert!(list.iter().any(|face| face == "Inter Medium"));
+			assert!(list.iter().any(|face| face == "Noto Sans Medium"));
 			assert!(list.iter().any(|face| face == "Noto Sans Arabic"));
 			ui.label(egui::RichText::new("Synthetic name").family(family.clone()));
 		})
@@ -859,7 +859,7 @@ mod tests {
 		}
 		let custom = CustomFont {
 			name: "Synthetic".into(),
-			data: FontData::from_static(INTER),
+			data: FontData::from_static(NOTO_SANS),
 		};
 		let family = FontFamily::Name("Serein Name Bangers".into());
 		apply_custom(&ctx, Some(&custom));
@@ -908,9 +908,9 @@ mod tests {
 			CJK_ZSTD.len()
 				+ ARABIC.len()
 				+ MATH.len() + SYMBOLS.len()
-				+ INTER.len()
-				+ INTER_MEDIUM.len()
-				+ INTER_SEMIBOLD.len()
+				+ NOTO_SANS.len()
+				+ NOTO_SANS_MEDIUM.len()
+				+ NOTO_SANS_SEMIBOLD.len()
 				<= 16 * 1024 * 1024
 		);
 		let collection = cjk();

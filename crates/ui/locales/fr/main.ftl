@@ -1035,7 +1035,7 @@ extensions-ui-toolbar-working-on-your-last-action = Travailler sur votre derniè
 # Context: show
 fonts-show-import-font = Importer la police…
 # Context: show
-fonts-show-inter-default = Inter (par défaut)
+fonts-show-inter-default = Noto Sans (par défaut)
 # Context: show
 fonts-show-interface-font = Police d'interface
 # Context: show

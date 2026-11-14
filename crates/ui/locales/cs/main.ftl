@@ -1059,7 +1059,7 @@ extensions-ui-toolbar-working-on-your-last-action = Zpracovávám poslední akci
 ## crates/ui/src/fonts.rs
 # Context: show
 # Context: show
-fonts-show-inter-default = Inter (výchozí)
+fonts-show-inter-default = Noto Sans (výchozí)
 # Context: show
 fonts-show-interface-font = Písmo rozhraní
 # Context: show
