@@ -860,7 +860,7 @@ impl ThemeEditor {
 								);
 								let style = &mut theme.style;
 								for (label, value, default, min, max) in [
-									("Body text", &mut style.body_size, 15, 10, 28),
+									("Body text", &mut style.body_size, 16, 10, 28),
 									("Headings", &mut style.heading_size, 20, 12, 40),
 									("Buttons", &mut style.button_size, 14, 10, 28),
 									("Icons", &mut style.icon_size, 20, 16, 24),
@@ -885,7 +885,7 @@ impl ThemeEditor {
 								for (label, value, default) in [
 									("Control corners", &mut style.widget_radius, 8),
 									("Window corners", &mut style.window_radius, 12),
-									("Menu corners", &mut style.menu_radius, 12),
+									("Menu corners", &mut style.menu_radius, 8),
 								] {
 									changed |= metric(ui, label, value, default, 0..=24);
 								}

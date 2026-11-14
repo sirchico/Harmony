@@ -46,7 +46,7 @@ font sizes are whole logical pixels, before the user's display scale.
 | `transparency_blur` | `true` (requires Appearance opt-in) | `true` or `false` |
 | `transparency` | user Appearance setting | 0–100 |
 | `blur` | user Appearance setting | 0–100 |
-| `body_size` | 15 | 10–28 |
+| `body_size` | 16 | 10–28 |
 | `heading_size` | 20 | 12–40 |
 | `button_size` | 14 | 10–28 |
 | `icon_size` | 20 | 16–24 |
@@ -57,7 +57,7 @@ font sizes are whole logical pixels, before the user's display scale.
 | `control_height` | 32 | 24–56 |
 | `widget_radius` | 8 | 0–24 |
 | `window_radius` | 12 | 0–24 |
-| `menu_radius` | 12 | 0–24 |
+| `menu_radius` | 8 | 0–24 |
 
 For example, this `theme` value provides a flatter, roomier appearance:
 

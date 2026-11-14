@@ -1,4 +1,5 @@
-//! Own messages waiting for Discord: dimmed like Discord's optimistic rows, with every
+//! Own messages waiting for Discord, drawn like Discord's optimistic rows: an ordinary message
+//! header (avatar, name, time) over greyed body text, red when the send failed, with every
 //! attachment shown and one upload strip for the whole batch.
 use client_core::{Pending, State};
 use egui::RichText;
@@ -49,6 +50,25 @@ pub fn show(
 	let sending = pending.delivery == Delivery::Sending;
 	let artwork = pending.attachments.len() == 1
 		&& attachments::artwork_edge(&pending.attachments[0]).is_some();
+	// Discord nonces are snowflakes, so the row can show when it was sent.
+	let sent_at = pending
+		.nonce
+		.parse::<u64>()
+		.ok()
+		.and_then(|nonce| {
+			time::OffsetDateTime::from_unix_timestamp(((nonce >> 22) / 1000) as i64 + 1_420_070_400)
+				.ok()
+		})
+		.filter(|at| (time::OffsetDateTime::now_utc() - *at).abs() < time::Duration::days(1))
+		.unwrap_or_else(time::OffsetDateTime::now_utc);
+	// The same role colour the confirmed row will use, so the name does not change on arrival.
+	let name_color = state
+		.user
+		.as_ref()
+		.and_then(|user| state.forum_author_color(pending.channel, user.id, false, &[]))
+		.map_or(colors.text_strong, |role| {
+			design::role_name_color(role, colors.chat, colors.text_strong)
+		});
 	let status = crate::i18n::translate(match pending.delivery {
 		Delivery::Sending => "pending-status-sending",
 		Delivery::Ambiguous => "pending-status-unknown",
@@ -62,11 +82,11 @@ pub fn show(
 			top: if irc {
 				3
 			} else if compact {
-				1
+				crate::timeline::ROW_PAD
 			} else {
 				gap
 			},
-			bottom: 1,
+			bottom: if irc { 1 } else { crate::timeline::ROW_PAD },
 		})
 		.show(ui, |ui| {
 			ui.spacing_mut().item_spacing = egui::vec2(16.0, 4.0);
@@ -86,7 +106,7 @@ pub fn show(
 					crate::timeline::compact_header(
 						ui,
 						width,
-						egui::FontId::new(15.5, design::medium_family(ui.ctx())),
+						egui::FontId::new(16.0, design::medium_family(ui.ctx())),
 						|ui| {
 							ui.set_max_width(width);
 							ui.add(
@@ -97,9 +117,9 @@ pub fn show(
 											|| crate::i18n::translate("pending-show-you"),
 											|u| u.name.clone(),
 										),
-										15.5,
+										16.0,
 									)
-									.color(colors.muted),
+									.color(name_color),
 								)
 								.truncate()
 								.selectable(false),
@@ -113,14 +133,11 @@ pub fn show(
 						egui::Sense::hover(),
 					);
 				} else {
-					ui.scope(|ui| {
-						ui.set_opacity(0.55);
-						if let Some(user) = &state.user {
-							avatars.show(ui, user, 40.0, state.demo);
-						} else {
-							ui.allocate_exact_size(egui::vec2(40.0, 40.0), egui::Sense::hover());
-						}
-					});
+					if let Some(user) = &state.user {
+						avatars.show(ui, user, 40.0, state.demo);
+					} else {
+						ui.allocate_exact_size(egui::vec2(40.0, 40.0), egui::Sense::hover());
+					}
 				}
 				ui.vertical(|ui| {
 					ui.set_width(ui.available_width());
@@ -138,23 +155,27 @@ pub fn show(
 											|| crate::i18n::translate("pending-show-you"),
 											|u| u.name.clone(),
 										),
-										15.5,
+										16.0,
 									)
-									.color(colors.muted),
+									.color(name_color),
 								);
 							}
-							ui.label(RichText::new(&status).size(12.0).color(
-								if pending.delivery == Delivery::Rejected {
-									colors.danger
-								} else {
-									colors.muted
-								},
-							));
+							// A sending row carries the usual timestamp; only a failure is spelled out.
+							let (label, color) = match pending.delivery {
+								Delivery::Rejected => (status.clone(), colors.danger),
+								Delivery::Sending => {
+									(crate::local_time::header(sent_at), colors.muted)
+								}
+								_ => (status.clone(), colors.muted),
+							};
+							ui.label(design::medium(ui, label, 12.0).color(color));
 						});
+						if !irc {
+							crate::timeline::close_header_gap(ui);
+						}
 					}
 					if !pending.content.is_empty() {
 						ui.scope(|ui| {
-							ui.set_opacity(0.55);
 							// Pending gray (or failure red) so confirmation visibly replaces the row.
 							ui.visuals_mut().override_text_color =
 								Some(if pending.delivery == Delivery::Rejected {

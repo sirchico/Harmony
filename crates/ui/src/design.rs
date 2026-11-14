@@ -1,7 +1,7 @@
 //! Serein theme tokens, presets and typography shared by every native view.
 //!
 //! The palette is resolved from egui's light/dark mode plus a process-wide [`Variant`]
-//! (the cool Serein neutrals, deep black, blue-grey, or a gradient recolour). Gradient
+//! (Discord's Dark/Light, Onyx and Ash surface ladders, or a gradient recolour). Gradient
 //! variants paint a backdrop under translucent surfaces; see [`paint_backdrop`].
 use egui::{Color32, FontFamily, FontId, RichText, Stroke, epaint::FontColorTransferFunction};
 use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
@@ -241,10 +241,10 @@ pub struct Palette {
 	/// Alias of `sidebar`, kept for older call sites.
 	pub surface: Color32,
 }
-/// Dark themes' default danger red, tuned for red text and outlines on dark surfaces.
-const DARK_DANGER: Color32 = rgb(0xef5561);
-/// Discord's solid count-badge and LIVE-pill red, deeper so white text stays crisp.
-const BADGE_RED: Color32 = rgb(0xd22d39);
+/// Discord's dark-theme `status-danger` red, shared by red text, outlines and solid fills.
+const DARK_DANGER: Color32 = rgb(0xda3e44);
+/// Discord's solid count-badge and LIVE-pill red.
+const BADGE_RED: Color32 = DARK_DANGER;
 impl Palette {
 	/// Fill for solid badges and pills carrying white text. A theme's own danger color is
 	/// kept; the dark default text red would read washed out as a fill.
@@ -267,8 +267,34 @@ const fn rgba(value: u32, alpha: u8) -> Color32 {
 		alpha,
 	)
 }
-/// Serein azure: the house accent, packed for call sites that speak in integer colours.
-pub const DEFAULT_PRIMARY_RGB: u32 = 0x1a72e8;
+/// Composite a translucent Discord token over an opaque surface. Discord layers its hover,
+/// selection and border tints as alpha overlays; the palette stores the resulting solid colour.
+const fn over(tint: u32, alpha: u8, surface: u32) -> Color32 {
+	const fn channel(tint: u32, alpha: u8, surface: u32, shift: u32) -> u8 {
+		let (t, s, a) = (
+			(tint >> shift) & 0xff,
+			(surface >> shift) & 0xff,
+			alpha as u32,
+		);
+		((t * a + s * (255 - a) + 127) / 255) as u8
+	}
+	Color32::from_rgb(
+		channel(tint, alpha, surface, 16),
+		channel(tint, alpha, surface, 8),
+		channel(tint, alpha, surface, 0),
+	)
+}
+/// Neutral behind Discord's `background-mod-*` and `border-*` overlays.
+const MOD_TINT: u32 = 0x96969f;
+/// Overlay alphas: `background-mod-subtle` (12.2%), `-strong` (20%, 23.9% on the light and
+/// black themes) and the light theme's `border-subtle` (27.8%).
+const MOD_SUBTLE: u8 = 31;
+const MOD_STRONG: u8 = 51;
+const MOD_STRONGER: u8 = 61;
+const LIGHT_BORDER: u8 = 71;
+/// Discord blurple (`brand-500`): the default accent, packed for call sites that speak in
+/// integer colours.
+pub const DEFAULT_PRIMARY_RGB: u32 = 0x5865f2;
 pub const DEFAULT_PRIMARY_COLOR: [u8; 3] = [
 	(DEFAULT_PRIMARY_RGB >> 16) as u8,
 	(DEFAULT_PRIMARY_RGB >> 8) as u8,
@@ -279,7 +305,9 @@ const PRIMARY: Color32 = Color32::from_rgb(
 	DEFAULT_PRIMARY_COLOR[1],
 	DEFAULT_PRIMARY_COLOR[2],
 );
-const MENTION_BG: Color32 = rgba(DEFAULT_PRIMARY_RGB, 76);
+/// `mention-background`: the accent at 23.9%.
+const MENTION_ALPHA: u8 = 61;
+const MENTION_BG: Color32 = rgba(DEFAULT_PRIMARY_RGB, MENTION_ALPHA);
 fn dark_common(
 	base: Color32,
 	sidebar: Color32,
@@ -297,21 +325,49 @@ fn dark_common(
 		hover,
 		selected,
 		border,
-		text_strong: rgb(0xededef),
-		text: rgb(0xcfcfd4),
-		muted: rgb(0x94949c),
-		link: rgb(0x54abff),
+		text_strong: rgb(0xfbfbfb),
+		text: rgb(0xefeff1),
+		muted: rgb(0x96979e),
+		link: rgb(0x4d96ee),
 		accent: PRIMARY,
 		accent_text: Color32::WHITE,
-		positive: rgb(0x2fb87a),
-		warning: rgb(0xe8a33d),
+		positive: rgb(0x3d9e60),
+		warning: rgb(0xfdb833),
 		danger: DARK_DANGER,
 		mention_bg: MENTION_BG,
-		mention_text: rgb(0xbcd9ff),
+		mention_text: rgb(0xa9bbff),
 		backdrop: None,
 		canvas: chat,
 		surface: sidebar,
 	}
+}
+/// A flat dark preset built from Discord's surface ladder: `rail` is `background-base-lowest`
+/// (title strip, server rail and lists), `chat` is `background-base-lower`, and the hover,
+/// selection and border tints are composited the way Discord overlays them.
+fn discord_dark(
+	rail: u32,
+	chat: u32,
+	raised: u32,
+	selected: u8,
+	border: u8,
+	text: [u32; 5],
+) -> Palette {
+	let mut p = dark_common(
+		rgb(rail),
+		rgb(rail),
+		rgb(chat),
+		rgb(raised),
+		over(MOD_TINT, MOD_SUBTLE, rail),
+		over(MOD_TINT, selected, rail),
+		over(MOD_TINT, border, chat),
+	);
+	let [text_strong, body, muted, link, mention_text] = text;
+	p.text_strong = rgb(text_strong);
+	p.text = rgb(body);
+	p.muted = rgb(muted);
+	p.link = rgb(link);
+	p.mention_text = rgb(mention_text);
+	p
 }
 /// Gradient preset with an opaque border, like the flat presets, for stable fractional-scale edges.
 fn gradient(stops: [u32; 2], border: u32) -> Palette {
@@ -332,55 +388,56 @@ fn gradient(stops: [u32; 2], border: u32) -> Palette {
 /// Resolve a built-in preset with the current accent, before extension overrides or surface blending.
 pub fn builtin_colors(dark: bool, variant: Variant) -> Palette {
 	let palette = match variant {
-		Variant::Standard if dark => dark_common(
-			rgb(0x0e0e10),
-			rgb(0x141416),
-			rgb(0x18181b),
-			rgb(0x202023),
-			rgb(0x242427),
-			rgb(0x2e2e32),
-			rgb(0x27272a),
+		// Discord "Dark".
+		Variant::Standard if dark => discord_dark(
+			0x121214,
+			0x1a1a1e,
+			0x222327,
+			MOD_STRONG,
+			MOD_SUBTLE,
+			[0xfbfbfb, 0xefeff1, 0x96979e, 0x4d96ee, 0xa9bbff],
 		),
+		// Discord "Light".
 		Variant::Standard => Palette {
-			base: rgb(0xe4e4e7),
-			sidebar: rgb(0xf2f2f4),
-			chat: Color32::WHITE,
-			raised: rgb(0xebebee),
-			hover: rgb(0xe8e8eb),
-			selected: rgb(0xdadade),
-			border: rgb(0xe0e0e4),
-			text_strong: rgb(0x0f0f11),
-			text: rgb(0x2f2f34),
-			muted: rgb(0x62626a),
-			link: rgb(0x0b63d6),
+			base: rgb(0xf3f3f4),
+			sidebar: rgb(0xf3f3f4),
+			chat: rgb(0xfbfbfb),
+			raised: rgb(0xebeced),
+			hover: over(MOD_TINT, MOD_SUBTLE, 0xf3f3f4),
+			selected: over(MOD_TINT, MOD_STRONGER, 0xf3f3f4),
+			border: over(MOD_TINT, LIGHT_BORDER, 0xfbfbfb),
+			text_strong: rgb(0x28282d),
+			text: rgb(0x2e2e34),
+			muted: rgb(0x6c6d76),
+			link: rgb(0x006dd4),
 			accent: PRIMARY,
 			accent_text: Color32::WHITE,
-			positive: rgb(0x1c9c63),
-			warning: rgb(0xc8860f),
-			danger: rgb(0xd23742),
+			positive: rgb(0x269153),
+			warning: rgb(0xbb7300),
+			danger: rgb(0xd6363f),
 			mention_bg: MENTION_BG,
-			mention_text: rgb(0x14508f),
+			mention_text: rgb(0x2e3c88),
 			backdrop: None,
-			canvas: Color32::WHITE,
-			surface: rgb(0xf2f2f4),
+			canvas: rgb(0xfbfbfb),
+			surface: rgb(0xf3f3f4),
 		},
-		Variant::Eclipse => dark_common(
-			Color32::BLACK,
-			rgb(0x070708),
-			rgb(0x070708),
-			rgb(0x141416),
-			rgb(0x17171a),
-			rgb(0x222226),
-			rgb(0x1c1c20),
+		// Discord "Onyx".
+		Variant::Eclipse => discord_dark(
+			0x000000,
+			0x000000,
+			0x131416,
+			MOD_STRONGER,
+			MOD_STRONG,
+			[0xdcdcdf, 0xd4d5d8, 0x81828a, 0x2781e7, 0x8ca0fd],
 		),
-		Variant::Slate => dark_common(
-			rgb(0x1b1f2a),
-			rgb(0x262b38),
-			rgb(0x2c3140),
-			rgb(0x343a4b),
-			rgb(0x313747),
-			rgb(0x3d4456),
-			rgb(0x3a4152),
+		// Discord "Ash".
+		Variant::Slate => discord_dark(
+			0x2c2d32,
+			0x323339,
+			0x393a41,
+			MOD_STRONG,
+			MOD_SUBTLE,
+			[0xffffff, 0xf3f3f4, 0xabacb2, 0x76aff6, 0xcdd7ff],
 		),
 		Variant::Nightfall => gradient([0x35519f, 0x1b1440], 0x2f3451),
 		Variant::Ember => gradient([0x8c2340, 0x140609], 0x41262e),
@@ -877,7 +934,9 @@ fn customize(mut palette: Palette, primary: Option<[u8; 3]>) -> Palette {
 			Color32::BLACK
 		};
 		// Mention pills tint with the user's accent too, not just the default house colour.
-		palette.mention_bg = palette.accent.gamma_multiply(76.0 / 255.0);
+		palette.mention_bg = palette
+			.accent
+			.gamma_multiply(f32::from(MENTION_ALPHA) / 255.0);
 		palette.mention_text = readable_tint(palette.accent, palette.chat);
 	}
 	palette
@@ -1055,15 +1114,11 @@ pub(crate) fn jumbo_emoji(ui: &mut egui::Ui) {
 		font.size *= 1.875;
 	}
 }
-/// Uppercase section heading used above channel categories and member groups.
+/// Section heading used above settings groups and lists. Discord writes these as authored
+/// (no forced uppercase) in 14px medium.
 pub fn eyebrow(ui: &egui::Ui, text: impl Into<String>, color: Color32) -> RichText {
 	let text = text.into();
-	semibold(
-		ui,
-		crate::i18n::translate_if_key(&text).to_uppercase(),
-		12.0,
-	)
-	.color(color)
+	medium(ui, crate::i18n::translate_if_key(&text), 14.0).color(color)
 }
 
 fn is_activate_target(sense: egui::Sense) -> bool {
@@ -1121,7 +1176,7 @@ pub fn apply(ctx: &egui::Context) {
 		);
 		style.text_styles.insert(
 			egui::TextStyle::Body,
-			FontId::proportional(f32::from(metrics.body_size.unwrap_or(15))),
+			FontId::proportional(f32::from(metrics.body_size.unwrap_or(16))),
 		);
 		style.text_styles.insert(
 			egui::TextStyle::Button,
@@ -1153,9 +1208,10 @@ pub fn apply(ctx: &egui::Context) {
 			FontColorTransferFunction::Off
 		};
 		style.visuals.interact_cursor = Some(egui::CursorIcon::PointingHand);
-		style.visuals.window_fill = p.raised.to_opaque();
+		// Menus and popouts sit one step above cards (Discord's `background-surface-higher`).
+		style.visuals.window_fill = card_lift(theme == egui::Theme::Dark, p.raised.to_opaque());
 		style.visuals.window_corner_radius = metrics.window_radius.unwrap_or(12).into();
-		style.visuals.menu_corner_radius = metrics.menu_radius.unwrap_or(12).into();
+		style.visuals.menu_corner_radius = metrics.menu_radius.unwrap_or(8).into();
 		style.visuals.window_stroke = Stroke::new(1.0, p.border);
 		style.visuals.window_shadow = egui::epaint::Shadow {
 			offset: [0, 8],
@@ -1169,7 +1225,13 @@ pub fn apply(ctx: &egui::Context) {
 				},
 			),
 		};
-		style.visuals.popup_shadow = style.visuals.window_shadow;
+		// Discord's menu and popout shadow: 0 12px 24px at 24% black.
+		style.visuals.popup_shadow = egui::epaint::Shadow {
+			offset: [0, 12],
+			blur: 24,
+			spread: 0,
+			color: Color32::from_black_alpha(61),
+		};
 		style.visuals.override_text_color = Some(p.text);
 		style.visuals.weak_text_color = Some(p.muted);
 		style.visuals.hyperlink_color = p.link;
@@ -1217,7 +1279,7 @@ pub fn apply(ctx: &egui::Context) {
 	});
 }
 /// Height of the messaging window's custom title strip, in egui points.
-pub const TITLE_BAR_HEIGHT: f32 = 36.0;
+pub const TITLE_BAR_HEIGHT: f32 = 32.0;
 /// Space reserved at the left of window strips for macOS traffic lights.
 pub const TRAFFIC_LIGHT_INSET: f32 = if cfg!(target_os = "macos") { 72.0 } else { 0.0 };
 
@@ -1692,9 +1754,9 @@ fn wide_button(
 	}
 	response
 }
-/// Deterministic fallback avatar colours drawn from the Serein palette, keyed by the display name.
+/// Deterministic fallback avatar colours (Discord's default-avatar set), keyed by the display name.
 fn fallback_avatar_color(name: &str) -> Color32 {
-	const COLORS: [u32; 5] = [DEFAULT_PRIMARY_RGB, 0x6b7a94, 0x2fb87a, 0xe8a33d, 0xef5561];
+	const COLORS: [u32; 5] = [DEFAULT_PRIMARY_RGB, 0x757e8a, 0x3ba55c, 0xfaa61a, 0xed4245];
 	let hash = name
 		.bytes()
 		.fold(0u32, |h, b| h.wrapping_mul(31).wrapping_add(b as u32));
@@ -2415,7 +2477,7 @@ pub fn divider(ui: &mut egui::Ui) {
 pub fn page_title(ui: &mut egui::Ui, title: &str) {
 	let title = crate::i18n::translate_if_key(title);
 	let p = palette(ui);
-	ui.add(egui::Label::new(semibold(ui, title, 20.0).color(p.text_strong)).wrap());
+	ui.add(egui::Label::new(medium(ui, title, 24.0).color(p.text_strong)).wrap());
 	ui.add_space(12.0);
 }
 
@@ -2442,7 +2504,7 @@ pub fn page_header(
 			|ui| {
 				ui.set_width(width);
 				ui.spacing_mut().item_spacing.y = 4.0;
-				ui.add(egui::Label::new(semibold(ui, title, 20.0).color(p.text_strong)).wrap());
+				ui.add(egui::Label::new(medium(ui, title, 24.0).color(p.text_strong)).wrap());
 				if let Some(subtitle) = subtitle {
 					ui.add(
 						egui::Label::new(RichText::new(subtitle).size(14.0).color(p.muted)).wrap(),

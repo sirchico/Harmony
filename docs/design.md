@@ -1,8 +1,9 @@
 # Serein interface direction
 
 Serein follows the familiar three-column messaging layout and density of a modern desktop chat
-client, but it is not a visual clone: it uses its own cool blue-grey neutrals, the Serein azure
-accent, softer corner radii and its own server-rail selection language. The palette, typography
+client. Its built-in colours follow Discord's current desktop themes (surface ladder, text,
+status colours and the blurple accent, read from Discord's published theme variables), while
+the brand mark and server-rail selection language remain Serein's own. The palette, typography
 and spacing live in `crates/ui/src/design.rs`; every view resolves colours through
 `design::palette(ui)`.
 
@@ -10,7 +11,7 @@ and spacing live in `crates/ui/src/design.rs`; every view resolves colours throu
 
 The `Palette` carries surface roles: `base` (title strip and server rail), `sidebar`
 (channel and member lists), `chat`, `raised` (composer, cards, search field, popovers), `hover`,
-`selected`, `border`, `text_strong`/`text`/`muted`, `link`, `accent` (Serein azure `#1a72e8`),
+`selected`, `border`, `text_strong`/`text`/`muted`, `link`, `accent` (Discord blurple `#5865f2`),
 presence
 colours, mention colours and an optional two-stop `backdrop` gradient. `canvas` and `surface`
 remain as aliases of `chat` and `sidebar` for older call sites.
@@ -19,9 +20,9 @@ A process-wide `Variant` recolours the whole application on top of egui's light/
 
 | Preset | Surfaces |
 |---|---|
-| Serein | House neutral greys: dark (`#0e0e10` / `#141416` / `#18181b` / `#202023`) or light (`#e4e4e7` / `#f2f2f4` / white), following System/Light/Dark |
-| Eclipse | Deep black surfaces for OLED displays |
-| Slate | Lighter blue-grey surfaces (`#1b1f2a` / `#262b38` / `#2c3140`) |
+| Serein | Discord Dark (`#121214` rail and lists / `#1a1a1e` chat / `#222327` raised) or Discord Light (`#f3f3f4` / `#fbfbfb` / `#ebeced`), following System/Light/Dark |
+| Eclipse | Discord Onyx: black surfaces (`#000000` / `#131416` raised) with dimmer text for OLED displays |
+| Slate | Discord Ash (`#2c2d32` / `#323339` / `#393a41`) |
 | Nightfall, Ember, Verdant, Afterglow | Gradient backdrop painted under translucent dark surfaces |
 
 Gradient presets paint a full-window mesh in the background layer each frame and use
@@ -52,15 +53,16 @@ window/menu radius, softer than the 4px/8px pair the layout started from.
 
 ## Typography
 
-Inter (Regular, Medium, SemiBold; SIL OFL 1.1) leads proportional text; egui's default faces and
+Noto Sans (Regular, Medium, SemiBold; SIL OFL 1.1) leads proportional text; egui's default faces and
 the bundled Noto CJK/Arabic fallbacks follow in every family. egui has no synthetic bold, so
 `design::semibold`/`design::medium` select the heavier families for author names, headings,
-channel names and uppercase 12px eyebrows. Body is 15px, small 12px. Until `fonts::install`
+channel names and uppercase 12px eyebrows. Body is 16px (Discord's message size), small 12px.
+Discord's own face, gg sans, is proprietary and is not bundled; Noto Sans, the fallback Discord's stylesheet names next, stands in for it. Until `fonts::install`
 marks a context, the weight families resolve to the default face so headless tests never
 reference an unknown family.
 
 Appearance → Typography can import one TTF or OTF file up to 8 MiB, apply it immediately,
-or reset to Inter. The selected face leads all proportional families; variable fonts use
+or reset to Noto Sans. The selected face leads all proportional families; variable fonts use
 400/500/600 weights while static fonts retain their supplied weight. Code stays monospace,
 and bundled/system missing-glyph fallbacks remain available. A bounded local copy survives
 restart and logout; import and persistence failures leave the current font in use.
@@ -68,7 +70,7 @@ restart and logout; import and persistence failures leave the current font in us
 Text is rasterized by egui on the CPU as grayscale coverage, not by DirectWrite or Core Text.
 That cannot reproduce ClearType. `design::apply` turns TrueType hinting off and sub-pixel
 binning on. Dark mode remaps coverage with `FontColorTransferFunction::Gamma(0.5)`. Light
-mode leaves the transfer function off. Inter faces set `FontTweak.hinting` to `Some(false)`.
+mode leaves the transfer function off. Noto Sans faces set `FontTweak.hinting` to `Some(false)`.
 The bundled faces remain upstream's hinted TrueType builds. See `assets/README.md`.
 
 ## Layout

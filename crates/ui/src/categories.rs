@@ -393,6 +393,21 @@ fn category_header(
 	} else {
 		colors.muted
 	};
+	// Discord writes the category as named (no uppercase), 14px medium, with the chevron
+	// trailing the name.
+	let mut job = egui::text::LayoutJob::simple_singleline(
+		crate::emoji::presentation(name).into_owned(),
+		egui::FontId::new(14.0, crate::design::medium_family(ui.ctx())),
+		color,
+	);
+	job.wrap.max_width = (rect.width() - 44.0).max(10.0);
+	job.wrap.max_rows = 1;
+	job.wrap.break_anywhere = true;
+	let label = ui.painter().layout_job(job);
+	let label_rect = egui::Rect::from_min_size(
+		egui::pos2(rect.left() + 16.0, rect.bottom() - 4.0 - label.size().y),
+		egui::vec2(rect.width() - 44.0, label.size().y),
+	);
 	crate::icons::paint(
 		ui.painter(),
 		if collapsed {
@@ -401,23 +416,13 @@ fn category_header(
 			crate::icons::Icon::ChevronDown
 		},
 		egui::Rect::from_center_size(
-			egui::pos2(rect.left() + 7.0, rect.bottom() - 13.0),
+			egui::pos2(
+				label_rect.left() + label.size().x.min(label_rect.width()) + 10.0,
+				label_rect.center().y + 1.0,
+			),
 			egui::Vec2::splat(12.0),
 		),
 		color,
-	);
-	let mut job = egui::text::LayoutJob::simple_singleline(
-		crate::emoji::presentation(name).to_uppercase(),
-		egui::FontId::new(12.0, crate::design::semibold_family(ui.ctx())),
-		color,
-	);
-	job.wrap.max_width = (rect.width() - 24.0).max(10.0);
-	job.wrap.max_rows = 1;
-	job.wrap.break_anywhere = true;
-	let label = ui.painter().layout_job(job);
-	let label_rect = egui::Rect::from_min_size(
-		egui::pos2(rect.left() + 16.0, rect.bottom() - 6.0 - label.size().y),
-		egui::vec2(rect.width() - 24.0, label.size().y),
 	);
 	ui.painter()
 		.with_clip_rect(label_rect)
@@ -477,7 +482,13 @@ fn eyebrow_row(
 			// The row spans the list even though its contents are a short caption.
 			ui.set_width(ui.available_width());
 			ui.add_space(8.0);
-			ui.add(egui::Label::new(design::eyebrow(ui, label, colors.muted)).selectable(false));
+			ui.add(
+				egui::Label::new(
+					design::medium(ui, crate::i18n::translate_if_key(&label), 14.0)
+						.color(colors.muted),
+				)
+				.selectable(false),
+			);
 			if trailing {
 				// Discord's New Message action sits at the right end of the DM list heading.
 				ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1250,7 +1261,7 @@ impl MessagingUi {
 										} else {
 											ui.add(
 												egui::Label::new(
-													design::medium(ui, &label, 15.0)
+													design::medium(ui, &label, 16.0)
 														.color(name_color),
 												)
 												.truncate()
