@@ -14,12 +14,12 @@
         "capabilities": [],
         "actions": []
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/forest-piano.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/forest-piano.harmony-extension",
       "sha256": "3fffa784b2f406b4ad435fa5804baa1bed9ead9682254546ccf332c2bae12505",
       "download_bytes": 6452658,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/forest-piano.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/forest-piano.png",
         "sha256": "f3e8df1046c03eeed4a477530c5dec114ee582caa0ec4bb28e24b4131b8ce29f",
         "download_bytes": 147517
       }
@@ -27,20 +27,20 @@
     {
       "manifest": {
         "api_version": 1,
-        "id": "serein-forest",
+        "id": "harmony-forest",
         "name": "Forest",
         "version": "1.0.0",
-        "author": "Serein contributors",
+        "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/forest.harmony-extension",
-      "sha256": "f576fbcb73f452da4ecddda35f92932cdd3ef7b46959a38837fe3491784d6038",
-      "download_bytes": 1454,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/forest.harmony-extension",
+      "sha256": "adfbbab739a0edd28299800c442c65372392da7bec927e94bbddcaafa5e8961a",
+      "download_bytes": 1005,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/forest.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/forest.png",
         "sha256": "a55d6c1dedee9e9696bd7a634aca41977f20eb428580d32da12a0dc477b543a9",
         "download_bytes": 66398
       }
@@ -53,15 +53,15 @@
         "version": "1.0.0",
         "author": "a1.lol",
         "license": "MIT",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/golden.harmony-extension",
-      "sha256": "0018a46e9c5e4d0431ba02a860b3d7deffab9c159c5d52e04928421ccb3be586",
-      "download_bytes": 1794,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/golden.harmony-extension",
+      "sha256": "33fb7811eca00effdfdd9f13134cbf06a6f857cbd577aaa9e94157010167fa5b",
+      "download_bytes": 1233,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/golden.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/golden.png",
         "sha256": "1e9df1eaf7fe9906d9088924403f8cf4f4cd71527ce0af97681c600704536a1b",
         "download_bytes": 66164
       }
@@ -74,15 +74,15 @@
         "version": "1.1.0",
         "author": "a1.lol",
         "license": "MIT",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/katana.harmony-extension",
-      "sha256": "cf4ef3755d9208e700ee721b66edad3fceb4f26e52d09b82e645bf49070f1a15",
-      "download_bytes": 994,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/katana.harmony-extension",
+      "sha256": "636b74765ad7c1b675d525f04f27c6c3e735b6b88731ae4ea66ae69b753d2ce4",
+      "download_bytes": 701,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/katana.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/katana.png",
         "sha256": "693726039bd2edac1d44bdaa624c7b2bb3cf3e5245b87316a925418902097b06",
         "download_bytes": 66257
       }
@@ -90,20 +90,20 @@
     {
       "manifest": {
         "api_version": 1,
-        "id": "serein-latte",
+        "id": "harmony-latte",
         "name": "Latte",
         "version": "1.0.0",
-        "author": "Serein contributors",
+        "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/latte.harmony-extension",
-      "sha256": "a3c3ac481e6d4039a5df26a0e58583add79e638f7a58a6fae309d1beb74a468d",
-      "download_bytes": 1452,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/latte.harmony-extension",
+      "sha256": "50500560d0e25c47e9099d453733d09b364a8082c67729084fd01d561d3f68fa",
+      "download_bytes": 1003,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/latte.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/latte.png",
         "sha256": "3c0a7016eb6994d1be6fb27368a06cd717657f4a042db7647255d7cbd6387275",
         "download_bytes": 65904
       }
@@ -111,20 +111,20 @@
     {
       "manifest": {
         "api_version": 1,
-        "id": "serein-midnight",
+        "id": "harmony-midnight",
         "name": "Midnight",
         "version": "1.0.0",
-        "author": "Serein contributors",
+        "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/midnight.harmony-extension",
-      "sha256": "f7ffb0acdb7269f1e2fdb235536870cef344f3fac761543174ddc091bb2aebb6",
-      "download_bytes": 1458,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/midnight.harmony-extension",
+      "sha256": "c3220dc96966c3d3cd66649247130ebe0f735593376aa32ab977b5963e3561b1",
+      "download_bytes": 1009,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/midnight.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/midnight.png",
         "sha256": "81eb4c6bd634cc7e624a7d9714ae2503e8e05260470b7ff0af63daa3e0a98c16",
         "download_bytes": 65740
       }
@@ -137,15 +137,15 @@
         "version": "1.0.0",
         "author": "a1.lol",
         "license": "MIT",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/obsidian.harmony-extension",
-      "sha256": "e42cb1ad38f0c495375343bb8e64852ccb98a5a860293cd9ce3a86bbec1f0dd5",
-      "download_bytes": 1838,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/obsidian.harmony-extension",
+      "sha256": "ede78f56d184af36bcbeed92a10ea11d4baba4eb2003334e16b7a14219316227",
+      "download_bytes": 1268,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/obsidian.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/obsidian.png",
         "sha256": "8860202e554147302139d5664714d65bdf6b94e8729228d4937a25c55f405588",
         "download_bytes": 66162
       }
@@ -153,20 +153,20 @@
     {
       "manifest": {
         "api_version": 1,
-        "id": "serein-ocean",
+        "id": "harmony-ocean",
         "name": "Ocean",
         "version": "1.0.0",
-        "author": "Serein contributors",
+        "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/ocean.harmony-extension",
-      "sha256": "7309d84495dc4487ccb3e3355fd704c79dd8f68b14a3441ccc7ea5bda5ef9be8",
-      "download_bytes": 958,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/ocean.harmony-extension",
+      "sha256": "19a99c4d02e1a21f4a96376d0841f0d55735b707529b1bf5e5ff3f07e05ab9df",
+      "download_bytes": 669,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/ocean.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/ocean.png",
         "sha256": "7fd9532d983c52ec9f86a345d23e2c6822597ca29a34833958be816e0bcc1913",
         "download_bytes": 85376
       }
@@ -174,20 +174,20 @@
     {
       "manifest": {
         "api_version": 1,
-        "id": "serein-rose",
+        "id": "harmony-rose",
         "name": "Rose",
         "version": "1.0.0",
-        "author": "Serein contributors",
+        "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/rose.harmony-extension",
-      "sha256": "bf8ad0dc259c375fbce786591530f0c2121cf336e63fc39daac11a2fc000087c",
-      "download_bytes": 1450,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/rose.harmony-extension",
+      "sha256": "f9a45160f3fae0f9c6cd018baa3d44f18062920d1749a0b2006eebd85fa74817",
+      "download_bytes": 1001,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/rose.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/rose.png",
         "sha256": "c5b3380a76863535afb52314db03240cf86f481e7805f73ac3cd6789a404980b",
         "download_bytes": 65114
       }
@@ -200,17 +200,17 @@
         "version": "1.0.0",
         "author": "a1.lol",
         "license": "CC0-1.0",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme",
         "capabilities": [],
         "actions": []
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/soft-white.harmony-extension",
-      "sha256": "e981bf8d1230bf540e531d49eecde1f06769e635b55ba2b4eb376dab668248a0",
-      "download_bytes": 5860518,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/soft-white.harmony-extension",
+      "sha256": "d454552431e7fe67bd69330082f9e4ac9dd176f010565604914bc43417de8d0e",
+      "download_bytes": 5860541,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/soft-white.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/soft-white.png",
         "sha256": "dbe0d64360c5eba021b03122cae6776a9f05585f5335c47580684e7d3ac73e60",
         "download_bytes": 110890
       }
@@ -223,15 +223,15 @@
         "version": "1.0.0",
         "author": "a1.lol",
         "license": "MIT",
-        "source": "https://github.com/ViceVerse-cz/Serein",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/themes",
         "kind": "theme"
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/themes/teal.harmony-extension",
-      "sha256": "1c794d14b12bb470164e2c220051de7c20b13de8175390595a559f551bb6409a",
-      "download_bytes": 1827,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/themes/teal.harmony-extension",
+      "sha256": "53b739db4e8b28b5b49dc09aef494a779a13dbb7a2cd0d7125b6a786c520bd7b",
+      "download_bytes": 1257,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/teal.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/teal.png",
         "sha256": "07f686309198ce01ddf28bbc9e1d07b91fac27949e4e4c769c3c88e084b6c36c",
         "download_bytes": 65843
       }
@@ -241,10 +241,10 @@
         "api_version": 1,
         "id": "api-proxy",
         "name": "API Proxy",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein-extensions/tree/main/plugins/api-proxy",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/api-proxy",
         "kind": "plugin",
         "capabilities": [
           "api_proxy",
@@ -268,12 +268,12 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/api-proxy.harmony-extension",
-      "sha256": "d3eef75e33155569a1064b97e6377536528af8c681f3d60ae83c74f796cb8847",
-      "download_bytes": 920980,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/api-proxy.harmony-extension",
+      "sha256": "bedcb8f29160b7797b33e6ddc45af4e2c5c1b51ce80eb39dd988a08da4744116",
+      "download_bytes": 921127,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/api-proxy.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/api-proxy.png",
         "sha256": "3764a08ea4cfda49a365bdf79480b61753130c6cf623083ef64410a88ddb64a1",
         "download_bytes": 69881
       }
@@ -283,10 +283,10 @@
         "api_version": 1,
         "id": "custom-rpc",
         "name": "Custom Rich Presence",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
-        "source": "https://github.com/ViceVerse-cz/Serein-extensions/tree/main/plugins/custom-rpc",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/custom-rpc",
         "kind": "plugin",
         "capabilities": [
           "rich_presence",
@@ -325,12 +325,12 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/custom-rpc.harmony-extension",
-      "sha256": "a32fb364f95a0d46e6f77617ae80894cfad539fa0ecf4a78ebcaf77884faa0fb",
-      "download_bytes": 409133,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/custom-rpc.harmony-extension",
+      "sha256": "8c7b17d69c8568a2d62ea9455dfa6e3acc7422f9bdf9759cc3d07acab84a3dcc",
+      "download_bytes": 411099,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/custom-rpc.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/custom-rpc.png",
         "sha256": "32a89d15bce3c35b0d2d176f4a0fc2c30dc1be01bdd0db6a634910fdacb1bac9",
         "download_bytes": 43030
       }
@@ -338,52 +338,9 @@
     {
       "manifest": {
         "api_version": 1,
-        "id": "external-search-tools",
-        "name": "External Search Tools",
-        "version": "1.0.4",
-        "author": "Equicord/Vencord contributors; Harmony port contributors",
-        "license": "GPL-3.0-or-later",
-        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/external-search-tools",
-        "kind": "plugin",
-        "capabilities": [
-          "selected_message",
-          "external_navigation",
-          "storage"
-        ],
-        "actions": [
-          {
-            "id": "translate",
-            "label": "Translate message in browser",
-            "surface": "message"
-          },
-          {
-            "id": "search",
-            "label": "Search message text in browser",
-            "surface": "message"
-          },
-          {
-            "id": "open",
-            "label": "Configure external search tools",
-            "surface": "panel"
-          },
-          {
-            "id": "save",
-            "label": "Save external search tools",
-            "surface": "panel"
-          }
-        ]
-      },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/external-search-tools.harmony-extension",
-      "sha256": "c0a30fa8599d7e85ed894c5a881b2c7ed0e40c0cbc8a24476af445314943317e",
-      "download_bytes": 1981506,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a"
-    },
-    {
-      "manifest": {
-        "api_version": 1,
         "id": "message-delete-protector",
         "name": "Message delete protector",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony",
@@ -399,12 +356,12 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/message-delete-protector.harmony-extension",
-      "sha256": "bf2a189c1c55065c195ee79c8688da69398114f6859c81fc24c95a53339d6fb0",
-      "download_bytes": 338101,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/message-delete-protector.harmony-extension",
+      "sha256": "6b5e7a0061da41164550f2d68bfb54d2285312ec921dc77ce958c33c6310e401",
+      "download_bytes": 257587,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/previews/message-delete-protector.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/message-delete-protector.png",
         "sha256": "729063ad60d977fef21d630e07e09677ce07836b1a6bd18d447c3541af5a938c",
         "download_bytes": 65905
       }
@@ -414,9 +371,9 @@
         "api_version": 1,
         "id": "offline-composer-tools",
         "name": "Offline Composer Tools",
-        "version": "1.0.3",
-        "author": "Equicord/Vencord contributors; Harmony port contributors",
-        "license": "GPL-3.0-or-later",
+        "version": "2.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/offline-composer-tools",
         "kind": "plugin",
         "capabilities": [
@@ -450,19 +407,24 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/offline-composer-tools.harmony-extension",
-      "sha256": "830679b4be19cc29d98a0c38eebcbc9c602494e8efcb690a2617e8c4817020cf",
-      "download_bytes": 1285572,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/offline-composer-tools.harmony-extension",
+      "sha256": "b779d7fa65bee388ad53d052bee08fc11d39b5cdb425d3815ce728523292e6e2",
+      "download_bytes": 1845984,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/offline-composer-tools.png",
+        "sha256": "09e01670522f16aeacee41ef6032550829e8e8f8ae63b741d7aba93b894b9c18",
+        "download_bytes": 51699
+      }
     },
     {
       "manifest": {
         "api_version": 1,
         "id": "text-commands",
         "name": "Text Commands",
-        "version": "1.0.2",
-        "author": "Equicord/Vencord contributors; Harmony port contributors",
-        "license": "GPL-3.0-or-later",
+        "version": "2.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/text-commands",
         "kind": "plugin",
         "capabilities": [
@@ -517,36 +479,15 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/text-commands.harmony-extension",
-      "sha256": "91e15a4ca44c87ed41cddd0128e2246ddbaae48ac64b946c0c35784c03b5857d",
-      "download_bytes": 724730,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a"
-    },
-    {
-      "manifest": {
-        "api_version": 1,
-        "id": "view-raw-message",
-        "name": "ViewRaw — safe message view",
-        "version": "1.0.2",
-        "author": "Equicord/Vencord contributors; Harmony port contributors",
-        "license": "GPL-3.0-or-later",
-        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/view-raw-message",
-        "kind": "plugin",
-        "capabilities": [
-          "selected_message"
-        ],
-        "actions": [
-          {
-            "id": "view-raw",
-            "label": "View raw message text",
-            "surface": "message"
-          }
-        ]
-      },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/ba49a56d494350fe90896493f354934a0d492f1a/extensions/plugins/packages/view-raw-message.harmony-extension",
-      "sha256": "31eb69ca12bf460e751193df505ec5c871fe3b3ea0393d5c58abe181c9bf9f51",
-      "download_bytes": 1487002,
-      "source_commit": "ba49a56d494350fe90896493f354934a0d492f1a"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/text-commands.harmony-extension",
+      "sha256": "bb3a25b1580a30b1ad4496fe9f5c57aba97eaf960ff3c639a5fc52c4bdeb4878",
+      "download_bytes": 431458,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/text-commands.png",
+        "sha256": "3b2f0b8a8b5139a3fea20810f2ed7dcdfcd6dafb1ff32c574478fb63881e72e6",
+        "download_bytes": 48116
+      }
     }
   ]
 }

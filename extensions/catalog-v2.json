@@ -6,26 +6,21 @@
         "api_version": 2,
         "id": "base-decoder",
         "name": "Base64 Decoder",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/base-decoder",
         "kind": "plugin",
         "capabilities": [
           "selected_message",
-          "composer",
           "clipboard_write"
         ],
         "actions": [
           {
             "id": "decode",
             "label": "Decode Base64",
-            "surface": "message"
-          },
-          {
-            "id": "encode",
-            "label": "Encode draft as Base64",
-            "surface": "composer"
+            "surface": "message_toolbar",
+            "icon": "code"
           }
         ],
         "requires": {
@@ -35,40 +30,45 @@
         },
         "settings": [
           {
-            "id": "min-length",
-            "label": "Shortest text to decode",
-            "description": "Runs of Base64 characters shorter than this are ignored.",
-            "type": "number",
-            "min": 4,
-            "max": 256,
-            "default": 8
-          },
-          {
-            "id": "url-safe",
-            "label": "Also decode URL-safe Base64",
-            "description": "Accept - and _ in place of + and /.",
-            "type": "toggle",
-            "default": true
+            "id": "click",
+            "label": "Decode button",
+            "description": "Change what the decode button on messages does.",
+            "type": "choice",
+            "options": [
+              {
+                "value": "window",
+                "label": "Show the decoded text in a window"
+              },
+              {
+                "value": "copy",
+                "label": "Copy the decoded text"
+              }
+            ],
+            "default": "window"
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/base-decoder.harmony-extension",
-      "sha256": "cd1322ee23f3dc3feedd278509643e9f4c42f156a1719f25f152ae9fced49e79",
-      "download_bytes": 1645266,
-      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/base-decoder.harmony-extension",
+      "sha256": "8860412c09934383d7a5f4d5d717a8ba602d4c3b19b45fe7575f47d98927c7b1",
+      "download_bytes": 1662171,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/base-decoder.png",
+        "sha256": "2a8a1ddce924eabdae9841100da608b6f05e21cbec23be923826f5f3c83eb91f",
+        "download_bytes": 53284
+      }
     },
     {
       "manifest": {
         "api_version": 2,
         "id": "copy-file-contents",
         "name": "Copy File Contents",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/copy-file-contents",
         "kind": "plugin",
         "capabilities": [
-          "selected_message",
           "media_links",
           "attachment_contents",
           "clipboard_write"
@@ -76,160 +76,255 @@
         "actions": [
           {
             "id": "copy",
-            "label": "Copy file contents",
-            "surface": "message"
+            "label": "Copy File Contents",
+            "surface": "attachment",
+            "icon": "copy",
+            "accepts": {
+              "content_types": [
+                "text/",
+                "application/json",
+                "application/xml",
+                "application/x-sh",
+                "application/javascript"
+              ],
+              "extensions": [
+                "txt",
+                "md",
+                "log",
+                "json",
+                "toml",
+                "yaml",
+                "yml",
+                "xml",
+                "csv",
+                "tsv",
+                "ini",
+                "cfg",
+                "conf",
+                "rs",
+                "py",
+                "js",
+                "ts",
+                "tsx",
+                "jsx",
+                "c",
+                "h",
+                "cpp",
+                "hpp",
+                "cs",
+                "java",
+                "kt",
+                "go",
+                "rb",
+                "php",
+                "lua",
+                "sh",
+                "ps1",
+                "bat",
+                "sql",
+                "html",
+                "css",
+                "scss",
+                "diff",
+                "patch",
+                "srt",
+                "env"
+              ],
+              "max_bytes": 65536
+            }
           }
         ],
         "requires": {
           "features": {
-            "settings": "^1.0",
             "host_requests": "^1.0",
             "media.links": "^1.0",
             "attachments.read": "^1.0"
           }
-        },
-        "settings": [
+        }
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/copy-file-contents.harmony-extension",
+      "sha256": "0f9d6f6cad5035f1000984937158c531649723d7a57638d1808ca71787bd6141",
+      "download_bytes": 1654119,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/copy-file-contents.png",
+        "sha256": "a208d27a29188d16e2248310b2a0da7471ec6d31798d734957124838444289d9",
+        "download_bytes": 60636
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "external-search-tools",
+        "name": "External Search Tools",
+        "version": "2.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/external-search-tools",
+        "kind": "plugin",
+        "capabilities": [
+          "selected_message",
+          "external_navigation",
+          "storage"
+        ],
+        "actions": [
           {
-            "id": "max-kib",
-            "label": "Largest amount to read (KiB)",
-            "description": "Longer files are read and copied up to this size.",
-            "type": "number",
-            "min": 1,
-            "max": 64,
-            "default": 64
+            "id": "translate-message",
+            "label": "Translate",
+            "surface": "message_toolbar",
+            "icon": "external"
+          },
+          {
+            "id": "translate",
+            "label": "Translate message in browser",
+            "surface": "message"
+          },
+          {
+            "id": "search",
+            "label": "Search message text in browser",
+            "surface": "message"
+          },
+          {
+            "id": "open",
+            "label": "Configure external search tools",
+            "surface": "panel"
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/copy-file-contents.harmony-extension",
-      "sha256": "512957c5032eb9b1c35e6b2078e84e353ac1f4f6c72f0839a6eabfee5fbd7986",
-      "download_bytes": 1709272,
-      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/external-search-tools.harmony-extension",
+      "sha256": "44d383a9a2c6d6cc27a69aa41996773ede5b05da1d5e1e3f857eb9d6491d3901",
+      "download_bytes": 1711376,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/external-search-tools.png",
+        "sha256": "7017ad1e9857207257329f85b880b22a06d0866423b9e5a7ca104b0b3b5457b8",
+        "download_bytes": 47290
+      }
     },
     {
       "manifest": {
         "api_version": 2,
         "id": "reverse-image-search",
         "name": "Reverse Image Search",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/reverse-image-search",
         "kind": "plugin",
         "capabilities": [
-          "selected_message",
           "media_links",
           "external_navigation"
         ],
         "actions": [
           {
             "id": "search",
-            "label": "Reverse image search",
-            "surface": "message"
+            "label": "Search Image",
+            "surface": "image",
+            "icon": "search",
+            "choices": [
+              {
+                "id": "google",
+                "label": "Google",
+                "icon": "search"
+              },
+              {
+                "id": "yandex",
+                "label": "Yandex",
+                "icon": "search"
+              },
+              {
+                "id": "saucenao",
+                "label": "SauceNAO",
+                "icon": "search"
+              },
+              {
+                "id": "iqdb",
+                "label": "IQDB",
+                "icon": "search"
+              },
+              {
+                "id": "bing",
+                "label": "Bing",
+                "icon": "search"
+              },
+              {
+                "id": "tineye",
+                "label": "TinEye",
+                "icon": "search"
+              },
+              {
+                "id": "imgops",
+                "label": "ImgOps",
+                "icon": "search"
+              },
+              {
+                "id": "all",
+                "label": "All",
+                "icon": "external"
+              }
+            ]
           }
         ],
         "requires": {
           "features": {
-            "settings": "^1.0",
             "media.links": "^1.0"
           }
-        },
-        "settings": [
-          {
-            "id": "engine",
-            "label": "Search engine",
-            "description": "Used first; you can pick another one for each search.",
-            "type": "choice",
-            "options": [
-              {
-                "value": "google",
-                "label": "Google Lens"
-              },
-              {
-                "value": "bing",
-                "label": "Bing"
-              },
-              {
-                "value": "yandex",
-                "label": "Yandex"
-              },
-              {
-                "value": "tineye",
-                "label": "TinEye"
-              },
-              {
-                "value": "saucenao",
-                "label": "SauceNAO"
-              },
-              {
-                "value": "iqdb",
-                "label": "IQDB"
-              }
-            ],
-            "default": "google"
-          }
-        ]
+        }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/reverse-image-search.harmony-extension",
-      "sha256": "f80e0d899feba8b616fc9e7921e09d77020160bc4c668d918490f1b04086c88e",
-      "download_bytes": 1647596,
-      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/reverse-image-search.harmony-extension",
+      "sha256": "696aa0287e016fe905d52844ee93134c131c29a9b040272e09b44f1174e20d52",
+      "download_bytes": 1654885,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/reverse-image-search.png",
+        "sha256": "f0b3170178512638ac9cc0efdbb1b137de2b03bf9fc6a0b856a85d196bf98ab2",
+        "download_bytes": 71561
+      }
     },
     {
       "manifest": {
         "api_version": 2,
         "id": "server-info",
         "name": "Server Info",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/server-info",
         "kind": "plugin",
         "capabilities": [
           "context_menus",
-          "server_profiles",
-          "clipboard_write"
+          "server_profiles"
         ],
         "actions": [
           {
             "id": "info",
-            "label": "Server info",
+            "label": "Server Info",
             "surface": "server"
           }
         ],
         "requires": {
           "features": {
-            "settings": "^1.0",
             "host_requests": "^1.0",
             "lookups.server_profile": "^1.0"
           }
-        },
-        "settings": [
-          {
-            "id": "show-features",
-            "label": "Show server features",
-            "description": "List the feature flags Discord reports for the server.",
-            "type": "toggle",
-            "default": true
-          },
-          {
-            "id": "copy-id",
-            "label": "Offer to copy the server ID",
-            "type": "toggle",
-            "default": false
-          }
-        ]
+        }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/server-info.harmony-extension",
-      "sha256": "7f305d2f87f32338da9f9a6046ffcce3fc8cae7dff9b0a53b169f9ae855b1a9e",
-      "download_bytes": 1651566,
-      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/server-info.harmony-extension",
+      "sha256": "1a8464e6c44d1d0774e6cfcb51cf94d9b1d9bfcadd8030f1b68f25544e39046c",
+      "download_bytes": 1663016,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/server-info.png",
+        "sha256": "1920079e0109d281a49615ad88de569852a77ac47f1eeeb2b1e7892d33c8cb30",
+        "download_bytes": 56801
+      }
     },
     {
       "manifest": {
         "api_version": 2,
         "id": "user-tags",
         "name": "User Tags",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "author": "Harmony contributors",
         "license": "MIT OR Apache-2.0",
         "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/user-tags",
@@ -266,10 +361,72 @@
           }
         }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/user-tags.harmony-extension",
-      "sha256": "1b6e2349042c30f2e611ddbf3235be0d3b0c89cf11e121bf24a0950d7a3055d1",
-      "download_bytes": 1756886,
-      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/user-tags.harmony-extension",
+      "sha256": "9ca4547ce23c72e369e94d97cd640fcfd8552a21df064cbe68c85198a5003493",
+      "download_bytes": 1758377,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/user-tags.png",
+        "sha256": "6eed88d612f8bf18337d7a3ba55260d001ae271d5e668a2e38aeef6dc42def6a",
+        "download_bytes": 73790
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "view-raw-message",
+        "name": "ViewRaw",
+        "version": "2.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/view-raw-message",
+        "kind": "plugin",
+        "capabilities": [
+          "selected_message",
+          "clipboard_write"
+        ],
+        "actions": [
+          {
+            "id": "view-raw",
+            "label": "View Raw",
+            "surface": "message_toolbar",
+            "icon": "code"
+          }
+        ],
+        "requires": {
+          "features": {
+            "settings": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "click",
+            "label": "View Raw button",
+            "description": "Change what the View Raw button on messages does.",
+            "type": "choice",
+            "options": [
+              {
+                "value": "window",
+                "label": "Show the raw data in a window"
+              },
+              {
+                "value": "copy",
+                "label": "Copy the raw text"
+              }
+            ],
+            "default": "window"
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/view-raw-message.harmony-extension",
+      "sha256": "f664d2ad19ae9a948e679592cf15983f3319133897d5686f30d223e91f55b446",
+      "download_bytes": 1667465,
+      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/view-raw-message.png",
+        "sha256": "cf5effc70b94a7d3de940293ba072db399c9c15e20f59f1cbb333c1958e692be",
+        "download_bytes": 57406
+      }
     }
   ]
 }
