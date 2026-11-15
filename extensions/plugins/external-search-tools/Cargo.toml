@@ -1,14 +1,12 @@
 [package]
 name = "external-search-tools"
-version = "1.0.4"
+version = "2.0.0"
 edition = "2024"
-license = "GPL-3.0-or-later"
+license = "MIT OR Apache-2.0"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
 harmony-extension-sdk.workspace = true
-url.workspace = true
 serde.workspace = true
-serde_json.workspace = true

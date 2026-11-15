@@ -68,6 +68,9 @@ fn sdk_manifests_round_trip_all_capabilities_and_surfaces_through_host_validatio
 	.into_iter()
 	.enumerate()
 	.map(|(index, surface)| Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: format!("action-{index}"),
 		label: "Example".into(),
 		surface,
@@ -122,6 +125,9 @@ fn test_manifest(capabilities: Vec<Capability>) -> Manifest {
 		quotas: Default::default(),
 		capabilities,
 		actions: vec![Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "run".into(),
 			label: "Run".into(),
 			surface: Surface::Panel,
@@ -602,6 +608,9 @@ fn app_events_are_unique_granted_and_have_no_direct_conversation_context() {
 		assert!(invalid.validate(&manifest).is_err());
 	}
 	manifest.actions.push(Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: "second".into(),
 		label: "Second".into(),
 		surface: Surface::AppEvent,
@@ -914,6 +923,9 @@ fn discovery_is_forward_tolerant_and_does_not_change_legacy_input() {
 			.collect(),
 	);
 	supported.actions.push(Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: "events".into(),
 		label: "Events".into(),
 		surface: Surface::AppEvent,
@@ -1172,6 +1184,9 @@ fn tracked_actions_and_extended_inputs_preserve_v1_wire_compatibility() {
 		Capability::GuildFolders,
 	]);
 	manifest.actions.push(Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: "events".into(),
 		label: "Events".into(),
 		surface: Surface::AppEvent,

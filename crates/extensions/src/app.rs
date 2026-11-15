@@ -19,6 +19,8 @@ pub const MAX_APP_MEMBERS: usize = 100;
 pub const MAX_APP_PRESENCES: usize = 100;
 pub const MAX_VOICE_PARTICIPANTS: usize = 64;
 pub const MAX_HOST_EFFECTS: usize = 1;
+/// API v2 results may open up to this many links at once; any other result has one effect.
+pub const MAX_LINK_EFFECTS_V2: usize = 8;
 pub const MAX_HOST_EFFECT_BYTES: usize = 8 * 1024;
 /// API v2 extensions may copy up to this much text in one `copy_text` effect; v1 keeps 4 KiB.
 pub const MAX_COPY_TEXT_BYTES_V2: usize = 64 * 1024;
@@ -2232,13 +2234,33 @@ impl HostEffect {
 }
 
 pub(crate) fn validate_effects(effects: &[HostEffect], manifest: &Manifest) -> Result<(), Error> {
-	if effects.len() > MAX_HOST_EFFECTS {
+	let v2 = manifest.api_version >= crate::API_V2;
+	// API v2 may open several links at once (such as one search in every engine).
+	let links = v2
+		&& effects.iter().all(|effect| {
+			matches!(
+				effect,
+				HostEffect::AppAction {
+					action: AppAction::OpenExternalLink { .. }
+				}
+			)
+		});
+	let max = if links {
+		MAX_LINK_EFFECTS_V2
+	} else {
+		MAX_HOST_EFFECTS
+	};
+	if effects.len() > max {
 		return Err(Error::Limit);
 	}
 	for effect in effects {
 		effect.validate(manifest)?;
 	}
-	bounded_bytes(effects, MAX_HOST_EFFECT_BYTES).map(|_| ())
+	// A v2 copy has its own, larger limit, checked above.
+	if v2 && matches!(effects, [HostEffect::CopyText { .. }]) {
+		return Ok(());
+	}
+	bounded_bytes(effects, MAX_HOST_EFFECT_BYTES * max).map(|_| ())
 }
 
 impl AudioSettingsSnapshot {

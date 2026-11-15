@@ -19,6 +19,8 @@ pub const MAX_APP_MEMBERS: usize = 100;
 pub const MAX_APP_PRESENCES: usize = 100;
 pub const MAX_VOICE_PARTICIPANTS: usize = 64;
 pub const MAX_HOST_EFFECTS: usize = 1;
+/// API v2 results may open up to this many links at once; any other result has one effect.
+pub const MAX_LINK_EFFECTS_V2: usize = 8;
 pub const MAX_HOST_EFFECT_BYTES: usize = 8 * 1024;
 /// API v2 extensions may copy up to this much text in one `CopyText` effect; v1 keeps 4 KiB.
 pub const MAX_COPY_TEXT_BYTES_V2: usize = 64 * 1024;

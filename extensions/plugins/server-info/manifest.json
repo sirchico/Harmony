@@ -2,31 +2,16 @@
   "api_version": 2,
   "id": "server-info",
   "name": "Server Info",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
   "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/server-info",
   "kind": "plugin",
-  "capabilities": ["context_menus", "server_profiles", "clipboard_write"],
+  "capabilities": ["context_menus", "server_profiles"],
   "actions": [
-    { "id": "info", "label": "Server info", "surface": "server" }
+    { "id": "info", "label": "Server Info", "surface": "server" }
   ],
   "requires": {
-    "features": { "settings": "^1.0", "host_requests": "^1.0", "lookups.server_profile": "^1.0" }
-  },
-  "settings": [
-    {
-      "id": "show-features",
-      "label": "Show server features",
-      "description": "List the feature flags Discord reports for the server.",
-      "type": "toggle",
-      "default": true
-    },
-    {
-      "id": "copy-id",
-      "label": "Offer to copy the server ID",
-      "type": "toggle",
-      "default": false
-    }
-  ]
+    "features": { "host_requests": "^1.0", "lookups.server_profile": "^1.0" }
+  }
 }

@@ -278,8 +278,7 @@ unverified. No live account or service write was used for verification.
 
 ## Custom Rich Presence - September 28, 2026
 
-The **Custom Rich Presence** catalog plugin adds an independent native implementation of
-[Vencord CustomRPC](https://vencord.dev/plugins/CustomRPC). Enable it in Extensions, open its
+The **Custom Rich Presence** catalog plugin adds a native custom activity editor. Enable it in Extensions, open its
 editor, enter a nonzero Discord application ID and name, then Preview or Apply. Playing,
 Streaming, Listening, Watching and Competing support details/state links, two artwork slots,
 two link buttons, party size and elapsed/local-midnight/custom UTC timers. A draft preview
@@ -521,7 +520,6 @@ relationships are documented in [Threads](https://docs.discord.com/developers/to
 Compact presentation and normal-account navigation are **unofficial compatibility**,
 not a documented native UI contract. Source comparisons included Discohook's
 [approximation renderer](https://github.com/discohook/discohook/blob/3e339e2f3fbe2c13570d25c1a5a52877c94f4fb2/packages/site/app/components/preview/Markdown.tsx#L432-L505),
-Vencord's [exact returned-ID check](https://github.com/Vendicated/Vencord/blob/718c867256a9d181edc7a534afb296b9bb41ab58/src/plugins/messageLinkEmbeds/index.tsx#L133-L164),
 Dissent's [loaded-row navigation](https://github.com/diamondburned/dissent/blob/6ff6182b1eac30d57e9c9c995942317eb42e3bf6/internal/messages/view.go#L398-L419)
 and Abaddon's [selection-aware generic links](https://github.com/uowuo/abaddon/blob/7b3a4ff97ae6490a15adaa0a792ea9225c4c9e51/src/components/chatmessage.cpp#L881-L912).
 These are pinned source inspections, not live client tests. Verification uses

@@ -42,6 +42,9 @@ mod extension_account_actions;
 mod extension_actions;
 mod extension_admin_actions;
 mod extension_app;
+mod extension_items;
+#[cfg(any(test, feature = "demo"))]
+pub use extension_items::preview_image_menu;
 mod extension_server_actions;
 mod extensions_ui;
 mod interface_tweaks;
@@ -4719,6 +4722,25 @@ impl MessagingUi {
 	pub fn show(&mut self, ui: &mut egui::Ui, state: &mut State) -> Vec<Command> {
 		interface_tweaks::publish(ui.ctx(), &self.interface_tweaks);
 		contributions::publish(ui.ctx(), &self.contributions);
+		if let Some((key, effects)) = self.extensions.direct_effects.take() {
+			for effect in effects {
+				match effect {
+					extensions::HostEffect::CopyText { text } => {
+						ui.ctx().copy_text(text);
+						extension_items::mark_copied(ui.ctx(), &key);
+						self.toasts.push(design::Level::Info, "Copied to clipboard");
+					}
+					extensions::HostEffect::AppAction {
+						action: extensions::AppAction::OpenExternalLink { url },
+					} => {
+						if let Some(url) = crate::markdown::external_url(&url) {
+							ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+						}
+					}
+					_ => {}
+				}
+			}
+		}
 		rtl::scope(
 			ui.ctx(),
 			state.generation,

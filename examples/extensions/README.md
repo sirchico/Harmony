@@ -65,7 +65,7 @@ may not be available in a released build.
 | [Message Delete Protector](../../extensions/plugins/message-delete-protector/src/lib.rs) | Opt-in activation enabling host-managed message retention |
 | [RGB Cycle](rgb-cycle/src/lib.rs) | Host-scheduled, smoothly eased appearance updates with saved settings |
 | [Custom Rich Presence](../../extensions/plugins/custom-rpc) | Native activity editor/preview, saved Apply/Stop controls and activation restore through the bounded `rich_presence` capability |
-| [Equicord-derived safe tools](../../extensions/plugins/README.md#equicord-derived-safe-tools) | Least-privilege offline transformations, stored tags/rules, selected-message display, and Apply-reviewed browser navigation |
+| [Composer and message tools](../../extensions/plugins/README.md#composer-and-message-tools) | Least-privilege offline transformations, stored tags/rules, selected-message display, and Apply-reviewed browser navigation |
 
 For this tutorial, use `app-toolbox/` in a development copy. Keep its `Cargo.toml`,
 and replace `manifest.json` and `src/lib.rs` with the examples below. The Cargo
@@ -505,8 +505,8 @@ Rust authors use `export!`. Other languages must export:
 | Export | Contract |
 | --- | --- |
 | `memory` | 32-bit linear Wasm memory. No WASI or function imports. |
-| `serein_alloc(i32 length) -> i32 pointer` | Allocate room for the host's UTF-8 JSON input. |
-| `serein_invoke(i32 pointer, i32 length) -> i64 output` | Return UTF-8 JSON: output pointer in the high 32 bits, byte length in the low 32 bits. |
+| `harmony_alloc(i32 length) -> i32 pointer` | Allocate room for the host's UTF-8 JSON input. |
+| `harmony_invoke(i32 pointer, i32 length) -> i64 output` | Return UTF-8 JSON: output pointer in the high 32 bits, byte length in the low 32 bits. |
 
 A fresh instance is destroyed after each call, including its ABI buffers.
 Rust wrappers flatten into top-level JSON: there are no `invocation` or `output`

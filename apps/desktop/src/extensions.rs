@@ -1396,6 +1396,9 @@ fn load(
 	}
 	let mut installed = Vec::new();
 	for (parent, kind) in scopes {
+		if kind == ExtensionKind::Theme {
+			migrate_theme_ids(&parent, gate)?;
+		}
 		let cleanup_error = cleanup(&parent, MAX_PER_SCOPE, gate).err();
 		let mut active_theme = None;
 		if kind == ExtensionKind::Theme && parent.join("active.json").exists() {
@@ -1573,6 +1576,48 @@ fn activation_storage(stored: &Stored, directory: &Path) -> Result<Option<String
 	} else {
 		Ok(None)
 	}
+}
+
+/// Built-in themes were published under an earlier ID prefix. Installed copies and the active
+/// selection move to the current IDs once, so the newly published packages match them.
+const EARLIER_THEME_PREFIX: &str = "serein-";
+const THEME_PREFIX: &str = "harmony-";
+
+fn migrate_theme_ids(parent: &Path, gate: &Gate) -> Result<(), String> {
+	if !parent.exists() {
+		return Ok(());
+	}
+	let active_path = parent.join("active.json");
+	let active = read_bounded(&active_path, 64).ok();
+	for entry in fs::read_dir(parent)
+		.map_err(|_| "Cannot read extensions")?
+		.take(MAX_PER_SCOPE * 4 + 1)
+	{
+		let entry = entry.map_err(|_| "Cannot read extension entry")?;
+		let name = entry.file_name().to_string_lossy().into_owned();
+		let Some(rest) = name.strip_prefix(EARLIER_THEME_PREFIX) else {
+			continue;
+		};
+		let old = entry.path();
+		let new_id = format!("{THEME_PREFIX}{rest}");
+		let new = parent.join(&new_id);
+		if !old.is_dir() || old.with_extension("disabled").exists() || new.exists() {
+			continue;
+		}
+		valid_id(&new_id)?;
+		let Ok(mut stored) = read_stored(&old.join("package.json")) else {
+			continue;
+		};
+		stored.package.manifest.id = new_id.clone();
+		let record = serde_json::to_vec(&stored).map_err(|_| "Cannot encode extension package")?;
+		gate.check()?;
+		fs::rename(&old, &new).map_err(|_| "Cannot rename an installed theme")?;
+		atomic_write(&new.join("package.json"), &record, gate)?;
+		if active.as_deref() == Some(name.as_bytes()) {
+			atomic_write(&active_path, new_id.as_bytes(), gate)?;
+		}
+	}
+	Ok(())
 }
 
 fn read_stored(path: &Path) -> Result<Stored, String> {
@@ -2195,6 +2240,9 @@ mod tests {
 		package.manifest.id = "api-proxy".into();
 		package.manifest.capabilities = vec![Capability::ApiProxy, Capability::Storage];
 		package.manifest.actions = vec![extensions::Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "settings".into(),
 			label: "Settings".into(),
 			surface: Surface::Panel,
@@ -2792,13 +2840,13 @@ mod tests {
 	}
 
 	/// Phase 1 acceptance: the packaged API v2 plugins run in the real Wasm runtime through the
-	/// worker, with host-saved settings, a Discord lookup answered between rounds, a local
-	/// attachment read that refuses non-Discord hosts, and dependency checks at install time.
+	/// worker: a Discord lookup answered between rounds, an attachment button whose read refuses
+	/// non-Discord hosts, toolbar copy buttons beyond the v1 size, and dependency checks.
 	#[test]
 	fn v2_packages_run_through_the_worker_with_settings_and_request_rounds() {
 		use extensions::{
 			AttachmentSource, HostRequest, HostResponse, MediaKind, MediaLink, MediaSource,
-			ResponseValue, ServerProfile, SettingValue,
+			ResponseValue, ServerProfile,
 		};
 		let profile = Profile::new();
 		let root = profile.0.join("extensions");
@@ -2829,39 +2877,25 @@ mod tests {
 			output
 				.panel
 				.iter()
+				.flat_map(|element| match element {
+					extensions::Element::Row { children } => children.clone(),
+					other => vec![other.clone()],
+				})
 				.filter_map(|element| match element {
-					extensions::Element::Text { text } => Some(text.clone()),
+					extensions::Element::Text { text } | extensions::Element::Heading { text } => {
+						Some(text)
+					}
 					_ => None,
 				})
 				.collect::<Vec<_>>()
 				.join("\n")
 		};
 
-		// Server Info: settings saved by the host, then one lookup round answered by the app.
+		// Server Info: one lookup round answered by the app, then the server card.
 		let server = install(include_bytes!(
 			"../../../extensions/plugins/packages/server-info.harmony-extension"
 		));
 		assert!(server.error.is_none(), "{:?}", server.error);
-		assert_eq!(
-			server.settings.get("show-features"),
-			Some(&SettingValue::Bool(true))
-		);
-		let Event::SettingsSaved { settings, .. } = run(
-			&root,
-			Job::SaveSettings {
-				id: "server-info".into(),
-				account: "account".into(),
-				values: BTreeMap::from([("show-features".into(), SettingValue::Bool(false))]),
-			},
-			&gate(),
-		)
-		.unwrap() else {
-			panic!("settings were not saved");
-		};
-		assert_eq!(
-			settings.get("show-features"),
-			Some(&SettingValue::Bool(false))
-		);
 		let Event::Requests {
 			invocation,
 			requests,
@@ -2891,7 +2925,7 @@ mod tests {
 					id: "10".into(),
 					name: "Synthetic server".into(),
 					description: None,
-					icon_url: None,
+					icon_url: Some("https://cdn.discordapp.com/icons/10/abc.png?size=1024".into()),
 					banner_url: None,
 					splash_url: None,
 					owner_id: Some("20".into()),
@@ -2918,29 +2952,27 @@ mod tests {
 			panic!("the answered round must finish");
 		};
 		let text = panel_text(&output);
-		assert!(text.contains("Members: 42 (7 online)"), "{text}");
-		assert!(
-			!text.contains("COMMUNITY"),
-			"the saved setting hides features"
-		);
+		for expected in [
+			"Synthetic server",
+			"Members: 42 (7 online)",
+			"Server Boosts: 3 (Level 1)",
+			"Verification Level: Medium",
+			"Roles: 3",
+		] {
+			assert!(text.contains(expected), "{expected} in {text}");
+		}
 
-		// Copy File Contents: the worker answers the read itself and refuses other hosts.
+		// Copy File Contents: the attachment button's read is answered by the worker, which
+		// refuses a file that is not on Discord's servers.
 		install(include_bytes!(
 			"../../../extensions/plugins/packages/copy-file-contents.harmony-extension"
 		));
 		let mut read = Invocation {
 			action: "copy".into(),
-			selected_message: Some("see file".into()),
-			selected_message_ref: Some(Box::new(extensions::SelectedMessageRef {
-				channel_id: "1".into(),
-				message_id: "3".into(),
-				author_id: "4".into(),
-				guild_id: None,
-			})),
 			media: Some(vec![MediaLink {
 				source: MediaSource::Attachment,
 				kind: MediaKind::File,
-				url: "https://cdn.discordapp.com/attachments/1/2/notes.txt".into(),
+				url: "https://example.org/notes.txt".into(),
 				attachment_id: Some("2".into()),
 				filename: Some("notes.txt".into()),
 				content_type: Some("text/plain".into()),
@@ -2964,26 +2996,29 @@ mod tests {
 		assert!(text.contains("Could not read the file"), "{text}");
 		assert!(output.effects.is_empty());
 
-		// Base64 Decoder: defaults for unsaved settings, and a copy larger than v1 allows.
+		// Base64 Decoder: the toolbar window's copy button copies more than v1 allows.
 		install(include_bytes!(
 			"../../../extensions/plugins/packages/base-decoder.harmony-extension"
 		));
-		let long = "x".repeat(6000);
-		let Event::Invoked { output, .. } = invoke(
-			"base-decoder",
-			Invocation {
-				action: "encode".into(),
-				composer: Some(long.clone()),
-				..Default::default()
-			},
-		) else {
-			panic!("encode must finish");
+		let long = "x".repeat(9_000);
+		let encoded = {
+			const TABLE: &[u8; 64] =
+				b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+			long.as_bytes()
+				.chunks(3)
+				.flat_map(|chunk| {
+					let n = u32::from(chunk[0]) << 16
+						| u32::from(*chunk.get(1).unwrap_or(&0)) << 8
+						| u32::from(*chunk.get(2).unwrap_or(&0));
+					(0..4).map(move |i| TABLE[(n >> (18 - 6 * i) & 63) as usize] as char)
+				})
+				.collect::<String>()
 		};
-		let encoded = output.replacement.unwrap();
 		let Event::Invoked { output, .. } = invoke(
 			"base-decoder",
 			Invocation {
 				action: "decode".into(),
+				button: Some("copy-0".into()),
 				selected_message: Some(format!("payload {encoded}")),
 				..Default::default()
 			},
@@ -3172,5 +3207,37 @@ mod tests {
 		assert!(store.view().user(model::Id(42)).is_some());
 		store.remove_extension("user-tags");
 		assert!(store.is_empty());
+	}
+
+	/// Built-in themes installed under the earlier ID prefix move to the current IDs once,
+	/// keeping the active choice, so the newly published packages match them.
+	#[test]
+	fn installed_themes_move_to_current_ids_and_stay_active() {
+		let profile = Profile::new();
+		let root = profile.0.join("extensions");
+		let installed = enable(
+			&root,
+			source(&profile, &theme("serein-ocean")),
+			Vec::new(),
+			None,
+			&gate(),
+		)
+		.unwrap();
+		assert!(installed.active_theme);
+		assert!(root.join("themes/serein-ocean").exists());
+		let loaded = load(&root, None, &gate()).unwrap();
+		let ocean = loaded
+			.iter()
+			.find(|entry| entry.manifest.kind == ExtensionKind::Theme)
+			.unwrap();
+		assert_eq!(ocean.manifest.id, "harmony-ocean");
+		assert!(ocean.active_theme);
+		assert!(!root.join("themes/serein-ocean").exists());
+		assert_eq!(
+			fs::read(root.join("themes/active.json")).unwrap(),
+			b"harmony-ocean"
+		);
+		// Running again changes nothing.
+		assert_eq!(load(&root, None, &gate()).unwrap().len(), loaded.len());
 	}
 }

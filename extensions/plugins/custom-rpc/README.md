@@ -1,6 +1,6 @@
 # Custom Rich Presence
 
-A native Harmony editor inspired by Vencord CustomRPC. Configure Playing, Streaming,
+A native Harmony editor for a custom activity. Configure Playing, Streaming,
 Listening, Watching or Competing activities, text links, artwork and image links,
 two buttons, party size, and elapsed/countdown timers without editing JSON.
 

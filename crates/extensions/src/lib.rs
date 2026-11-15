@@ -227,6 +227,15 @@ pub enum Surface {
 	Server,
 	/// An entry in a role's context menu; the invocation names the role and its server.
 	Role,
+	/// API v2: an icon button in a message's hover toolbar. Receives the message like
+	/// `message`; the action's `icon` is drawn and its label is the tooltip.
+	MessageToolbar,
+	/// API v2: an entry in an image's context menu. Receives that image as the only `media`
+	/// link; with `choices` it opens a submenu and the chosen ID arrives as `button`.
+	Image,
+	/// API v2: an icon button on file attachments the action's `accepts` filter matches.
+	/// Receives that file as the only `media` link.
+	Attachment,
 }
 
 impl Surface {
@@ -242,6 +251,53 @@ pub struct Action {
 	pub id: String,
 	pub label: String,
 	pub surface: Surface,
+	/// API v2: the icon Harmony draws for toolbar, image and attachment actions.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub icon: Option<ContributionIcon>,
+	/// API v2, `image` only: submenu entries; the chosen entry's ID arrives as `button`.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub choices: Vec<ActionChoice>,
+	/// API v2, `attachment` only (required): which files show the button.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub accepts: Option<AttachmentFilter>,
+}
+
+/// One submenu entry of an `image` action.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActionChoice {
+	pub id: String,
+	pub label: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub icon: Option<ContributionIcon>,
+}
+
+/// Which file attachments an `attachment` action applies to. A file matches when its
+/// extension or its content type prefix is listed, and it is no larger than `max_bytes`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AttachmentFilter {
+	/// Lowercase file extensions without the dot, such as `txt`.
+	pub extensions: Vec<String>,
+	/// Content type prefixes, such as `text/`.
+	pub content_types: Vec<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub max_bytes: Option<u64>,
+}
+
+impl AttachmentFilter {
+	pub fn matches(&self, filename: &str, content_type: Option<&str>, size: u64) -> bool {
+		let extension = filename
+			.rsplit_once('.')
+			.map(|(_, extension)| extension.to_ascii_lowercase());
+		let by_name = extension.is_some_and(|extension| self.extensions.contains(&extension));
+		let by_type = content_type.is_some_and(|kind| {
+			self.content_types
+				.iter()
+				.any(|prefix| kind.to_ascii_lowercase().starts_with(prefix.as_str()))
+		});
+		(by_name || by_type) && self.max_bytes.is_none_or(|max| size <= max)
+	}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -858,6 +914,38 @@ pub enum Element {
 		max: i32,
 		value: i32,
 	},
+	/// API v2: an image from Discord's own image hosts, drawn square at `size` points.
+	Image {
+		url: String,
+		alt: String,
+		#[serde(default = "default_image_size")]
+		size: u16,
+	},
+}
+
+fn default_image_size() -> u16 {
+	64
+}
+
+/// Hosts a panel image may come from: Discord's CDN and media proxies only.
+pub fn valid_panel_image(url: &str) -> bool {
+	url.len() <= 2048
+		&& !url.contains("..")
+		&& url
+			.bytes()
+			.all(|b| b.is_ascii_graphic() && b != b'\\' && b != b'#')
+		&& [
+			"cdn.discordapp.com",
+			"media.discordapp.net",
+			"images-ext-1.discordapp.net",
+			"images-ext-2.discordapp.net",
+		]
+		.iter()
+		.any(|host| {
+			url.strip_prefix("https://")
+				.and_then(|rest| rest.strip_prefix(host))
+				.is_some_and(|rest| rest.starts_with('/'))
+		})
 }
 
 pub fn valid_id(value: &str) -> bool {
@@ -1006,6 +1094,8 @@ impl Manifest {
 				Surface::MessageEvent => Some(Capability::MessageEvents),
 				Surface::AppEvent => Some(Capability::AppEvents),
 				Surface::Tick => Some(Capability::Appearance),
+				Surface::MessageToolbar => Some(Capability::SelectedMessage),
+				Surface::Image | Surface::Attachment => Some(Capability::MediaLinks),
 			};
 			if required.is_some_and(|c| !capabilities.contains(&c)) {
 				return Err(Error::Capability);
@@ -1388,7 +1478,8 @@ impl Invocation {
 			}
 			reference.validate()?;
 		}
-		if self.selected_message.is_some() && action.surface != Surface::Message
+		if self.selected_message.is_some()
+			&& !matches!(action.surface, Surface::Message | Surface::MessageToolbar)
 			|| self.composer.is_some() && action.surface != Surface::Composer
 			|| self.tick_ms.is_some() && action.surface != Surface::Tick
 			|| self.tick_ms.is_none() && action.surface == Surface::Tick
@@ -1556,6 +1647,17 @@ fn validate_elements(
 			Element::Text { text } => {
 				if text.len() > 4096 {
 					return Err(Error::Limit);
+				}
+				continue;
+			}
+			Element::Image { url, alt, size } => {
+				if manifest.api_version < API_V2
+					|| !valid_panel_image(url)
+					|| alt.len() > 256
+					|| alt.chars().any(char::is_control)
+					|| !(16..=256).contains(size)
+				{
+					return Err(Error::Invalid);
 				}
 				continue;
 			}

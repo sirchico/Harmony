@@ -35,3 +35,9 @@ revision with the API Proxy host support:
 ```sh
 HARMONY_PREVIEW_PACKAGE=/path/to/plugins/packages/api-proxy.harmony-extension cargo run --locked -p harmony --features demo --example profile_preview -- --demo --extension=api-proxy --width=1280 --height=720 --thumbnail --output=api-proxy.png
 ```
+
+Previews for Base64 Decoder, ViewRaw, Server Info, Text Commands, External Search Tools, Offline
+Composer Tools, User Tags, Copy File Contents and Reverse Image Search are rendered the same way
+from each package's real output on synthetic data: its result window, the tags it draws next to
+names, the copy button on a text file, or the image menu with its submenu open. Reproduce with
+`--extension=ID` as above; no package is downloaded and no account is used.

@@ -5,7 +5,7 @@
 > working unchanged. Names may still change before release.
 
 API v2 is an extension of the [existing SDK](extension-sdk-overview.md), not a second one. The
-same Wasm exports (`serein_alloc`, `serein_invoke`), the same `export!` macro, the same panels,
+same Wasm exports (`harmony_alloc`, `harmony_invoke`), the same `export!` macro, the same panels,
 effects and app actions apply. A plugin opts in with `"api_version": 2` in its manifest; every
 v2 field is ignored by nothing and refused in a v1 manifest, so a v1 package can never reach a v2
 feature by accident.
@@ -87,6 +87,10 @@ if input.host().is_some_and(|host| host.supports_feature("sync", 1, 0)) { /* …
 Features offered by this build, all at `1.0.0`: `settings`, `secrets`, `storage.kv`,
 `host_requests`, `dependencies`, `media.links`, `attachments.read`, `lookups.server_profile`,
 `ui.contributions`.
+
+Packages export `harmony_alloc` and `harmony_invoke`. The SDK's `export!` also exports the same
+functions under their earlier names, so a package built today still runs in older releases, and
+Harmony accepts packages that export only the earlier names.
 
 A feature's major version changes only when its behavior changes incompatibly; new fields and
 request kinds are additive within a major version. The host keeps supporting API version 1.
@@ -213,10 +217,44 @@ ID that names no declared action. Pressing it runs the **same** action again on 
 panel's values in `input.values`. Use it for per-item choices such as "use image 2" or "delete
 this note". Declared panel actions keep the v1 behavior.
 
+## Toolbar, image and attachment actions
+
+Three placements put an extension's action where people expect it. Each is drawn by Harmony
+with an icon from its set (`icon`), and the action's `label` is the tooltip or menu text.
+
+| `surface` | Where | The handler receives | Needs |
+| --- | --- | --- | --- |
+| `message_toolbar` | an icon in a message's hover toolbar (up to three extensions) | the message, like `message` | `selected_message` |
+| `image` | an entry in an image's right-click menu; a submenu when `choices` are declared | that image as the only `media` link, the chosen entry as `button` | `media_links` |
+| `attachment` | an icon on file attachments that `accepts` matches | that file as the only `media` link | `media_links` (and `attachment_contents` to read it) |
+
+```json
+{ "id": "search", "label": "Search Image", "surface": "image", "icon": "search",
+  "choices": [{ "id": "google", "label": "Google" }, { "id": "all", "label": "All", "icon": "external" }] },
+{ "id": "copy", "label": "Copy File Contents", "surface": "attachment", "icon": "copy",
+  "accepts": { "extensions": ["txt", "md"], "content_types": ["text/"], "max_bytes": 65536 } }
+```
+
+`choices` has at most 12 entries. `accepts` lists lowercase file extensions and content type
+prefixes; a file matches either list and must not exceed `max_bytes`.
+
+**Results that apply at once.** When one of these buttons or menu entries is clicked and the
+result is only a `copy_text` effect, or only `open_external_link` effects (up to eight), Harmony
+applies it right away; the click on Harmony's own button is the consent. A copy shows "Copied to
+clipboard" and the button shows a check mark for two seconds. Any other result, or a result with
+a panel, opens the usual result window. Actions from other menus always confirm first.
+
+## Panel images
+
+`Element::Image { url, alt, size }` shows an image from Discord's own hosts
+(`cdn.discordapp.com`, `media.discordapp.net` and its image proxies), square, 16 to 256 points.
+Harmony loads it through its media cache; other hosts are refused.
+
 ## Effects
 
-API v2 extensions can propose copying up to 64 KiB of text with `HostEffect::CopyText`
-(v1 keeps 4 KiB). The user still confirms every effect.
+API v2 extensions can copy up to 64 KiB of text with `HostEffect::CopyText` (v1 keeps 4 KiB),
+and a v2 result may carry up to eight `open_external_link` effects at once (any other result
+carries one effect). Outside the button placements above, the user confirms every effect.
 
 ## Permissions
 

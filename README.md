@@ -28,14 +28,6 @@
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green.svg" alt="License: MIT or Apache-2.0" /></a>
 </p>
 
-> [!NOTE]
-> **Harmony is a fork of [Serein](https://github.com/ViceVerse-cz/Serein)** by [ViceVerse-cz](https://github.com/ViceVerse-cz) and the
-> Serein contributors. The client, its architecture, protocol work, voice stack and extension system
-> are their work; see [Credits](#credits). This fork restyles the interface to follow Discord's
-> current desktop look and renames the application.
-
----
-
 > [!WARNING]
 > **Unofficial and not endorsed by Discord.**
 > Harmony communicates directly with Discord's public gateway and REST endpoints for your existing account. Automating normal accounts outside the official OAuth2/bot API violates Discord's Terms of Service and carries risk of account termination. Technical interoperability does not imply platform approval. Review the [compatibility matrix](docs/discord-compatibility.md) and [authentication guide](docs/authentication.md) before use.
@@ -46,9 +38,8 @@
 
 > [!IMPORTANT]
 > Harmony has not published releases, package repositories, a Flatpak remote or a Homebrew cask yet.
-> The instructions below are inherited from Serein and describe how those channels will work once
-> they exist; until then, build from source with the [Quick Start](#quick-start). For ready-made
-> builds of the original client, use [Serein's releases](https://github.com/ViceVerse-cz/Serein/releases).
+> The instructions below describe how those channels will work once they exist; until then,
+> build from source with the [Quick Start](#quick-start).
 
 Pre-compiled releases for macOS, Linux, and Windows are published on GitHub [Releases](https://github.com/sirchico/Harmony/releases).
 
@@ -296,7 +287,7 @@ Download `harmony-<version>-macOS-ARM64.zip` from [Releases](https://github.com/
 
 ## Measured Performance vs. Official Discord
 
-> These measurements were taken by the Serein project on Serein builds; Harmony has not re-run them.
+> These measurements were taken on an earlier build of this codebase; they have not been re-run on the current one.
 
 > **Testing Scenario:** Browsing channels while joined in a Voice Channel (VC) and streaming screen at 60 FPS on macOS.
 
@@ -446,24 +437,7 @@ For full details, review the [Storage Policy](docs/storage-policy.md) and [Threa
 
 ## Credits
 
-Harmony exists because of **[Serein](https://github.com/ViceVerse-cz/Serein)**, created by
-**[ViceVerse-cz](https://github.com/ViceVerse-cz)** and the
-[Serein contributors](https://github.com/ViceVerse-cz/Serein/graphs/contributors). Everything that makes this a working native
-client is theirs: the Rust/egui application, the gateway, REST and voice implementations, the
-storage and security model, the extension SDK, the packaging and the documentation. The full
-upstream commit history is preserved in this repository, and the original copyright notice in
-[LICENSE-MIT](LICENSE-MIT) is unchanged.
-
-What this fork changes:
-
-- The built-in themes, text sizes, message spacing, member list, composer, settings navigation and
-  context menus follow Discord's current desktop client, using values read from Discord's published
-  stylesheet and measured in the web client.
-- Noto Sans replaces Inter as the bundled interface font.
-- Menu rows carry icons, with fourteen more [Phosphor](https://phosphoricons.com) glyphs in the atlas.
-- The application is renamed from Serein to Harmony, with new application icons.
-
-Also thanks to:
+Thanks to:
 
 - [Ferris](https://rustacean.net), the Rust mascot by Karen Rustad Tölva, released into the public
   domain (CC0); the in-app mark is a white silhouette of Ferris.
@@ -471,13 +445,11 @@ Also thanks to:
   (SIL OFL 1.1), [egui](https://github.com/emilk/egui) and every project listed in
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Harmony is not affiliated with Discord or with the Serein project. Please report problems with this
-fork here, not to Serein's maintainers. Prebuilt extensions and the extension ABI keep their Serein
-names (`serein_alloc`, `serein_invoke`, the `serein-*` theme ids) so existing packages keep working.
+Harmony is not affiliated with Discord. Please report problems in this repository.
 
 ## License
 
-Harmony keeps Serein's licensing. The code is dual-licensed under either:
+The code is dual-licensed under either:
 - **MIT License** ([LICENSE-MIT](LICENSE-MIT))
 - **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE))
 

@@ -83,6 +83,12 @@ pub enum ContributionIcon {
 	Pin,
 	Bell,
 	Shield,
+	Search,
+	External,
+	Copy,
+	Code,
+	Server,
+	Eye,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

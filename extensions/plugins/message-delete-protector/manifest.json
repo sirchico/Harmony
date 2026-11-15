@@ -2,7 +2,7 @@
   "api_version": 1,
   "id": "message-delete-protector",
   "name": "Message delete protector",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
   "source": "https://github.com/sirchico/Harmony",

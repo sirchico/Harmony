@@ -225,6 +225,14 @@ pub enum Surface {
 	Channel,
 	Server,
 	Role,
+	/// API v2: an icon button in a message's hover toolbar; receives the message.
+	MessageToolbar,
+	/// API v2: an image context-menu entry (a submenu with `choices`); receives the image as
+	/// the only `media` link and the chosen entry as `button`.
+	Image,
+	/// API v2: an icon button on file attachments matching `accepts`; receives the file as
+	/// the only `media` link. A result that only copies text is copied at once.
+	Attachment,
 }
 
 /// Declared entry point; its ID arrives in `Invocation::action`.
@@ -234,4 +242,32 @@ pub struct Action {
 	pub id: String,
 	pub label: String,
 	pub surface: Surface,
+	/// API v2: the icon drawn for toolbar, image and attachment actions.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub icon: Option<crate::ContributionIcon>,
+	/// API v2, `image` only: submenu entries (at most 12).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub choices: Vec<ActionChoice>,
+	/// API v2, `attachment` only (required): which files show the button.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub accepts: Option<AttachmentFilter>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActionChoice {
+	pub id: String,
+	pub label: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub icon: Option<crate::ContributionIcon>,
+}
+
+/// Files match by extension (lowercase, no dot) or content type prefix, up to `max_bytes`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AttachmentFilter {
+	pub extensions: Vec<String>,
+	pub content_types: Vec<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub max_bytes: Option<u64>,
 }

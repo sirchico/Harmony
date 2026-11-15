@@ -1,99 +1,115 @@
-/*
- * Vencord, a modification for Discord's desktop app
- * Copyright (c) 2022 Vendicated and contributors
- *
- * Harmony adaptation copyright (c) 2026 Harmony contributors.
- * Changed November 8, 2026: only explicitly granted message text and public IDs cross the ABI.
- *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 3 or (at your option) any
- * later version. See https://www.gnu.org/licenses/gpl-3.0.html.
- */
+//! ViewRaw: a hover-toolbar button that shows a message's raw text and data in a window,
+//! with buttons to copy either. Written for Harmony using only the public API v2 SDK. It sees
+//! only the message text and public IDs Harmony passes to `selected_message` actions.
 use harmony_extension_sdk::{
-	AppOutput, Element, MAX_IO_BYTES, MessageActionInvocation, Output, serde_json,
+	Element, ExtensionInvocation, ExtensionOutput, HostEffect, MAX_COPY_TEXT_BYTES_V2, serde_json,
 };
 
-const RAW_ELEMENT_BYTES: usize = 4000;
-const MAX_RAW_ELEMENTS: usize = 16;
+/// Text shown per panel element; long messages are split over several.
+const CHUNK: usize = 4000;
+/// Most text shown in the window; copying still takes everything up to the copy limit.
+const SHOWN: usize = 64 * 1024;
 
-fn text(value: impl Into<String>) -> Element {
-	Element::Text { text: value.into() }
+fn copy(text: String) -> ExtensionOutput {
+	ExtensionOutput::effect(HostEffect::CopyText { text })
 }
 
-fn handle(input: MessageActionInvocation) -> AppOutput {
-	let selected = input
-		.selected_message_ref
-		.as_ref()
-		.map(|message| {
-			let mut ids = format!(
-				"Channel ID: {}\nMessage ID: {}\nAuthor ID: {}",
-				message.channel_id, message.message_id, message.author_id
-			);
-			if let Some(guild) = &message.guild_id {
-				ids.push_str(&format!("\nServer ID: {guild}"));
-			}
-			ids
-		})
-		.unwrap_or_else(|| "Message IDs are unavailable on this host.".into());
-	let raw = input
-		.invocation
-		.invocation
-		.selected_message
-		.unwrap_or_default();
-	let mut panel = vec![Element::Heading {
-		text: "Raw message text".into(),
-	}];
-	if raw.is_empty() {
-		panel.push(text("(empty message)"));
-	} else {
-		let mut remaining = raw.as_str();
-		for _ in 0..MAX_RAW_ELEMENTS {
-			if remaining.len() <= RAW_ELEMENT_BYTES {
-				panel.push(text(remaining));
-				remaining = "";
-				break;
-			}
-			let mut end = RAW_ELEMENT_BYTES;
-			while !remaining.is_char_boundary(end) {
-				end -= 1;
-			}
-			panel.push(text(&remaining[..end]));
-			remaining = &remaining[end..];
+/// The message's public data as pretty JSON with sorted keys.
+pub fn message_data(input: &ExtensionInvocation, content: &str) -> String {
+	let mut data = serde_json::Map::new();
+	data.insert("content".into(), content.into());
+	if let Some(message) = &input.selected_message_ref {
+		data.insert("author_id".into(), message.author_id.clone().into());
+		data.insert("channel_id".into(), message.channel_id.clone().into());
+		if let Some(guild) = &message.guild_id {
+			data.insert("guild_id".into(), guild.clone().into());
 		}
-		if !remaining.is_empty() {
-			panel.push(text(format!(
-				"{} UTF-8 bytes omitted: the 64 KiB raw-message display limit was reached.",
-				remaining.len()
-			)));
-		}
+		data.insert("id".into(), message.message_id.clone().into());
 	}
-	panel.extend([
-		Element::Separator,
-		text(selected),
-		Element::Separator,
-		text(
-			"This safe ViewRaw port exposes only the selected text and IDs granted by Harmony—not private host objects or raw Gateway data.",
-		),
-	]);
-	let output = AppOutput {
-		output: Output {
-			panel,
-			..Default::default()
-		},
-		..Default::default()
-	};
-	if serde_json::to_vec(&output).is_ok_and(|bytes| bytes.len() <= MAX_IO_BYTES) {
-		output
-	} else {
-		AppOutput {
-			output: Output {
-				panel: vec![text(
-					"This message is too large to display within the extension's 256 KiB response limit.",
-				)],
-				..Default::default()
-			},
-			..Default::default()
+	serde_json::to_string_pretty(&serde_json::Value::Object(data)).unwrap_or_default()
+}
+
+/// Splits text into display chunks on character boundaries, up to the display limit.
+pub fn chunks(text: &str) -> (Vec<&str>, usize) {
+	let mut rest = text;
+	let mut out = Vec::new();
+	let mut shown = 0;
+	while !rest.is_empty() && shown < SHOWN {
+		let mut end = rest.len().min(CHUNK);
+		while !rest.is_char_boundary(end) {
+			end -= 1;
 		}
+		out.push(&rest[..end]);
+		shown += end;
+		rest = &rest[end..];
+	}
+	(out, rest.len())
+}
+
+fn window(content: &str, data: &str) -> ExtensionOutput {
+	let mut panel = vec![
+		Element::Heading {
+			text: "Raw Message Data".into(),
+		},
+		Element::Heading {
+			text: "Message Content".into(),
+		},
+	];
+	if content.is_empty() {
+		panel.push(Element::Text {
+			text: "(no text)".into(),
+		});
+	}
+	let (shown, omitted) = chunks(content);
+	panel.extend(
+		shown
+			.into_iter()
+			.map(|text| Element::Text { text: text.into() }),
+	);
+	if omitted > 0 {
+		panel.push(Element::Text {
+			text: format!("{omitted} more bytes are not shown."),
+		});
+	}
+	panel.push(Element::Separator);
+	panel.push(Element::Heading {
+		text: "Message Data".into(),
+	});
+	panel.push(Element::Text { text: data.into() });
+	panel.push(Element::Row {
+		children: vec![
+			Element::Button {
+				id: "copy-data".into(),
+				label: "Copy Message Data".into(),
+			},
+			Element::Button {
+				id: "copy-content".into(),
+				label: "Copy Raw Content".into(),
+			},
+		],
+	});
+	ExtensionOutput::panel(panel)
+}
+
+fn handle(input: ExtensionInvocation) -> ExtensionOutput {
+	let content = input.selected_message().unwrap_or_default().to_owned();
+	let data = message_data(&input, &content);
+	let copy_mode = input.setting_text("click") == Some("copy");
+	let wanted = match input.button() {
+		Some("copy-content") => Some(content.clone()),
+		Some("copy-data") => Some(data.clone()),
+		_ if copy_mode => Some(content.clone()),
+		_ => None,
+	};
+	match wanted {
+		Some(text) if text.is_empty() => ExtensionOutput::panel(vec![Element::Text {
+			text: "This message has no text to copy.".into(),
+		}]),
+		Some(text) if text.len() <= MAX_COPY_TEXT_BYTES_V2 => copy(text),
+		Some(_) => ExtensionOutput::panel(vec![Element::Text {
+			text: "This message is too long to copy.".into(),
+		}]),
+		None => window(&content, &data),
 	}
 }
 
@@ -102,86 +118,72 @@ harmony_extension_sdk::export!(handle);
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use harmony_extension_sdk::{dispatch_typed, serde_json};
+	use harmony_extension_sdk::{SelectedMessageRef, SettingValue, testing::TestHost};
 
-	#[test]
-	fn exact_text_and_only_public_ids_cross_the_abi() {
-		let input = serde_json::json!({
-			"action": "view-raw",
-			"selected_message": "**raw** <@42> \\n not a newline",
-			"selected_message_ref": {
-				"channel_id": "10", "message_id": "20", "author_id": "30", "guild_id": "40"
-			}
+	fn on_message(text: &str, button: Option<&str>, click: &str) -> ExtensionInvocation {
+		let mut input = ExtensionInvocation::default();
+		input.invocation.invocation.invocation.action = "view-raw".into();
+		input.invocation.invocation.invocation.selected_message = Some(text.into());
+		input.selected_message_ref = Some(SelectedMessageRef {
+			channel_id: "2".into(),
+			message_id: "3".into(),
+			author_id: "4".into(),
+			guild_id: None,
 		});
-		let bytes = dispatch_typed(&serde_json::to_vec(&input).unwrap(), handle).unwrap();
-		let output: AppOutput = serde_json::from_slice(&bytes).unwrap();
-		assert!(output.effects.is_empty());
-		assert!(output.output.storage.is_none());
-		assert!(output.output.replacement.is_none());
-		assert!(
-			matches!(&output.output.panel[1], Element::Text { text } if text == "**raw** <@42> \\n not a newline")
-		);
-		assert!(
-			matches!(&output.output.panel[3], Element::Text { text } if text.contains("Server ID: 40") && !text.contains("token"))
-		);
+		input.button = button.map(Into::into);
+		input
+			.settings
+			.insert("click".into(), SettingValue::Text(click.into()));
+		input
 	}
 
 	#[test]
-	fn older_hosts_without_ids_still_show_the_selected_text() {
-		let bytes = dispatch_typed(
-			br#"{"action":"view-raw","selected_message":"plain"}"#,
-			handle,
-		)
-		.unwrap();
-		let output: AppOutput = serde_json::from_slice(&bytes).unwrap();
-		assert!(matches!(&output.output.panel[1], Element::Text { text } if text == "plain"));
+	fn the_window_shows_content_and_sorted_data_and_buttons_copy_each() {
+		let window = TestHost::default()
+			.run(on_message("**hi**", None, "window"), handle)
+			.unwrap();
+		let texts: Vec<_> = window
+			.output
+			.output
+			.panel
+			.iter()
+			.filter_map(|element| match element {
+				Element::Text { text } => Some(text.as_str()),
+				_ => None,
+			})
+			.collect();
+		assert_eq!(texts[0], "**hi**");
+		assert!(texts[1].find("\"author_id\"") < texts[1].find("\"id\""));
+		let data = TestHost::default()
+			.run(on_message("**hi**", Some("copy-data"), "window"), handle)
+			.unwrap();
 		assert!(
-			matches!(&output.output.panel[3], Element::Text { text } if text.contains("unavailable"))
+			matches!(&data.output.effects[..], [HostEffect::CopyText { text }] if text.contains("\"channel_id\": \"2\""))
 		);
+		let quick = TestHost::default()
+			.run(on_message("**hi**", None, "copy"), handle)
+			.unwrap();
+		assert_eq!(
+			quick.output.effects,
+			[HostEffect::CopyText {
+				text: "**hi**".into()
+			}]
+		);
+		let empty = TestHost::default()
+			.run(on_message("", Some("copy-content"), "window"), handle)
+			.unwrap();
+		assert!(empty.output.effects.is_empty());
 	}
 
 	#[test]
-	fn long_unicode_messages_stay_within_panel_and_response_limits() {
-		let selected_message = format!("{}🦀{}", "a".repeat(3999), "x".repeat(65_000));
-		let invocation = MessageActionInvocation {
-			invocation: harmony_extension_sdk::AppInvocation {
-				invocation: harmony_extension_sdk::Invocation {
-					action: "view-raw".into(),
-					selected_message: Some(selected_message),
-					..Default::default()
-				},
-				..Default::default()
-			},
-			selected_message_ref: None,
-		};
-		let output = handle(invocation);
-		assert_eq!(output.output.panel.len(), 22);
-		assert!(serde_json::to_vec(&output).unwrap().len() <= MAX_IO_BYTES);
-		assert!(output.output.panel.iter().any(|element| matches!(
-			element,
-			Element::Text { text } if text.contains("UTF-8 bytes omitted")
-		)));
-		assert!(output.output.panel.iter().all(|element| match element {
-			Element::Text { text } => text.len() <= RAW_ELEMENT_BYTES.max(4096),
-			_ => true,
-		}));
-
-		let invocation = MessageActionInvocation {
-			invocation: harmony_extension_sdk::AppInvocation {
-				invocation: harmony_extension_sdk::Invocation {
-					action: "view-raw".into(),
-					selected_message: Some("\u{1}".repeat(50_000)),
-					..Default::default()
-				},
-				..Default::default()
-			},
-			selected_message_ref: None,
-		};
-		let output = handle(invocation);
-		assert_eq!(output.output.panel.len(), 1);
-		assert!(matches!(
-			&output.output.panel[0],
-			Element::Text { text } if text.contains("256 KiB response limit")
-		));
+	fn long_text_is_split_on_character_boundaries_and_capped() {
+		let text = "é".repeat(SHOWN);
+		let (shown, omitted) = chunks(&text);
+		assert!(shown.iter().all(|chunk| chunk.len() <= CHUNK));
+		assert_eq!(
+			shown.iter().map(|chunk| chunk.len()).sum::<usize>() + omitted,
+			text.len()
+		);
+		assert!(omitted > 0);
 	}
 }

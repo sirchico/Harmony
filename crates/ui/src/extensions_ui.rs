@@ -385,6 +385,11 @@ pub struct ExtensionUi {
 	message_actions: Arc<Vec<MenuAction>>,
 	/// User, channel, server and role menu entries, published to menus each frame.
 	context_actions: Arc<Vec<(Surface, MenuAction)>>,
+	/// API v2 toolbar, image and attachment actions, published to widgets each frame.
+	item_actions: Arc<Vec<crate::extension_items::ItemAction>>,
+	/// What a host-drawn button's result does at once: (item key, effects). Only a copy or up
+	/// to eight links qualify; the click itself was the consent. Applied by the next frame.
+	pub(crate) direct_effects: Option<(String, Vec<extensions::HostEffect>)>,
 	themes: bool,
 	query: String,
 	previews: BTreeMap<String, PreviewImage>,
@@ -731,6 +736,33 @@ impl ExtensionUi {
 				})
 				.collect(),
 		);
+		self.item_actions = Arc::new(
+			self.entries
+				.iter()
+				.filter(|entry| entry.enabled && entry.manifest.api_version >= extensions::API_V2)
+				.flat_map(|entry| {
+					entry
+						.manifest
+						.actions
+						.iter()
+						.filter(|action| {
+							matches!(
+								action.surface,
+								Surface::MessageToolbar | Surface::Image | Surface::Attachment
+							)
+						})
+						.map(|action| crate::extension_items::ItemAction {
+							plugin: entry.manifest.id.clone(),
+							action: action.id.clone(),
+							label: action.label.clone(),
+							surface: action.surface,
+							icon: action.icon,
+							choices: action.choices.clone(),
+							accepts: action.accepts.clone(),
+						})
+				})
+				.collect(),
+		);
 		self.context_actions = Arc::new(
 			self.entries
 				.iter()
@@ -773,6 +805,39 @@ impl ExtensionUi {
 			);
 			chosen
 		});
+		crate::extension_items::publish(ctx, &self.item_actions);
+		if let Some(choice) = crate::extension_items::take_choice(ctx) {
+			let (selected_message, selected_message_ref) = match &choice.message {
+				Some((text, target)) => (
+					Some(text.clone()),
+					Some(Box::new(extensions::SelectedMessageRef {
+						channel_id: target.channel.to_string(),
+						message_id: target.message.to_string(),
+						author_id: target.author.to_string(),
+						guild_id: state
+							.channel(target.channel)
+							.and_then(|channel| channel.guild)
+							.map(|guild| guild.to_string()),
+					})),
+				),
+				None => (None, None),
+			};
+			self.queue(
+				ctx,
+				ExtensionRequest::Invoke {
+					id: choice.plugin,
+					invocation: Invocation {
+						action: choice.action,
+						button: choice.button,
+						media: choice.media.map(|link| vec![link]),
+						selected_message,
+						selected_message_ref,
+						..Default::default()
+					},
+					context: ExtensionContext::capture(state, false),
+				},
+			);
+		}
 		if let Some((action, target, context)) = chosen {
 			if !context.is_current(state) {
 				self.status = "Menu action discarded because the account changed.".into();
@@ -1170,6 +1235,49 @@ impl ExtensionUi {
 		invocation.storage = None;
 		invocation.app = None;
 		output.storage = None;
+		// A host-drawn button whose result only copies text or opens links does so at once:
+		// the click on Harmony's own button is the consent.
+		let from_button = self.entries.iter().any(|entry| {
+			entry.manifest.id == id
+				&& entry.manifest.actions.iter().any(|action| {
+					action.id == invocation.action
+						&& matches!(
+							action.surface,
+							Surface::MessageToolbar | Surface::Image | Surface::Attachment
+						)
+				})
+		});
+		let copy = matches!(
+			output.effects.as_slice(),
+			[extensions::HostEffect::CopyText { .. }]
+		);
+		let links = !output.effects.is_empty()
+			&& output.effects.len() <= 8
+			&& output.effects.iter().all(|effect| {
+				matches!(
+					effect,
+					extensions::HostEffect::AppAction {
+						action: extensions::AppAction::OpenExternalLink { .. }
+					}
+				)
+			});
+		if from_button && output.panel.is_empty() && output.replacement.is_none() && (copy || links)
+		{
+			let key = invocation
+				.media
+				.as_ref()
+				.and_then(|media| media.first())
+				.and_then(|link| link.attachment_id.clone())
+				.or_else(|| {
+					invocation
+						.selected_message_ref
+						.as_ref()
+						.map(|target| target.message_id.clone())
+				})
+				.unwrap_or_default();
+			self.direct_effects = Some((key, output.effects));
+			return;
+		}
 		self.result = Some(ResultPanel {
 			id,
 			invocation,
@@ -2725,7 +2833,13 @@ impl ExtensionUi {
 						});
 						return;
 					}
-					render_elements(ui, &result.output.panel, &mut result.values, &mut action);
+					render_elements(
+						ui,
+						&result.output.panel,
+						&mut result.values,
+						&mut action,
+						Some(&mut *avatars),
+					);
 					if proxy {
 						ui.separator();
 						self.proxy_auth.show(
@@ -3536,9 +3650,21 @@ pub(crate) fn render_elements(
 	elements: &[Element],
 	values: &mut BTreeMap<String, String>,
 	action: &mut Option<String>,
+	mut images: Option<&mut crate::avatars::Avatars>,
 ) {
 	for element in elements {
 		match element {
+			Element::Image { url, alt, size } => {
+				let size = f32::from(*size);
+				match images.as_deref_mut() {
+					Some(images) => {
+						images.show_icon(ui, Some(format!("game:{url}")), size, false, alt);
+					}
+					None => {
+						ui.allocate_exact_size(egui::Vec2::splat(size), egui::Sense::hover());
+					}
+				}
+			}
 			Element::ActivityPreview { presence } => {
 				crate::rich_presence::summary(ui, presence);
 			}
@@ -3552,7 +3678,9 @@ pub(crate) fn render_elements(
 				ui.separator();
 			}
 			Element::Row { children } => {
-				ui.horizontal_wrapped(|ui| render_elements(ui, children, values, action));
+				ui.horizontal_wrapped(|ui| {
+					render_elements(ui, children, values, action, images.as_deref_mut())
+				});
 			}
 			Element::Button { id, label } => {
 				if ui.push_id(id, |ui| ui.button(label)).inner.clicked() {
@@ -3822,6 +3950,9 @@ mod tests {
 		enabled.enabled = true;
 		enabled.manifest.capabilities = vec![Capability::ContextMenus];
 		enabled.manifest.actions = vec![extensions::Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "copy".into(),
 			label: "Copy link".into(),
 			surface: Surface::Server,
@@ -3879,6 +4010,9 @@ mod tests {
 		let state = test_support::demo_state();
 		let mut shop = ExtensionUi::default();
 		let action = |id: &str, label: &str, surface| extensions::Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: id.into(),
 			label: label.into(),
 			surface,
@@ -3969,11 +4103,17 @@ mod tests {
 		enabled.manifest.capabilities = vec![Capability::ContextMenus];
 		enabled.manifest.actions = vec![
 			extensions::Action {
+				icon: None,
+				choices: Vec::new(),
+				accepts: None,
 				id: "copy".into(),
 				label: "Copy link".into(),
 				surface: Surface::User,
 			},
 			extensions::Action {
+				icon: None,
+				choices: Vec::new(),
+				accepts: None,
 				id: "archive".into(),
 				label: "Archive DM".into(),
 				surface: Surface::Channel,
@@ -4202,6 +4342,9 @@ mod tests {
 		offered.enabled = true;
 		offered.manifest.capabilities = vec![Capability::ContextMenus];
 		offered.manifest.actions = vec![extensions::Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "copy-color".into(),
 			label: "Copy role color".into(),
 			surface: Surface::Role,

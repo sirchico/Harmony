@@ -2,32 +2,26 @@
   "api_version": 2,
   "id": "copy-file-contents",
   "name": "Copy File Contents",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
   "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/copy-file-contents",
   "kind": "plugin",
-  "capabilities": ["selected_message", "media_links", "attachment_contents", "clipboard_write"],
+  "capabilities": ["media_links", "attachment_contents", "clipboard_write"],
   "actions": [
-    { "id": "copy", "label": "Copy file contents", "surface": "message" }
+    {
+      "id": "copy",
+      "label": "Copy File Contents",
+      "surface": "attachment",
+      "icon": "copy",
+      "accepts": {
+        "content_types": ["text/", "application/json", "application/xml", "application/x-sh", "application/javascript"],
+        "extensions": ["txt", "md", "log", "json", "toml", "yaml", "yml", "xml", "csv", "tsv", "ini", "cfg", "conf", "rs", "py", "js", "ts", "tsx", "jsx", "c", "h", "cpp", "hpp", "cs", "java", "kt", "go", "rb", "php", "lua", "sh", "ps1", "bat", "sql", "html", "css", "scss", "diff", "patch", "srt", "env"],
+        "max_bytes": 65536
+      }
+    }
   ],
   "requires": {
-    "features": {
-      "settings": "^1.0",
-      "host_requests": "^1.0",
-      "media.links": "^1.0",
-      "attachments.read": "^1.0"
-    }
-  },
-  "settings": [
-    {
-      "id": "max-kib",
-      "label": "Largest amount to read (KiB)",
-      "description": "Longer files are read and copied up to this size.",
-      "type": "number",
-      "min": 1,
-      "max": 64,
-      "default": 64
-    }
-  ]
+    "features": { "host_requests": "^1.0", "media.links": "^1.0", "attachments.read": "^1.0" }
+  }
 }

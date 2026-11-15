@@ -199,6 +199,18 @@ pub enum Element {
 		max: i32,
 		value: i32,
 	},
+	/// API v2: an image from Discord's CDN (`cdn.discordapp.com`, `media.discordapp.net`),
+	/// drawn square at `size` points (16 to 256, default 64).
+	Image {
+		url: String,
+		alt: String,
+		#[serde(default = "default_image_size")]
+		size: u16,
+	},
+}
+
+fn default_image_size() -> u16 {
+	64
 }
 
 /// Local SDK errors. The Wasm ABI still reports failure with a zero-length response.
@@ -285,11 +297,14 @@ fn encode<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, Error> {
 
 /// Export a typed handler as Harmony ABI version 1, including `fn(Invocation) -> Output`.
 /// Each invocation gets a fresh instance, so buffers are reclaimed when it finishes.
+///
+/// The module exports `harmony_alloc` and `harmony_invoke`, plus the same functions under
+/// their earlier names so the package also runs in Harmony releases from before the rename.
 #[macro_export]
 macro_rules! export {
 	($handler:path) => {
 		#[unsafe(no_mangle)]
-		pub extern "C" fn serein_alloc(length: u32) -> u32 {
+		pub extern "C" fn harmony_alloc(length: u32) -> u32 {
 			if length == 0 || length as usize > $crate::MAX_IO_BYTES {
 				return 0;
 			}
@@ -298,9 +313,9 @@ macro_rules! export {
 		}
 
 		/// # Safety
-		/// The Harmony host supplies the pointer returned by `serein_alloc` and its allocated length.
+		/// The Harmony host supplies the pointer returned by `harmony_alloc` and its allocated length.
 		#[unsafe(no_mangle)]
-		pub unsafe extern "C" fn serein_invoke(pointer: u32, length: u32) -> u64 {
+		pub unsafe extern "C" fn harmony_invoke(pointer: u32, length: u32) -> u64 {
 			if pointer == 0 || length == 0 || length as usize > $crate::MAX_IO_BYTES {
 				return 0;
 			}
@@ -313,6 +328,22 @@ macro_rules! export {
 			let length = output.len() as u64;
 			let pointer = ::std::boxed::Box::into_raw(output.into_boxed_slice()) as *mut u8 as u32;
 			((pointer as u64) << 32) | length
+		}
+
+		/// Earlier name of [`harmony_alloc`], for older Harmony releases.
+		#[unsafe(no_mangle)]
+		pub extern "C" fn serein_alloc(length: u32) -> u32 {
+			harmony_alloc(length)
+		}
+
+		/// Earlier name of [`harmony_invoke`], for older Harmony releases.
+		///
+		/// # Safety
+		/// Same contract as `harmony_invoke`.
+		#[unsafe(no_mangle)]
+		pub unsafe extern "C" fn serein_invoke(pointer: u32, length: u32) -> u64 {
+			// SAFETY: forwarded unchanged under the same contract.
+			unsafe { harmony_invoke(pointer, length) }
 		}
 	};
 }

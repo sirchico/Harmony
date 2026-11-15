@@ -2,10 +2,10 @@
   "api_version": 1,
   "id": "custom-rpc",
   "name": "Custom Rich Presence",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
-  "source": "https://github.com/ViceVerse-cz/Serein-extensions/tree/main/plugins/custom-rpc",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/custom-rpc",
   "kind": "plugin",
   "capabilities": [
     "rich_presence",

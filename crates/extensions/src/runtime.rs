@@ -30,12 +30,26 @@ fn module(engine: &Engine, bytes: &[u8]) -> Result<Module, Error> {
 		return Err(Error::Module);
 	}
 	if !matches!(module.get_export("memory"), Some(ExternType::Memory(_)))
-		|| !matches!(module.get_export("serein_alloc"), Some(ExternType::Func(ty)) if ty == FuncType::new([ValType::I32], [ValType::I32]))
-		|| !matches!(module.get_export("serein_invoke"), Some(ExternType::Func(ty)) if ty == FuncType::new([ValType::I32, ValType::I32], [ValType::I64]))
+		|| exports(&module).is_none()
 	{
 		return Err(Error::Module);
 	}
 	Ok(module)
+}
+
+/// Export names of the plugin ABI, current first. Packages built before the rename export
+/// the earlier names, which stay accepted so installed and published packages keep working.
+const ABI_EXPORTS: [(&str, &str); 2] = [
+	("harmony_alloc", "harmony_invoke"),
+	("serein_alloc", "serein_invoke"),
+];
+
+/// The (alloc, invoke) export names this module provides with the right signatures.
+fn exports(module: &Module) -> Option<(&'static str, &'static str)> {
+	ABI_EXPORTS.into_iter().find(|(alloc, invoke)| {
+		matches!(module.get_export(alloc), Some(ExternType::Func(ty)) if ty == FuncType::new([ValType::I32], [ValType::I32]))
+			&& matches!(module.get_export(invoke), Some(ExternType::Func(ty)) if ty == FuncType::new([ValType::I32, ValType::I32], [ValType::I64]))
+	})
 }
 
 pub(crate) fn validate_module(bytes: &[u8]) -> Result<(), Error> {
@@ -79,7 +93,7 @@ fn instantiate(engine: &Engine, module: &Module) -> Result<(Store<StoreLimits>, 
 }
 
 /// Execute once, on the host worker. All Wasm state is dropped before returning.
-/// ABI: `serein_alloc(i32) -> i32`, `serein_invoke(i32, i32) -> i64`.
+/// ABI: `harmony_alloc(i32) -> i32`, `harmony_invoke(i32, i32) -> i64` (see [`ABI_EXPORTS`]).
 /// The result packs the output pointer in its high 32 bits and byte length in its low 32 bits.
 pub fn invoke(package: &Package, input: &Invocation) -> Result<Output, Error> {
 	if package.manifest.kind != ExtensionKind::Plugin || package.theme.is_some() {
@@ -111,11 +125,12 @@ pub fn invoke(package: &Package, input: &Invocation) -> Result<Output, Error> {
 	let module = module(&engine, &package.wasm)?;
 	let (mut store, instance) = instantiate(&engine, &module)?;
 	let memory = instance.get_memory(&store, "memory").ok_or(Error::Module)?;
+	let (alloc_name, invoke_name) = exports(&module).ok_or(Error::Module)?;
 	let alloc = instance
-		.get_typed_func::<i32, i32>(&store, "serein_alloc")
+		.get_typed_func::<i32, i32>(&store, alloc_name)
 		.map_err(|_| Error::Module)?;
 	let run = instance
-		.get_typed_func::<(i32, i32), i64>(&store, "serein_invoke")
+		.get_typed_func::<(i32, i32), i64>(&store, invoke_name)
 		.map_err(|_| Error::Module)?;
 	let pointer = alloc
 		.call(&mut store, bytes.len() as i32)

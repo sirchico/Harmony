@@ -20,6 +20,9 @@ fn manifest() -> Manifest {
 		quotas: Default::default(),
 		capabilities: vec![Capability::ApiProxy, Capability::Storage],
 		actions: vec![Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "apply".into(),
 			label: "Apply".into(),
 			surface: Surface::Panel,

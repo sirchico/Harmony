@@ -1,20 +1,28 @@
 {
-  "api_version": 1,
+  "api_version": 2,
   "id": "view-raw-message",
-  "name": "ViewRaw — safe message view",
-  "version": "1.0.2",
-  "author": "Equicord/Vencord contributors; Harmony port contributors",
-  "license": "GPL-3.0-or-later",
+  "name": "ViewRaw",
+  "version": "2.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
   "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/view-raw-message",
   "kind": "plugin",
-  "capabilities": [
-    "selected_message"
-  ],
+  "capabilities": ["selected_message", "clipboard_write"],
   "actions": [
+    { "id": "view-raw", "label": "View Raw", "surface": "message_toolbar", "icon": "code" }
+  ],
+  "requires": { "features": { "settings": "^1.0" } },
+  "settings": [
     {
-      "id": "view-raw",
-      "label": "View raw message text",
-      "surface": "message"
+      "id": "click",
+      "label": "View Raw button",
+      "description": "Change what the View Raw button on messages does.",
+      "type": "choice",
+      "options": [
+        { "value": "window", "label": "Show the raw data in a window" },
+        { "value": "copy", "label": "Copy the raw text" }
+      ],
+      "default": "window"
     }
   ]
 }

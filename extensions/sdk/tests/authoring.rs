@@ -22,11 +22,11 @@ mod abi {
 
 #[test]
 fn abi_rejects_empty_null_and_oversized_buffers_before_reading_memory() {
-	assert_eq!(abi::serein_alloc(0), 0);
-	assert_eq!(abi::serein_alloc(MAX_IO_BYTES as u32 + 1), 0);
+	assert_eq!(abi::harmony_alloc(0), 0);
+	assert_eq!(abi::harmony_alloc(MAX_IO_BYTES as u32 + 1), 0);
 	for (pointer, length) in [(0, 1), (1, 0), (1, MAX_IO_BYTES as u32 + 1)] {
 		// SAFETY: each invalid argument is rejected before dereferencing the pointer.
-		assert_eq!(unsafe { abi::serein_invoke(pointer, length) }, 0);
+		assert_eq!(unsafe { abi::harmony_invoke(pointer, length) }, 0);
 	}
 }
 

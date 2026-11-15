@@ -4735,6 +4735,13 @@ impl TimelineView {
 									+ 2 + usize::from(translate)
 									+ usize::from(own)
 							};
+							// Extension buttons (API v2 `message_toolbar`), at most three, before More.
+							let mut extension_buttons = crate::extension_items::actions(
+								ui.ctx(),
+								extensions::Surface::MessageToolbar,
+							);
+							extension_buttons.truncate(if shift { 0 } else { 3 });
+							let buttons = buttons + extension_buttons.len();
 							let width = buttons as f32 * 30.0;
 							let toolbar_rect = egui::Rect::from_min_size(
 								egui::pos2(
@@ -4951,6 +4958,40 @@ impl TimelineView {
 								&& !egui::Popup::is_id_open(toolbar.ctx(), popup_id)
 							{
 								self.keyboard_menu_row = None;
+							}
+							for button in &extension_buttons {
+								let key = id.to_string();
+								let copied =
+									crate::extension_items::copied_recently(ui.ctx(), &key);
+								if action_button(
+									&mut toolbar,
+									if copied {
+										crate::icons::Icon::Check
+									} else {
+										crate::extension_items::icon(button.icon)
+									},
+									if copied { "Copied!" } else { &button.label },
+								)
+								.clicked()
+								{
+									crate::extension_items::choose(
+										ui.ctx(),
+										crate::extension_items::ItemChoice {
+											plugin: button.plugin.clone(),
+											action: button.action.clone(),
+											button: None,
+											media: None,
+											message: Some((
+												message.display_text().into_owned(),
+												crate::extensions_ui::MessageTarget {
+													channel: message.channel,
+													message: id,
+													author: message.author.id,
+												},
+											)),
+										},
+									);
+								}
 							}
 							// Shift hides the More icon; right-click and Shift+F10 still use the row anchor.
 							let more = (!shift).then(|| {

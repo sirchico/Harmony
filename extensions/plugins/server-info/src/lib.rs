@@ -2,8 +2,8 @@
 //! the plugin's described behavior, using only the public SDK: a `server` menu action, one
 //! `server_profile` host request answered between rounds, and an optional `copy_text` effect.
 use harmony_extension_sdk::{
-	Element, ExtensionInvocation, ExtensionOutput, HostEffect, HostRequest, MenuTarget,
-	ResponseValue, ServerProfile,
+	Element, ExtensionInvocation, ExtensionOutput, HostRequest, MenuTarget, ResponseValue,
+	ServerProfile,
 };
 
 const LOOKUP: &str = "server";
@@ -35,82 +35,90 @@ pub fn utc(ms: u64) -> String {
 	)
 }
 
-fn level(value: Option<u8>, names: &[&str]) -> Option<String> {
-	value.map(|value| {
-		names
-			.get(usize::from(value))
-			.map_or_else(|| format!("Level {value}"), |name| (*name).to_owned())
-	})
+fn level(value: Option<u8>, names: &[&str]) -> String {
+	value.map_or_else(
+		|| "?".into(),
+		|value| {
+			names
+				.get(usize::from(value))
+				.map_or_else(|| format!("Level {value}"), |name| (*name).to_owned())
+		},
+	)
 }
 
+/// The server card: icon and name, description, then the info rows in a fixed order.
 pub fn details(profile: &ServerProfile, features: bool) -> Vec<Element> {
-	let mut panel = vec![Element::Heading {
+	let mut header = Vec::new();
+	if let Some(icon) = &profile.icon_url {
+		header.push(Element::Image {
+			url: icon.clone(),
+			alt: format!("{} icon", profile.name),
+			size: 64,
+		});
+	}
+	header.push(Element::Heading {
 		text: profile.name.clone(),
-	}];
+	});
+	let mut panel = vec![Element::Row { children: header }];
 	if let Some(description) = &profile.description {
 		panel.push(Element::Text {
 			text: description.clone(),
 		});
 	}
 	panel.push(Element::Separator);
-	panel.push(line("Server ID", &profile.id));
-	if let Some(owner) = &profile.owner_id {
-		panel.push(line("Owner ID", owner));
-	}
-	panel.push(line("Created", utc(profile.created_at_ms)));
+	panel.push(line(
+		"Server Owner",
+		profile
+			.owner_id
+			.as_deref()
+			.map_or("-".into(), |owner| format!("<@{owner}>")),
+	));
+	panel.push(line("Created At", utc(profile.created_at_ms)));
+	panel.push(line(
+		"Vanity Link",
+		profile
+			.vanity_url_code
+			.as_deref()
+			.map_or("-".into(), |code| format!("discord.gg/{code}")),
+	));
+	panel.push(line(
+		"Preferred Locale",
+		profile.preferred_locale.as_deref().unwrap_or("-"),
+	));
+	panel.push(line(
+		"Verification Level",
+		level(
+			profile.verification_level,
+			&["None", "Low", "Medium", "High", "Highest"],
+		),
+	));
+	panel.push(line(
+		"Server Boosts",
+		format!(
+			"{} (Level {})",
+			profile.premium_subscription_count.unwrap_or(0),
+			profile.premium_tier.unwrap_or(0)
+		),
+	));
 	if let Some(members) = profile.approximate_member_count {
 		let online = profile
 			.approximate_presence_count
 			.map_or(String::new(), |online| format!(" ({online} online)"));
 		panel.push(line("Members", format!("{members}{online}")));
 	}
-	if let Some(tier) = profile.premium_tier {
-		let boosts = profile.premium_subscription_count.unwrap_or(0);
-		panel.push(line("Boosts", format!("Level {tier}, {boosts} boosts")));
-	}
-	if let Some(verification) = level(
-		profile.verification_level,
-		&["None", "Low", "Medium", "High", "Highest"],
-	) {
-		panel.push(line("Verification", verification));
-	}
-	if let Some(filter) = level(
-		profile.explicit_content_filter,
-		&["Off", "Members without roles", "All members"],
-	) {
-		panel.push(line("Content filter", filter));
-	}
-	if let Some(mfa) = level(
-		profile.mfa_level,
-		&["Not required", "Required for moderators"],
-	) {
-		panel.push(line("Two-factor for moderation", mfa));
-	}
-	if let Some(vanity) = &profile.vanity_url_code {
-		panel.push(line("Vanity invite", format!("discord.gg/{vanity}")));
-	}
-	if let Some(locale) = &profile.preferred_locale {
-		panel.push(line("Language", locale));
-	}
-	panel.push(line(
-		"Roles · emojis · stickers",
-		format!(
-			"{} · {} · {}",
-			profile.roles, profile.emojis, profile.stickers
-		),
-	));
-	for (label, url) in [
-		("Icon", &profile.icon_url),
-		("Banner", &profile.banner_url),
-		("Invite background", &profile.splash_url),
-	] {
-		if let Some(url) = url {
-			panel.push(line(label, url));
-		}
-	}
+	// The default role is not counted, as in the client's role list.
+	panel.push(line("Roles", profile.roles.saturating_sub(1)));
 	if features && !profile.features.is_empty() {
 		panel.push(Element::Separator);
 		panel.push(line("Features", profile.features.join(", ")));
+	}
+	if let Some(banner) = &profile.banner_url {
+		panel.push(Element::Separator);
+		panel.push(Element::Image {
+			url: banner.clone(),
+			alt: format!("{} banner", profile.name),
+			size: 192,
+		});
 	}
 	panel
 }
@@ -131,14 +139,7 @@ fn handle(input: ExtensionInvocation) -> ExtensionOutput {
 	};
 	match (&response.value, &response.error) {
 		(Some(ResponseValue::ServerProfile { profile }), _) => {
-			let mut output =
-				ExtensionOutput::panel(details(profile, input.setting_bool("show-features")));
-			if input.setting_bool("copy-id") {
-				output.output.effects.push(HostEffect::CopyText {
-					text: profile.id.clone(),
-				});
-			}
-			output
+			ExtensionOutput::panel(details(profile, false))
 		}
 		(_, Some(error)) => ExtensionOutput::panel(vec![
 			Element::Heading {
@@ -159,7 +160,7 @@ harmony_extension_sdk::export!(handle);
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use harmony_extension_sdk::{SettingValue, testing::TestHost};
+	use harmony_extension_sdk::testing::TestHost;
 
 	#[test]
 	fn the_menu_action_looks_the_server_up_then_shows_it() {
@@ -180,9 +181,6 @@ mod tests {
 		input.menu_target = Some(MenuTarget::Server {
 			guild_id: "10".into(),
 		});
-		input
-			.settings
-			.insert("show-features".into(), SettingValue::Bool(true));
 		let output = host.run(input, handle).unwrap();
 		assert_eq!(host.inputs.len(), 2, "one lookup round, then the answer");
 		let texts: Vec<_> = output
@@ -195,8 +193,8 @@ mod tests {
 				_ => None,
 			})
 			.collect();
-		assert!(texts.contains(&"Created: 2015-01-01 00:00 UTC"));
-		assert!(texts.contains(&"Features: COMMUNITY"));
+		assert!(texts.contains(&"Created At: 2015-01-01 00:00 UTC"));
+		assert!(texts.contains(&"Roles: 0"));
 		assert!(output.output.effects.is_empty());
 	}
 }

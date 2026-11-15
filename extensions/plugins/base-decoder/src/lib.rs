@@ -111,66 +111,65 @@ fn shown(text: &str) -> String {
 	format!("{}…", &text[..end])
 }
 
+/// Shortest run of Base64 characters worth decoding.
+const MIN_LENGTH: usize = 8;
+
+fn copy(text: String) -> ExtensionOutput {
+	ExtensionOutput::effect(HostEffect::CopyText { text })
+}
+
 fn handle(input: ExtensionInvocation) -> ExtensionOutput {
-	let url_safe = input.setting_bool("url-safe");
-	let min = input
-		.setting_number("min-length")
-		.unwrap_or(8)
-		.clamp(4, 256) as usize;
-	match input.action() {
-		"encode" => {
-			let draft = input
-				.invocation
-				.invocation
-				.invocation
-				.composer
-				.clone()
-				.unwrap_or_default();
-			let mut output = ExtensionOutput::default();
-			if draft.is_empty() {
-				output.output.output.panel = vec![Element::Text {
-					text: "The draft is empty; type something to encode first.".into(),
-				}];
-			} else {
-				output.output.output.replacement = Some(encode(draft.as_bytes()));
-			}
-			output
-		}
-		_ => {
-			let message = input.selected_message().unwrap_or_default();
-			let found = find(message, min, url_safe);
-			let mut panel = vec![Element::Heading {
-				text: "Base64 decoder".into(),
-			}];
-			if found.is_empty() {
-				panel.push(Element::Text {
-					text: format!(
-						"No Base64 text of at least {min} characters that decodes to readable text."
-					),
-				});
-				return ExtensionOutput::panel(panel);
-			}
-			for (index, (encoded, decoded)) in found.iter().enumerate() {
-				if index > 0 {
-					panel.push(Element::Separator);
-				}
-				panel.push(Element::Text {
-					text: format!("Encoded: {}", shown(encoded)),
-				});
-				panel.push(Element::Text {
-					text: format!("Decoded: {}", shown(decoded)),
-				});
-			}
-			let mut output = ExtensionOutput::panel(panel);
-			let first = &found[0].1;
-			if first.len() <= MAX_COPY_TEXT_BYTES_V2 {
-				output.output.effects.push(HostEffect::CopyText {
-					text: first.clone(),
-				});
-			}
-			output
+	let found = find(
+		input.selected_message().unwrap_or_default(),
+		MIN_LENGTH,
+		true,
+	);
+	// "Copy Decoded Content N" in the window copies that result straight away.
+	if let Some(index) = input
+		.button()
+		.and_then(|button| button.strip_prefix("copy-"))
+		.and_then(|index| index.parse::<usize>().ok())
+		&& let Some((_, decoded)) = found.get(index)
+	{
+		return copy(decoded.clone());
+	}
+	let copy_first = input.setting_text("click") == Some("copy");
+	if copy_first && !found.is_empty() {
+		let all = found
+			.iter()
+			.map(|(_, decoded)| decoded.as_str())
+			.collect::<Vec<_>>()
+			.join(
+				"
+",
+			);
+		if all.len() <= MAX_COPY_TEXT_BYTES_V2 {
+			return copy(all);
 		}
 	}
+	let mut panel = vec![Element::Heading {
+		text: "Decoded Base64 Content".into(),
+	}];
+	if found.is_empty() {
+		panel.push(Element::Text {
+			text: "This message has no Base64 text that decodes to readable text.".into(),
+		});
+		return ExtensionOutput::panel(panel);
+	}
+	panel.push(Element::Text {
+		text: "Decoded Content".into(),
+	});
+	for (index, (_, decoded)) in found.iter().enumerate() {
+		panel.push(Element::Separator);
+		panel.push(Element::Text {
+			text: shown(decoded),
+		});
+		panel.push(Element::Button {
+			id: format!("copy-{index}"),
+			label: format!("Copy Decoded Content {}", index + 1),
+		});
+	}
+	ExtensionOutput::panel(panel)
 }
 
 harmony_extension_sdk::export!(handle);
@@ -193,19 +192,44 @@ mod tests {
 	}
 
 	#[test]
-	fn message_action_shows_results_and_offers_to_copy_the_first() {
-		let mut input = ExtensionInvocation::default();
-		input.invocation.invocation.invocation.action = "decode".into();
-		input.invocation.invocation.invocation.selected_message =
-			Some("x aGVsbG8gd29ybGQ= y".into());
-		input
-			.settings
-			.insert("min-length".into(), SettingValue::Number(8));
-		let output = TestHost::default().run(input, handle).unwrap();
+	fn toolbar_opens_a_window_and_copy_buttons_or_the_copy_setting_copy_directly() {
+		let message = |button: Option<&str>, click: &str| {
+			let mut input = ExtensionInvocation::default();
+			input.invocation.invocation.invocation.action = "decode".into();
+			input.invocation.invocation.invocation.selected_message =
+				Some("x aGVsbG8gd29ybGQ= and Zm9vYmFyYmF6 y".into());
+			input.button = button.map(Into::into);
+			input
+				.settings
+				.insert("click".into(), SettingValue::Text(click.into()));
+			input
+		};
+		let window = TestHost::default()
+			.run(message(None, "window"), handle)
+			.unwrap();
+		assert!(window.output.effects.is_empty());
+		assert!(window.output.output.panel.contains(&Element::Button {
+			id: "copy-1".into(),
+			label: "Copy Decoded Content 2".into()
+		}));
+		let one = TestHost::default()
+			.run(message(Some("copy-1"), "window"), handle)
+			.unwrap();
 		assert_eq!(
-			output.output.effects,
+			one.output.effects,
 			[HostEffect::CopyText {
-				text: "hello world".into()
+				text: "foobarbaz".into()
+			}]
+		);
+		let all = TestHost::default()
+			.run(message(None, "copy"), handle)
+			.unwrap();
+		assert_eq!(
+			all.output.effects,
+			[HostEffect::CopyText {
+				text: "hello world
+foobarbaz"
+					.into()
 			}]
 		);
 	}

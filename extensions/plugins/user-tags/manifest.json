@@ -2,7 +2,7 @@
   "api_version": 2,
   "id": "user-tags",
   "name": "User Tags",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
   "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/user-tags",

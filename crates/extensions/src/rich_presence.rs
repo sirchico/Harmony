@@ -289,6 +289,9 @@ mod tests {
 			quotas: Default::default(),
 			capabilities: vec![Capability::RichPresence],
 			actions: vec![Action {
+				icon: None,
+				choices: Vec::new(),
+				accepts: None,
 				id: "apply".into(),
 				label: "Apply".into(),
 				surface: Surface::Panel,

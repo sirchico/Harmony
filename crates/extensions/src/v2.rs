@@ -446,10 +446,17 @@ pub(crate) fn validate_manifest(manifest: &Manifest) -> Result<(), Error> {
 		|| !manifest.settings.is_empty()
 		|| !manifest.quotas.is_empty()
 		|| !manifest.slots.is_empty()
-		|| manifest
-			.capabilities
-			.iter()
-			.any(|capability| V2_CAPABILITIES.contains(capability));
+		|| manifest.actions.iter().any(|action| {
+			matches!(
+				action.surface,
+				crate::Surface::MessageToolbar | crate::Surface::Image | crate::Surface::Attachment
+			) || action.icon.is_some()
+				|| !action.choices.is_empty()
+				|| action.accepts.is_some()
+		}) || manifest
+		.capabilities
+		.iter()
+		.any(|capability| V2_CAPABILITIES.contains(capability));
 	if !v2 {
 		return if uses_v2 { Err(Error::Version) } else { Ok(()) };
 	}
@@ -521,12 +528,58 @@ pub(crate) fn validate_manifest(manifest: &Manifest) -> Result<(), Error> {
 	}
 	manifest.quotas.validate(&ResourceLimits::DEFAULT)?;
 	crate::contributions::validate_manifest(manifest)?;
+	for action in &manifest.actions {
+		validate_action(action)?;
+	}
 	if manifest.kind == crate::ExtensionKind::Theme
 		&& (!manifest.settings.is_empty()
 			|| !manifest.dependencies.is_empty()
 			|| !manifest.quotas.is_empty())
 	{
 		return Err(Error::Invalid);
+	}
+	Ok(())
+}
+
+/// The v2 parts of one action: submenu choices for `image`, a file filter for `attachment`.
+fn validate_action(action: &crate::Action) -> Result<(), Error> {
+	use crate::Surface;
+	if !action.choices.is_empty() {
+		let mut ids = BTreeSet::new();
+		if action.surface != Surface::Image
+			|| action.choices.len() > 12
+			|| !action.choices.iter().all(|choice| {
+				valid_id(&choice.id)
+					&& plain_text(&choice.label, 64)
+					&& ids.insert(choice.id.as_str())
+			}) {
+			return Err(Error::Invalid);
+		}
+	}
+	match (&action.accepts, action.surface) {
+		(Some(filter), Surface::Attachment) => {
+			let short = |value: &String| {
+				!value.is_empty()
+					&& value.len() <= 64
+					&& value.bytes().all(|b| {
+						b.is_ascii_lowercase()
+							|| b.is_ascii_digit() || matches!(b, b'-' | b'+' | b'.' | b'/')
+					})
+			};
+			if filter.extensions.len() + filter.content_types.len() == 0
+				|| filter.extensions.len() > 64
+				|| filter.content_types.len() > 16
+				|| !filter
+					.extensions
+					.iter()
+					.chain(&filter.content_types)
+					.all(short) || filter.max_bytes == Some(0)
+			{
+				return Err(Error::Invalid);
+			}
+		}
+		(None, Surface::Attachment) | (Some(_), _) => return Err(Error::Invalid),
+		(None, _) => {}
 	}
 	Ok(())
 }
@@ -983,6 +1036,17 @@ pub(crate) fn validate_invocation(
 	if has_v2 && !v2 {
 		return Err(Error::Invalid);
 	}
+	// Image and attachment actions act on exactly the one item they were chosen on.
+	let single_item = manifest.actions.iter().any(|action| {
+		action.id == input.action
+			&& matches!(
+				action.surface,
+				crate::Surface::Image | crate::Surface::Attachment
+			)
+	});
+	if single_item && input.media.as_ref().is_none_or(|media| media.len() != 1) {
+		return Err(Error::Invalid);
+	}
 	if let Some(media) = &input.media {
 		if !manifest.capabilities.contains(&Capability::MediaLinks) {
 			return Err(Error::Capability);
@@ -1106,6 +1170,9 @@ pub const SURFACES: &[crate::Surface] = &[
 	crate::Surface::Channel,
 	crate::Surface::Server,
 	crate::Surface::Role,
+	crate::Surface::MessageToolbar,
+	crate::Surface::Image,
+	crate::Surface::Attachment,
 ];
 
 /// Host request kinds this host answers.
@@ -1304,6 +1371,73 @@ mod tests {
 				.entries
 				.iter()
 				.all(|entry| entry.manifest.api_version == API_V2)
+		);
+	}
+
+	#[test]
+	fn item_actions_need_v2_their_own_fields_and_exactly_one_item() {
+		let item = |api: u32, action: &str| {
+			manifest(&format!(
+				r#"{{"api_version":{api},"id":"probe","name":"Probe","version":"1.2.0","author":"Synthetic",
+				"license":"MIT","source":"https://example.org/probe","kind":"plugin",
+				"capabilities":["media_links","selected_message"],"actions":[{action}]}}"#
+			))
+		};
+		let image = r#"{"id":"search","label":"Search","surface":"image","choices":[{"id":"a","label":"A"}]}"#;
+		let attachment = r#"{"id":"copy","label":"Copy","surface":"attachment","icon":"copy","accepts":{"extensions":["txt"],"max_bytes":10}}"#;
+		let toolbar = r#"{"id":"view","label":"View","surface":"message_toolbar","icon":"code"}"#;
+		for action in [image, attachment, toolbar] {
+			assert!(item(2, action).validate().is_ok(), "{action}");
+			assert!(item(1, action).validate().is_err(), "{action}");
+		}
+		for broken in [
+			r#"{"id":"copy","label":"Copy","surface":"attachment"}"#,
+			r#"{"id":"m","label":"M","surface":"message","choices":[{"id":"a","label":"A"}]}"#,
+			r#"{"id":"s","label":"S","surface":"image","accepts":{"extensions":["txt"]}}"#,
+			r#"{"id":"c","label":"C","surface":"attachment","accepts":{"extensions":["TXT"]}}"#,
+		] {
+			assert!(item(2, broken).validate().is_err(), "{broken}");
+		}
+		let filter = crate::AttachmentFilter {
+			extensions: vec!["txt".into()],
+			content_types: vec!["text/".into()],
+			max_bytes: Some(10),
+		};
+		assert!(filter.matches("Notes.TXT", None, 10));
+		assert!(filter.matches("data", Some("text/csv"), 1));
+		assert!(!filter.matches("notes.txt", None, 11));
+		assert!(!filter.matches("image.png", Some("image/png"), 1));
+		// Image and attachment actions get exactly the one item they were chosen on.
+		let probe = item(2, image);
+		let link = |url: &str| MediaLink {
+			source: MediaSource::Embed,
+			kind: MediaKind::Image,
+			url: url.into(),
+			attachment_id: None,
+			filename: None,
+			content_type: None,
+			size: None,
+			width: None,
+			height: None,
+		};
+		let invocation = |media: Option<Vec<MediaLink>>| crate::Invocation {
+			action: "search".into(),
+			media,
+			..Default::default()
+		};
+		assert!(
+			validate_invocation(&invocation(Some(vec![link("https://a.b/c.png")])), &probe).is_ok()
+		);
+		assert!(validate_invocation(&invocation(None), &probe).is_err());
+		assert!(
+			validate_invocation(
+				&invocation(Some(vec![
+					link("https://a.b/c.png"),
+					link("https://a.b/d.png")
+				])),
+				&probe
+			)
+			.is_err()
 		);
 	}
 }

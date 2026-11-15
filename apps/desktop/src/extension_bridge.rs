@@ -1357,6 +1357,27 @@ impl Bridge {
 									.capabilities
 									.contains(&Capability::AttachmentContents),
 							);
+							// An attachment button names its one file; it may read just that file.
+							if invocation.attachment_sources.is_empty()
+								&& manifest
+									.capabilities
+									.contains(&Capability::AttachmentContents)
+							{
+								invocation.attachment_sources = invocation
+									.media
+									.iter()
+									.flatten()
+									.filter_map(|link| {
+										Some(extensions::AttachmentSource {
+											id: link.attachment_id.clone()?,
+											filename: link.filename.clone().unwrap_or_default(),
+											content_type: link.content_type.clone(),
+											size: link.size.unwrap_or(0),
+											url: link.url.clone(),
+										})
+									})
+									.collect();
+							}
 						}
 						if crate::extension_app::uses_app(&manifest.capabilities) {
 							// App snapshots and proposals belong to the conversation that produced them.
@@ -2155,6 +2176,9 @@ mod tests {
 			.manifest
 			.actions
 			.push(extensions::Action {
+				icon: None,
+				choices: Vec::new(),
+				accepts: None,
 				id: "app-event".into(),
 				label: "Observe".into(),
 				surface: Surface::AppEvent,
@@ -2208,6 +2232,9 @@ mod tests {
 			Capability::Presence,
 		]);
 		manifest.actions.push(extensions::Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "data-event".into(),
 			label: "Observe".into(),
 			surface: Surface::AppEvent,
@@ -2280,6 +2307,9 @@ mod tests {
 			Capability::ReadState,
 		]);
 		manifest.actions.push(extensions::Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: "data-event".into(),
 			label: "Observe".into(),
 			surface: Surface::AppEvent,

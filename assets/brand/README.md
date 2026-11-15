@@ -15,7 +15,7 @@ in-app mark is a plain white silhouette of Ferris.
 
 The packaged platform icons built from the same artwork live in `packaging/` (`windows/Harmony.ico`,
 `windows/harmony.png`, `macos/Harmony.icns`, `linux/hicolor/*`). `packaging/macos/Harmony.icon` still
-holds the layered Icon Composer source inherited from Serein and has not been redrawn.
+holds the layered Icon Composer source carried over from an earlier version and has not been redrawn.
 
 Ferris was created by Karen Rustad Tölva and is dedicated to the public domain (CC0); see
 https://rustacean.net. These assets are not Discord's or any other vendor's branding.

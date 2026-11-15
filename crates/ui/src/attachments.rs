@@ -280,6 +280,10 @@ fn file_card(
 				ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
 					ui.spacing_mut().item_spacing.x = 6.0;
 					let download = download_button(ui, attachment, download, demo);
+					// Extension buttons such as "Copy File Contents" (API v2 `attachment`).
+					for button in crate::extension_items::attachment_buttons(ui, attachment) {
+						surface.keep(&button);
+					}
 					ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
 						ui.vertical(|ui| {
 							ui.spacing_mut().item_spacing.y = 0.0;
@@ -553,6 +557,10 @@ pub(super) fn media_context_menu(
 		response,
 		attachment.is_video(),
 		attachment.media.url.as_deref(),
+		attachment
+			.is_image()
+			.then(|| crate::extension_items::attachment_link(attachment))
+			.flatten(),
 		download,
 		opening,
 		demo,
@@ -574,6 +582,11 @@ pub(crate) fn embed_context_menu(
 		response,
 		false,
 		media.url.as_deref().or(media.proxy_url.as_deref()),
+		media
+			.url
+			.as_deref()
+			.or(media.proxy_url.as_deref())
+			.and_then(|url| crate::extension_items::image_link(url, media.width, media.height)),
 		download,
 		&mut None,
 		demo,
@@ -585,6 +598,7 @@ fn media_menu(
 	response: &egui::Response,
 	video: bool,
 	url: Option<&str>,
+	image: Option<extensions::MediaLink>,
 	download: &DownloadUi,
 	opening: &mut Option<String>,
 	demo: bool,
@@ -675,6 +689,10 @@ fn media_menu(
 				ui.ctx().copy_text(url);
 				ui.close();
 			}
+		}
+		// Extension entries such as "Search Image" (API v2 `image` actions).
+		if !video && let Some(image) = &image {
+			crate::extension_items::image_menu(ui, image);
 		}
 	});
 	action

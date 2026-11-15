@@ -260,6 +260,12 @@ pub(crate) fn icon(icon: ContributionIcon) -> crate::icons::Icon {
 		ContributionIcon::Pin => Icon::Pin,
 		ContributionIcon::Bell => Icon::Bell,
 		ContributionIcon::Shield => Icon::Verified,
+		ContributionIcon::Search => Icon::Search,
+		ContributionIcon::External => Icon::External,
+		ContributionIcon::Copy => Icon::Copy,
+		ContributionIcon::Code => Icon::FileCode,
+		ContributionIcon::Server => Icon::Servers,
+		ContributionIcon::Eye => Icon::Eye,
 	}
 }
 

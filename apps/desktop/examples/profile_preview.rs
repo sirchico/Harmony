@@ -30,6 +30,8 @@ struct Preview {
 	toolbar_hover: Option<(egui::Pos2, bool)>,
 	/// Close settings on the first frame before presenting the conversation.
 	close_settings: bool,
+	/// An image URL whose menu, with extension entries, is drawn open at this position.
+	image_menu: Option<(String, egui::Pos2)>,
 	requested: bool,
 	screenshot: Option<std::sync::mpsc::Receiver<Arc<egui::ColorImage>>>,
 	writer: Option<JoinHandle<Result<(), String>>>,
@@ -80,7 +82,11 @@ impl eframe::App for Preview {
 		let ctx = ui.ctx().clone();
 		ui::design::paint_backdrop(&ctx);
 		// Only synthetic fixtures execute these commands; no service adapters exist here.
-		for command in self.messaging.show(ui, &mut self.state) {
+		let commands = self.messaging.show(ui, &mut self.state);
+		if let Some((url, at)) = &self.image_menu {
+			ui::preview_image_menu(&ctx, url, *at);
+		}
+		for command in commands {
 			let event = match command {
 				client_core::Command::ApplicationCommands {
 					channel,
@@ -375,6 +381,25 @@ fn prime_activities(state: &mut client_core::State, proxy_artwork: bool) {
 	});
 }
 
+/// Adds a photo and a text file to the newest fixture message.
+fn attach_fixture_files(state: &mut client_core::State) {
+	let channel = state.selected.expect("selected fixture channel");
+	let mut messages: Vec<model::Message> = state.timeline.iter().cloned().collect();
+	if let Some(last) = messages.last_mut() {
+		last.content = "Photos and notes from last night!".into();
+		last.attachments = test_support::message(500, channel)
+			.attachments
+			.into_iter()
+			.filter(|attachment| attachment.id != model::Id(702))
+			.collect();
+	}
+	state.timeline.clear();
+	state
+		.timeline
+		.seed_cache(messages)
+		.expect("valid synthetic conversation");
+}
+
 fn prime_extension_chat(state: &mut client_core::State) {
 	let channel = state.selected.expect("selected fixture channel");
 	let messages = [
@@ -562,22 +587,49 @@ fn extension_fixture(
 		"custom-rpc" | "api-proxy" => external
 			.as_deref()
 			.ok_or("Set HARMONY_PREVIEW_PACKAGE to the external plugin package")?,
-		"serein-ocean" => {
+		"harmony-ocean" => {
 			include_bytes!("../../../extensions/themes/ocean.harmony-extension")
 		}
 		"message-delete-protector" => include_bytes!(
 			"../../../extensions/plugins/packages/message-delete-protector.harmony-extension"
 		),
-		"serein-midnight" => {
+		"base-decoder" => {
+			include_bytes!("../../../extensions/plugins/packages/base-decoder.harmony-extension")
+		}
+		"view-raw-message" => include_bytes!(
+			"../../../extensions/plugins/packages/view-raw-message.harmony-extension"
+		),
+		"server-info" => {
+			include_bytes!("../../../extensions/plugins/packages/server-info.harmony-extension")
+		}
+		"text-commands" => {
+			include_bytes!("../../../extensions/plugins/packages/text-commands.harmony-extension")
+		}
+		"external-search-tools" => include_bytes!(
+			"../../../extensions/plugins/packages/external-search-tools.harmony-extension"
+		),
+		"offline-composer-tools" => include_bytes!(
+			"../../../extensions/plugins/packages/offline-composer-tools.harmony-extension"
+		),
+		"user-tags" => {
+			include_bytes!("../../../extensions/plugins/packages/user-tags.harmony-extension")
+		}
+		"copy-file-contents" => include_bytes!(
+			"../../../extensions/plugins/packages/copy-file-contents.harmony-extension"
+		),
+		"reverse-image-search" => include_bytes!(
+			"../../../extensions/plugins/packages/reverse-image-search.harmony-extension"
+		),
+		"harmony-midnight" => {
 			include_bytes!("../../../extensions/themes/midnight.harmony-extension")
 		}
-		"serein-rose" => {
+		"harmony-rose" => {
 			include_bytes!("../../../extensions/themes/rose.harmony-extension")
 		}
-		"serein-forest" => {
+		"harmony-forest" => {
 			include_bytes!("../../../extensions/themes/forest.harmony-extension")
 		}
-		"serein-latte" => {
+		"harmony-latte" => {
 			include_bytes!("../../../extensions/themes/latte.harmony-extension")
 		}
 		"golden-theme" => {
@@ -595,6 +647,10 @@ fn extension_fixture(
 		_ => return Err("Unknown fixture extension".into()),
 	};
 	let package = extensions::parse_package(bytes)?;
+	if let Some(invocation) = item_fixture(id) {
+		let output = rounds(&package, invocation.clone())?;
+		return Ok((package, invocation, output));
+	}
 	let invocation = extensions::Invocation {
 		action: if id == "custom-rpc" {
 			"preview"
@@ -629,6 +685,131 @@ fn extension_fixture(
 		None
 	};
 	Ok((package, invocation, output))
+}
+
+/// What each newer extension shows in its preview: its window, or nothing when the preview
+/// is the chat itself (buttons on files, the image menu, name badges).
+fn item_fixture(id: &str) -> Option<extensions::Invocation> {
+	let message = |text: &str| {
+		Some(Box::new(extensions::SelectedMessageRef {
+			channel_id: "20".into(),
+			message_id: "605".into(),
+			author_id: "1".into(),
+			guild_id: Some("10".into()),
+		}))
+		.filter(|_| !text.is_empty())
+	};
+	let mut invocation = extensions::Invocation::default();
+	match id {
+		"base-decoder" => {
+			let text = "Can someone decode this? SGFybW9ueSBpcyBhIGZhc3QgbmF0aXZlIGNsaWVudA== and V2VsY29tZSB0byBnYW1lIG5pZ2h0IQ==";
+			invocation.action = "decode".into();
+			invocation.selected_message = Some(text.into());
+			invocation.selected_message_ref = message(text);
+		}
+		"view-raw-message" => {
+			let text = "**Game night** starts at 8. Everyone is welcome!";
+			invocation.action = "view-raw".into();
+			invocation.selected_message = Some(text.into());
+			invocation.selected_message_ref = message(text);
+		}
+		"server-info" => {
+			invocation.action = "info".into();
+			invocation.menu_target = Some(Box::new(extensions::MenuTarget::Server {
+				guild_id: "10".into(),
+			}));
+		}
+		"text-commands" => {
+			invocation.action = "open".into();
+			invocation.storage = Some(
+				r#"{"rules":[{"find":"brb","replace":"be right back","only_if_includes":""},{"find":"gn","replace":"game night","only_if_includes":""}],"tags":[{"name":"rules","message":"Please read the rules in {{channel = #welcome}}"}]}"#
+					.into(),
+			);
+			invocation.values = [("find", "brb"), ("replace", "be right back")]
+				.into_iter()
+				.map(|(k, v)| (k.into(), v.into()))
+				.collect();
+		}
+		"external-search-tools" => {
+			invocation.action = "open".into();
+			invocation.storage = Some(
+				r#"{"provider":"deepl","target_language":"en","search_engine":"duckduckgo"}"#
+					.into(),
+			);
+		}
+		"offline-composer-tools" => {
+			invocation.action = "character-count".into();
+			invocation.composer = Some("Hey everyone, ready for game night? 🎲".into());
+		}
+		"user-tags" => {
+			// No window: the preview is the tags drawn next to people's names.
+			invocation.storage = Some(
+				r##"{"1":{"text":"Organizer","color":"#5865F2"},"2":{"text":"Friend","color":"#3BA55C"}}"##
+					.into(),
+			);
+		}
+		"copy-file-contents" | "reverse-image-search" => return Some(invocation),
+		_ => return None,
+	}
+	Some(invocation)
+}
+
+/// Runs an invocation to completion, answering a server lookup with synthetic details.
+fn rounds(
+	package: &extensions::Package,
+	mut invocation: extensions::Invocation,
+) -> Result<Option<extensions::Output>, Box<dyn std::error::Error>> {
+	if invocation.action.is_empty() {
+		return Ok(None);
+	}
+	for _ in 0..4 {
+		let output = extensions::invoke(package, &invocation)?;
+		if output.requests.is_empty() {
+			return Ok(Some(output));
+		}
+		invocation.responses = output
+			.requests
+			.iter()
+			.map(|request| {
+				extensions::HostResponse::ok(
+					request.id(),
+					extensions::ResponseValue::ServerProfile {
+						profile: Box::new(extensions::ServerProfile {
+							id: "10".into(),
+							name: "Game Night Club".into(),
+							description: Some(
+								"A friendly server for weekly game nights and good conversations."
+									.into(),
+							),
+							icon_url: None,
+							banner_url: None,
+							splash_url: None,
+							owner_id: Some("1".into()),
+							created_at_ms: 1_609_459_200_000,
+							verification_level: Some(2),
+							explicit_content_filter: Some(1),
+							nsfw_level: None,
+							mfa_level: Some(0),
+							premium_tier: Some(2),
+							premium_subscription_count: Some(9),
+							approximate_member_count: Some(1284),
+							approximate_presence_count: Some(342),
+							max_members: None,
+							vanity_url_code: Some("gamenight".into()),
+							preferred_locale: Some("en-US".into()),
+							features: Vec::new(),
+							roles: 12,
+							emojis: 40,
+							stickers: 5,
+						}),
+					},
+				)
+			})
+			.collect();
+		invocation.continuation = output.continuation;
+		invocation.round += 1;
+	}
+	Err("fixture took too many rounds".into())
 }
 
 fn seed_catalog(extensions: &mut ui::ExtensionUi, themes: bool) {
@@ -722,7 +903,7 @@ fn seed_catalog(extensions: &mut ui::ExtensionUi, themes: bool) {
 	);
 	let previews = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../extensions/previews");
 	{
-		let (id, filename) = ("serein-ocean", "ocean.png");
+		let (id, filename) = ("harmony-ocean", "ocean.png");
 		let image = image::open(previews.join(filename))
 			.expect("valid fixture preview")
 			.to_rgba8();
@@ -885,6 +1066,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let card_status = value("--status=").map(str::to_owned);
 	let private_profile = args.iter().any(|arg| arg == "--private");
 	let fixture = extension.as_deref().map(extension_fixture).transpose()?;
+	let image_menu = (extension.as_deref() == Some("reverse-image-search")).then(|| {
+		(
+			"https://cdn.discordapp.com/attachments/1/700/synthetic-landscape.png".to_owned(),
+			egui::pos2(width * 0.42, height * 0.36),
+		)
+	});
 	let saved = Arc::new(AtomicBool::new(false));
 	let completed = saved.clone();
 	eframe::run_native(
@@ -1290,6 +1477,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					ui::design::set_extension_theme(Some(theme));
 					ui::design::apply(&cc.egui_ctx);
 				}
+				let id = package.manifest.id.as_str();
+				if matches!(id, "copy-file-contents" | "reverse-image-search") {
+					attach_fixture_files(&mut state);
+				}
+				let item_preview = item_fixture(id).is_some();
+				if package.manifest.kind == extensions::ExtensionKind::Plugin && item_preview {
+					messaging.extensions.set_entries(vec![ui::ExtensionEntry {
+						description: package.manifest.name.clone(),
+						preview: None,
+						theme_preview: None,
+						cover_image: None,
+						local_theme: false,
+						manifest: package.manifest.clone(),
+						reviewed: true,
+						sha256: String::new(),
+						download_bytes: 0,
+						enabled: true,
+						cleanup_pending: false,
+						update_available: false,
+						update_manifest: None,
+						runtime: None,
+					}]);
+				}
+				if id == "user-tags" {
+					// Activation draws the saved tags next to people's names.
+					let mut restore = invocation.clone();
+					restore.action = "restore".into();
+					let restored = extensions::invoke(&package, &restore)?;
+					let mut store = ui::ContributionStore::default();
+					store.apply(id, &restored.contributions, Instant::now())?;
+					messaging.set_contributions(store.view());
+				}
+				if let Some(output) = result
+					.as_ref()
+					.filter(|output| item_preview && !output.panel.is_empty())
+				{
+					messaging.extensions.present_output(
+						package.manifest.id.clone(),
+						invocation.clone(),
+						ui::ExtensionContext::panel(&state),
+						output.clone(),
+						&state,
+					);
+				}
 				if let Some(output) = result {
 					if matches!(package.manifest.id.as_str(), "custom-rpc" | "api-proxy") {
 						messaging.extensions.set_entries(vec![ui::ExtensionEntry {
@@ -1467,6 +1698,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				scroll,
 				toolbar_hover,
 				close_settings,
+				image_menu,
 				requested: false,
 				screenshot: None,
 				writer: None,

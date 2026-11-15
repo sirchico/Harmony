@@ -17,6 +17,8 @@ fn manifest(action: &str, surface: Surface) -> Manifest {
 		Surface::User | Surface::Channel | Surface::Server | Surface::Role => {
 			capabilities.push(Capability::ContextMenus)
 		}
+		Surface::MessageToolbar => capabilities.push(Capability::SelectedMessage),
+		Surface::Image | Surface::Attachment => capabilities.push(Capability::MediaLinks),
 	}
 	let manifest = Manifest {
 		slots: Vec::new(),
@@ -35,6 +37,9 @@ fn manifest(action: &str, surface: Surface) -> Manifest {
 		quotas: Default::default(),
 		capabilities,
 		actions: vec![Action {
+			icon: None,
+			choices: Vec::new(),
+			accepts: None,
 			id: action.into(),
 			label: action.into(),
 			surface,

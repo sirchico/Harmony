@@ -19,6 +19,9 @@ fn plugin(wasm: &str) -> Package {
 			quotas: Default::default(),
 			capabilities: vec![Capability::Composer],
 			actions: vec![Action {
+				icon: None,
+				choices: Vec::new(),
+				accepts: None,
 				id: "run".into(),
 				label: "Run".into(),
 				surface: Surface::Composer,
@@ -36,8 +39,8 @@ fn returning(json: &str) -> Package {
 	plugin(&format!(
 		r#"(module (memory (export "memory") 1 256)
 		(data (i32.const 32768) "{data}")
-		(func (export "serein_alloc") (param i32) (result i32) (i32.const 0))
-		(func (export "serein_invoke") (param i32 i32) (result i64) (i64.const {})))"#,
+		(func (export "harmony_alloc") (param i32) (result i32) (i32.const 0))
+		(func (export "harmony_invoke") (param i32 i32) (result i64) (i64.const {})))"#,
 		(32768_u64 << 32) | json.len() as u64
 	))
 }
@@ -63,7 +66,7 @@ fn rejects_imports_start_and_excessive_memory() {
 			.is_err()
 	);
 	let package = plugin(
-		r#"(module (memory (export "memory") 257) (func (export "serein_alloc") (param i32) (result i32) i32.const 0) (func (export "serein_invoke") (param i32 i32) (result i64) i64.const 0))"#,
+		r#"(module (memory (export "memory") 257) (func (export "harmony_alloc") (param i32) (result i32) i32.const 0) (func (export "harmony_invoke") (param i32 i32) (result i64) i64.const 0))"#,
 	);
 	assert!(invoke(&package, &input()).is_err());
 }
@@ -78,7 +81,7 @@ fn fuel_interrupts_infinite_loop_and_memory_growth_traps() {
 		),
 	] {
 		let package = plugin(&format!(
-			r#"(module (memory (export "memory") 1) (func (export "serein_alloc") (param i32) (result i32) i32.const 0) (func (export "serein_invoke") (param i32 i32) (result i64) {body}))"#
+			r#"(module (memory (export "memory") 1) (func (export "harmony_alloc") (param i32) (result i32) i32.const 0) (func (export "harmony_invoke") (param i32 i32) (result i64) {body}))"#
 		));
 		let error = invoke(&package, &input()).unwrap_err();
 		assert_eq!(
@@ -92,15 +95,15 @@ fn fuel_interrupts_infinite_loop_and_memory_growth_traps() {
 fn diagnostics_distinguish_safe_runtime_input_and_output_failures() {
 	let trap = plugin(
 		r#"(module (memory (export "memory") 1)
-        (func (export "serein_alloc") (param i32) (result i32) i32.const 0)
-        (func (export "serein_invoke") (param i32 i32) (result i64) unreachable))"#,
+        (func (export "harmony_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "harmony_invoke") (param i32 i32) (result i64) unreachable))"#,
 	);
 	assert!(matches!(invoke(&trap, &input()), Err(Error::Trap)));
 	let recursive = plugin(
 		r#"(module (memory (export "memory") 1)
-        (func (export "serein_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "harmony_alloc") (param i32) (result i32) i32.const 0)
         (func $recurse (result i64) call $recurse i64.const 1 i64.add)
-        (func (export "serein_invoke") (param i32 i32) (result i64) call $recurse))"#,
+        (func (export "harmony_invoke") (param i32 i32) (result i64) call $recurse))"#,
 	);
 	assert!(matches!(invoke(&recursive, &input()), Err(Error::Stack)));
 	assert!(matches!(
@@ -126,8 +129,8 @@ fn diagnostics_distinguish_safe_runtime_input_and_output_failures() {
 	));
 	let oversized = plugin(&format!(
 		r#"(module (memory (export "memory") 1)
-        (func (export "serein_alloc") (param i32) (result i32) i32.const 0)
-        (func (export "serein_invoke") (param i32 i32) (result i64) i64.const {}))"#,
+        (func (export "harmony_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "harmony_invoke") (param i32 i32) (result i64) i64.const {}))"#,
 		MAX_IO_BYTES + 1
 	));
 	assert!(matches!(
@@ -147,11 +150,14 @@ fn diagnostics_distinguish_safe_runtime_input_and_output_failures() {
 fn menu_actions_reject_missing_or_mismatched_targets_before_running() {
 	let mut trap = plugin(
 		r#"(module (memory (export "memory") 1)
-        (func (export "serein_alloc") (param i32) (result i32) i32.const 0)
-        (func (export "serein_invoke") (param i32 i32) (result i64) unreachable))"#,
+        (func (export "harmony_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "harmony_invoke") (param i32 i32) (result i64) unreachable))"#,
 	);
 	trap.manifest.capabilities = vec![Capability::ContextMenus];
 	trap.manifest.actions = vec![Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: "run".into(),
 		label: "Run".into(),
 		surface: Surface::User,
@@ -184,7 +190,7 @@ fn menu_actions_reject_missing_or_mismatched_targets_before_running() {
 fn rejects_oversized_or_invalid_pointers_and_json_responses() {
 	for packed in [MAX_IO_BYTES as u64 + 1, (u32::MAX as u64) << 32 | 4] {
 		let package = plugin(&format!(
-			r#"(module (memory (export "memory") 1) (func (export "serein_alloc") (param i32) (result i32) i32.const 0) (func (export "serein_invoke") (param i32 i32) (result i64) i64.const {packed}))"#
+			r#"(module (memory (export "memory") 1) (func (export "harmony_alloc") (param i32) (result i32) i32.const 0) (func (export "harmony_invoke") (param i32 i32) (result i64) i64.const {packed}))"#
 		));
 		assert!(invoke(&package, &input()).is_err());
 	}
@@ -252,6 +258,9 @@ fn tick_requires_elapsed_time_and_only_returns_appearance() {
 fn rejects_panel_complexity_duplicate_ids_and_unknown_actions() {
 	let mut package = returning("{}");
 	package.manifest.actions.push(Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: "panel".into(),
 		label: "Panel".into(),
 		surface: Surface::Panel,
@@ -552,6 +561,9 @@ fn message_events_require_a_unique_granted_surface_without_other_context() {
 		Capability::Composer,
 	];
 	package.manifest.actions.push(Action {
+		icon: None,
+		choices: Vec::new(),
+		accepts: None,
 		id: "second".into(),
 		label: "Second".into(),
 		surface: Surface::MessageEvent,
@@ -680,4 +692,34 @@ fn custom_rpc_package_preserves_drafts_and_controls_presence() {
 		.insert("button1-url".into(), "javascript:alert(1)".into());
 	let invalid = invoke(&package, &input).expect("invalid field stays a valid editor panel");
 	assert!(invalid.rich_presence.is_none() && invalid.storage.is_none());
+}
+
+/// Packages built before the ABI rename export the earlier names and must keep running.
+#[test]
+fn packages_with_the_earlier_export_names_still_run() {
+	let json = r#"{"replacement":"ok"}"#;
+	let current = returning(json);
+	let earlier_wat = format!(
+		r#"(module (memory (export "memory") 1 256)
+		(data (i32.const 32768) "{}")
+		(func (export "serein_alloc") (param i32) (result i32) (i32.const 0))
+		(func (export "serein_invoke") (param i32 i32) (result i64) (i64.const {})))"#,
+		json.bytes()
+			.map(|b| format!("\\{b:02x}"))
+			.collect::<String>(),
+		(32768_u64 << 32) | json.len() as u64
+	);
+	let earlier = plugin(&earlier_wat);
+	for package in [current, earlier] {
+		assert_eq!(
+			invoke(&package, &input()).unwrap().replacement.as_deref(),
+			Some("ok")
+		);
+	}
+	// A module with neither name set is still refused.
+	assert!(
+		plugin(r#"(module (memory (export "memory") 1) (func (export "run") (param i32) (result i32) (i32.const 0)))"#)
+			.validate()
+			.is_err()
+	);
 }

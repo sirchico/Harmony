@@ -1288,6 +1288,9 @@ mod tests {
 			quotas: Default::default(),
 			capabilities,
 			actions: vec![Action {
+				icon: None,
+				choices: Vec::new(),
+				accepts: None,
 				id: "show".into(),
 				label: "Show".into(),
 				surface: Surface::Panel,
