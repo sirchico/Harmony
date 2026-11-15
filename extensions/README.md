@@ -14,12 +14,18 @@ covers writing your own.
 | `licenses/` | Third-party extension license texts, including Equicord/Vencord GPL terms |
 | `previews/` | Catalog preview images ([provenance](previews/README.md)) |
 | `catalog.json` | Generated; never edit by hand |
+| `catalog-v2.json` | Generated API v2 packages; never edit by hand |
 
 `catalog.json` lists each package's manifest, exact byte length, SHA-256 hash and an
 immutable URL pinned to a full commit on `main`. The client reads it from `main`,
 downloads package data only, and verifies every hash before installing. It never
 clones this repository or runs build scripts. Capabilities and updates go through the
 client's explicit consent flow.
+
+API version 2 packages are listed only in `catalog-v2.json`. Releases without API v2 never
+fetch it, so they keep reading `catalog.json` as before; releases with API v2 fetch both and
+show one shop, preferring the v2 entry when an ID appears in both. `catalog.py` sorts each
+package into its file by `api_version` and pins both after merge.
 
 ## Publishing a package
 

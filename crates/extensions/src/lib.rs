@@ -23,6 +23,8 @@ mod app;
 pub use app::*;
 mod extended;
 pub use extended::*;
+mod v2;
+pub use v2::*;
 
 pub const API_VERSION: u32 = 1;
 pub const MAX_PACKAGE_BYTES: usize = 16 * 1024 * 1024;
@@ -149,6 +151,13 @@ pub enum Capability {
 	ContextMenus,
 	/// Switch on host-defined interface tweaks from activation and panel actions.
 	InterfaceTweaks,
+	/// API v2: public links to attachments and embedded media on the message an action was
+	/// chosen on.
+	MediaLinks,
+	/// API v2: read the start of an attachment on the message an action was chosen on.
+	AttachmentContents,
+	/// API v2: look up public details of servers the account is in.
+	ServerProfiles,
 }
 
 /// Host-defined interface behavior that a plugin may switch on for the whole client from
@@ -246,6 +255,21 @@ pub struct Manifest {
 	pub capabilities: Vec<Capability>,
 	#[serde(default)]
 	pub actions: Vec<Action>,
+	/// API v2: host features required or optionally used, with version requirements.
+	#[serde(default, skip_serializing_if = "Requirements::is_empty")]
+	pub requires: Requirements,
+	/// API v2: other extensions this one depends on.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub dependencies: Vec<Dependency>,
+	/// API v2: extensions that must not be enabled together with this one.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub conflicts: Vec<Conflict>,
+	/// API v2: fields of the settings page the host builds and saves for this extension.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub settings: Vec<SettingField>,
+	/// API v2: resource budgets requested beyond the host defaults.
+	#[serde(default, skip_serializing_if = "Quotas::is_empty")]
+	pub quotas: Quotas,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -466,6 +490,45 @@ pub struct Invocation {
 	/// Milliseconds elapsed since this plugin was enabled for the current session.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub tick_ms: Option<u64>,
+	/// API v2: current values of the declared non-secret settings, defaults filled in.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub settings: Option<BTreeMap<String, SettingValue>>,
+	/// API v2: which declared secrets the user has set. Values never reach extension code.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub secrets: Option<BTreeMap<String, bool>>,
+	/// API v2: media on the message a `message` action was chosen on (`media_links`).
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub media: Option<Vec<MediaLink>>,
+	/// API v2: answers to the requests the previous round of this action returned.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub responses: Vec<HostResponse>,
+	/// API v2: the opaque text the previous round returned in `continuation`.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub continuation: Option<String>,
+	/// API v2: 0 for the first call of an action, then 1, 2, ... for each continuation.
+	#[serde(default, skip_serializing_if = "is_zero")]
+	pub round: u8,
+	/// API v2: the panel button that re-ran this action, when its ID is not a declared action.
+	/// The action keeps its original target, so a button can act on the same message or server.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub button: Option<String>,
+	/// Host only: where each attachment on the chosen message can be fetched. Never serialized.
+	#[serde(skip)]
+	pub attachment_sources: Vec<AttachmentSource>,
+}
+
+fn is_zero(value: &u8) -> bool {
+	*value == 0
+}
+
+/// Host-side record of an attachment the user's chosen message carries.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AttachmentSource {
+	pub id: String,
+	pub filename: String,
+	pub content_type: Option<String>,
+	pub size: u64,
+	pub url: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -731,6 +794,15 @@ pub struct Output {
 	/// with `interface_tweaks` only.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub interface_tweaks: Option<Vec<InterfaceTweak>>,
+	/// API v2: changes to the extension's key-value store (`storage`).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub kv: Vec<KvOp>,
+	/// API v2: information to fetch before the extension is invoked again for this action.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub requests: Vec<HostRequest>,
+	/// API v2: opaque text handed back in the next round's `continuation`.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub continuation: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -830,9 +902,10 @@ impl Manifest {
 	/// Checks the manifest's version, identity, source URL, capabilities and actions, including
 	/// that each action's surface has the capability it requires.
 	pub fn validate(&self) -> Result<(), Error> {
-		if self.api_version != API_VERSION {
+		if !SUPPORTED_API_VERSIONS.contains(&self.api_version) {
 			return Err(Error::Version);
 		}
+		v2::validate_manifest(self)?;
 		if !valid_id(&self.id)
 			|| !(valid_https_url(&self.source)
 				|| self.kind == ExtensionKind::Theme && self.source.is_empty())
@@ -1130,12 +1203,43 @@ pub fn parse_package(bytes: &[u8]) -> Result<Package, Error> {
 	Ok(package)
 }
 
+/// The original catalog (`catalog.json`). Every Harmony release reads it, so it only lists
+/// packages every release can install: API version 1 manifests.
 pub fn parse_catalog(bytes: &[u8]) -> Result<Catalog, Error> {
+	parse_catalog_version(bytes, API_VERSION)
+}
+
+/// The API v2 catalog (`catalog-v2.json`). Releases before API v2 never fetch it, so its
+/// API v2 packages cannot make an older client reject the whole shop.
+pub fn parse_catalog_v2(bytes: &[u8]) -> Result<Catalog, Error> {
+	parse_catalog_version(bytes, API_V2)
+}
+
+/// One shop list from both catalogs. A v2 entry replaces a v1 entry with the same ID: it is
+/// the newer release of that extension for clients that can run it.
+pub fn merge_catalogs(v1: Option<Catalog>, v2: Option<Catalog>) -> Option<Catalog> {
+	let Some(v2) = v2 else {
+		return v1;
+	};
+	let mut entries = v1.map(|catalog| catalog.entries).unwrap_or_default();
+	entries.retain(|entry| {
+		!v2.entries
+			.iter()
+			.any(|next| next.manifest.id == entry.manifest.id)
+	});
+	entries.extend(v2.entries);
+	Some(Catalog {
+		api_version: API_VERSION,
+		entries,
+	})
+}
+
+fn parse_catalog_version(bytes: &[u8], version: u32) -> Result<Catalog, Error> {
 	if bytes.len() > MAX_CATALOG_BYTES {
 		return Err(Error::Limit);
 	}
 	let catalog: Catalog = serde_json::from_slice(bytes).map_err(|_| Error::Invalid)?;
-	if catalog.api_version != API_VERSION {
+	if catalog.api_version != version {
 		return Err(Error::Version);
 	}
 	if catalog.entries.len() > 256 {
@@ -1144,6 +1248,9 @@ pub fn parse_catalog(bytes: &[u8]) -> Result<Catalog, Error> {
 	let mut ids = BTreeSet::new();
 	for entry in &catalog.entries {
 		entry.manifest.validate()?;
+		if version == API_V2 && entry.manifest.api_version != API_V2 {
+			return Err(Error::Version);
+		}
 		if !valid_https_url(&entry.manifest.source) {
 			return Err(Error::Invalid);
 		}
@@ -1178,6 +1285,7 @@ impl Invocation {
 	/// Checks the invocation against the plugin's manifest: the action exists, each optional
 	/// input is allowed for its surface and granted capability, and every field fits its limit.
 	pub fn validate(&self, manifest: &Manifest) -> Result<(), Error> {
+		v2::validate_invocation(self, manifest)?;
 		let action = manifest
 			.actions
 			.iter()
@@ -1305,6 +1413,7 @@ impl Output {
 	/// Checks the output against the action's surface and the manifest's capabilities: which
 	/// fields that surface may return, each field's limits and that host effects are allowed.
 	pub fn validate(&self, manifest: &Manifest, input: &Invocation) -> Result<(), Error> {
+		v2::validate_output(self, manifest)?;
 		let surface = manifest
 			.actions
 			.iter()
@@ -1451,11 +1560,15 @@ fn validate_elements(
 				continue;
 			}
 			Element::Button { id, label } => {
-				if !manifest
+				// A declared panel action, or (API v2) a button of the running action whose
+				// ID names no declared action; it arrives as the invocation's `button`.
+				let declared = manifest
 					.actions
 					.iter()
-					.any(|a| a.id == *id && a.surface == Surface::Panel)
-				{
+					.any(|a| a.id == *id && a.surface == Surface::Panel);
+				let sub_action = manifest.api_version >= API_V2
+					&& valid_id(id) && !manifest.actions.iter().any(|a| a.id == *id);
+				if !declared && !sub_action {
 					return Err(Error::Invalid);
 				}
 				(id, label)

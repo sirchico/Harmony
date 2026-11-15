@@ -281,6 +281,11 @@ mod tests {
 			license: "MIT".into(),
 			source: "https://example.com".into(),
 			kind: ExtensionKind::Plugin,
+			requires: Default::default(),
+			dependencies: Vec::new(),
+			conflicts: Vec::new(),
+			settings: Vec::new(),
+			quotas: Default::default(),
 			capabilities: vec![Capability::RichPresence],
 			actions: vec![Action {
 				id: "apply".into(),

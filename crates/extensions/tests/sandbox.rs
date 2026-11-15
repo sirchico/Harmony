@@ -11,6 +11,11 @@ fn plugin(wasm: &str) -> Package {
 			license: "MIT".into(),
 			source: "https://github.com/example/plugin".into(),
 			kind: ExtensionKind::Plugin,
+			requires: Default::default(),
+			dependencies: Vec::new(),
+			conflicts: Vec::new(),
+			settings: Vec::new(),
+			quotas: Default::default(),
 			capabilities: vec![Capability::Composer],
 			actions: vec![Action {
 				id: "run".into(),

@@ -20,6 +20,37 @@ pub struct ExtensionEntry {
 	pub cleanup_pending: bool,
 	pub update_available: bool,
 	pub update_manifest: Option<Manifest>,
+	/// API v2 state of an installed plugin: saved settings, secret presence and usage.
+	pub runtime: Option<Box<ExtensionRuntime>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ExtensionRuntime {
+	pub settings: BTreeMap<String, extensions::SettingValue>,
+	/// Which declared secrets are stored; their values never reach the UI.
+	pub secrets: BTreeMap<String, bool>,
+	pub storage_used: u64,
+	pub storage_quota: u64,
+	pub unavailable_features: Vec<String>,
+}
+
+/// A secret typed into the settings dialog, kept out of `Debug` output.
+pub struct SecretText(String);
+impl SecretText {
+	pub fn new(value: String) -> Self {
+		Self(value)
+	}
+	pub fn into_inner(self) -> String {
+		self.0
+	}
+	fn len(&self) -> usize {
+		self.0.len()
+	}
+}
+impl std::fmt::Debug for SecretText {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_str("SecretText(<redacted>)")
+	}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,6 +104,8 @@ impl ExtensionContext {
 	}
 }
 
+// At most a handful are queued (see `queue`), so boxing the invocation would only add churn.
+#[allow(clippy::large_enum_variant)]
 pub enum ExtensionRequest {
 	EditTheme {
 		id: String,
@@ -116,6 +149,17 @@ pub enum ExtensionRequest {
 		id: String,
 		result: extensions::ActionResult,
 		context: ExtensionContext,
+	},
+	/// API v2: save the non-secret values of the host-built settings page.
+	SaveSettings {
+		id: String,
+		values: BTreeMap<String, extensions::SettingValue>,
+	},
+	/// API v2: store (`Some`) or clear (`None`) one declared secret in the OS credential store.
+	SaveSecret {
+		id: String,
+		field: String,
+		value: Option<SecretText>,
 	},
 }
 
@@ -237,6 +281,71 @@ struct Consent {
 	entry: ExtensionEntry,
 	grants: Vec<Capability>,
 }
+/// The host-built settings page of one v2 plugin. Typed secrets live only here, until sent.
+struct SettingsEditor {
+	id: String,
+	name: String,
+	fields: Vec<extensions::SettingField>,
+	values: BTreeMap<String, extensions::SettingValue>,
+	numbers: BTreeMap<String, String>,
+	secret_input: BTreeMap<String, String>,
+}
+impl SettingsEditor {
+	fn new(entry: &ExtensionEntry) -> Self {
+		let saved = entry
+			.runtime
+			.as_ref()
+			.map(|runtime| runtime.settings.clone())
+			.unwrap_or_default();
+		let values = extensions::resolve_settings(&entry.manifest.settings, &saved);
+		let numbers = values
+			.iter()
+			.filter_map(|(id, value)| match value {
+				extensions::SettingValue::Number(number) => Some((id.clone(), number.to_string())),
+				_ => None,
+			})
+			.collect();
+		Self {
+			id: entry.manifest.id.clone(),
+			name: entry.manifest.name.clone(),
+			fields: entry.manifest.settings.clone(),
+			values,
+			numbers,
+			secret_input: BTreeMap::new(),
+		}
+	}
+	/// The values to save, or the label of the first number that is not valid.
+	fn result(&self) -> Result<BTreeMap<String, extensions::SettingValue>, String> {
+		let mut values = BTreeMap::new();
+		for field in &self.fields {
+			let value = match field.kind {
+				extensions::SettingType::Secret => continue,
+				extensions::SettingType::Number => {
+					let text = self
+						.numbers
+						.get(&field.id)
+						.map_or("", String::as_str)
+						.trim();
+					match text.parse::<i64>() {
+						Ok(number)
+							if field.min.is_none_or(|min| number >= min)
+								&& field.max.is_none_or(|max| number <= max) =>
+						{
+							extensions::SettingValue::Number(number)
+						}
+						_ => return Err(field.label.clone()),
+					}
+				}
+				_ => match self.values.get(&field.id) {
+					Some(value) => value.clone(),
+					None => continue,
+				},
+			};
+			values.insert(field.id.clone(), value);
+		}
+		Ok(values)
+	}
+}
 struct ResultPanel {
 	id: String,
 	context: ExtensionContext,
@@ -270,6 +379,7 @@ pub struct ExtensionUi {
 	pub catalog_refreshing: bool,
 	pub requests: Vec<ExtensionRequest>,
 	consent: Option<Consent>,
+	settings_editor: Option<SettingsEditor>,
 	result: Option<ResultPanel>,
 	error: Option<String>,
 	message_actions: Arc<Vec<MenuAction>>,
@@ -1633,6 +1743,7 @@ impl ExtensionUi {
 			);
 		}
 		self.consent_modal(ui.ctx(), &colors);
+		self.settings_modal(ui.ctx(), &colors);
 	}
 	fn card_body(
 		&mut self,
@@ -1973,8 +2084,13 @@ impl ExtensionUi {
 				.iter()
 				.filter(|action| action.surface == Surface::Panel)
 				.collect();
-			let count =
-				1 + usize::from(entry.update_available) + usize::from(!panel_actions.is_empty());
+			let configurable = entry.runtime.is_some()
+				&& entry.manifest.api_version >= extensions::API_V2
+				&& !entry.cleanup_pending;
+			let count = 1
+				+ usize::from(entry.update_available)
+				+ usize::from(!panel_actions.is_empty())
+				+ usize::from(configurable);
 			let each = ((ui.available_width() - 8.0 * (count - 1) as f32) / count as f32).max(1.0);
 			if entry.update_available
 				&& ui
@@ -2033,6 +2149,20 @@ impl ExtensionUi {
 						},
 					);
 				});
+			}
+			if configurable
+				&& card_button(
+					ui,
+					"Settings",
+					egui::vec2(each, FOOTER_HEIGHT),
+					neutral,
+					outline,
+					colors.text_strong,
+				)
+				.on_hover_text("Settings, secrets and storage used by this extension")
+				.clicked()
+			{
+				self.settings_editor = Some(SettingsEditor::new(entry));
 			}
 			if card_button(
 				ui,
@@ -2267,6 +2397,13 @@ impl ExtensionUi {
 						}
 					}
 				}
+				let review = v2_review(&consent.entry.manifest);
+				if !review.is_empty() {
+					ui.label(design::eyebrow(ui, "It also asks for", colors.muted));
+					for line in review {
+						ui.label(egui::RichText::new(line).size(12.5).color(colors.text));
+					}
+				}
 				ui.label(
 					egui::RichText::new(crate::i18n::translate(
 						"extensions-ui-consent-modal-disabling-removes-the-extension-and-its-local-data-re-enabling",
@@ -2317,6 +2454,120 @@ impl ExtensionUi {
 		});
 		if !close && !response.close {
 			self.consent = Some(consent);
+		}
+	}
+	fn settings_modal(&mut self, ctx: &egui::Context, colors: &design::Palette) {
+		let Some(mut editor) = self.settings_editor.take() else {
+			return;
+		};
+		// The plugin may have been disabled or replaced while the page was open.
+		let Some(runtime) = self
+			.entries
+			.iter()
+			.find(|entry| entry.manifest.id == editor.id && entry.enabled)
+			.and_then(|entry| entry.runtime.clone())
+		else {
+			return;
+		};
+		let mut close = false;
+		let mut secret_requests = Vec::new();
+		let invalid = editor.result().err();
+		let response = crate::dialog::Dialog::new("extension-settings", editor.name.clone())
+			.subtitle("Extension settings")
+			.width(460.0)
+			.show(ctx, |d| {
+				d.scroll(220.0, |ui| {
+					ui.set_width(ui.available_width());
+					ui.spacing_mut().item_spacing.y = 10.0;
+					for field in editor.fields.clone() {
+						settings_field(
+							ui,
+							colors,
+							&field,
+							&mut editor,
+							&runtime,
+							&mut secret_requests,
+						);
+					}
+					if editor.fields.is_empty() {
+						ui.label(
+							egui::RichText::new("This extension has no settings.")
+								.size(13.0)
+								.color(colors.muted),
+						);
+					}
+					ui.label(design::eyebrow(ui, "Usage", colors.muted));
+					ui.label(
+						egui::RichText::new(format!(
+							"Local storage: {:.1} KiB of {:.1} KiB",
+							runtime.storage_used as f64 / 1024.0,
+							runtime.storage_quota as f64 / 1024.0
+						))
+						.size(12.5)
+						.color(colors.text),
+					);
+					if !runtime.unavailable_features.is_empty() {
+						ui.label(
+							egui::RichText::new(format!(
+								"Optional features this version of Harmony does not offer: {}",
+								runtime.unavailable_features.join(", ")
+							))
+							.size(12.0)
+							.color(colors.muted),
+						);
+					}
+					if let Some(label) = &invalid {
+						ui.label(
+							egui::RichText::new(format!("{label}: enter a whole number in range."))
+								.size(12.0)
+								.color(colors.danger),
+						);
+					}
+				});
+				d.footer(|ui| {
+					let has_values = editor
+						.fields
+						.iter()
+						.any(|field| field.kind != extensions::SettingType::Secret);
+					if has_values {
+						let save = ui
+							.add_enabled_ui(invalid.is_none() && !self.busy, |ui| {
+								crate::dialog::action(ui, "Save", crate::dialog::Action::Primary)
+							})
+							.inner;
+						if save.clicked()
+							&& let Ok(values) = editor.result()
+						{
+							self.queue(
+								ctx,
+								ExtensionRequest::SaveSettings {
+									id: editor.id.clone(),
+									values,
+								},
+							);
+							close = true;
+						}
+					}
+					close |= crate::dialog::action(
+						ui,
+						if has_values { "Cancel" } else { "Close" },
+						crate::dialog::Action::Neutral,
+					)
+					.clicked();
+				});
+			});
+		for (field, value) in secret_requests {
+			self.queue(
+				ctx,
+				ExtensionRequest::SaveSecret {
+					id: editor.id.clone(),
+					field,
+					value,
+				},
+			);
+		}
+		if !close && !response.close {
+			self.settings_editor = Some(editor);
 		}
 	}
 	pub(crate) fn reset_theme_shortcut(&mut self, ctx: &egui::Context) {
@@ -2540,11 +2791,34 @@ impl ExtensionUi {
 			});
 		if let Some(action) = action {
 			let mut invocation = result.invocation.clone();
-			invocation.action = action;
-			invocation.composer = None;
-			invocation.selected_message = None;
-			invocation.selected_message_ref = None;
-			invocation.menu_target = None;
+			// v2 buttons that are not declared actions re-run the same action on the same
+			// target and say which button it was; declared actions start fresh, as in v1.
+			let manifest = self
+				.entries
+				.iter()
+				.find(|entry| entry.manifest.id == result.id)
+				.map(|entry| &entry.manifest);
+			let sub_action = manifest.is_some_and(|manifest| {
+				manifest.api_version >= extensions::API_V2
+					&& !manifest
+						.actions
+						.iter()
+						.any(|declared| declared.id == action)
+			});
+			if sub_action {
+				invocation.button = Some(action);
+			} else {
+				invocation.action = action;
+				invocation.button = None;
+				invocation.composer = None;
+				invocation.selected_message = None;
+				invocation.selected_message_ref = None;
+				invocation.menu_target = None;
+			}
+			// A follow-up starts its own request rounds.
+			invocation.responses.clear();
+			invocation.continuation = None;
+			invocation.round = 0;
 			invocation.values = result.values.clone();
 			self.queue(
 				ctx,
@@ -2564,6 +2838,209 @@ impl ExtensionUi {
 	}
 }
 /// Approximate heap and inline bytes a queued request holds, for the queue's memory budget.
+/// What an API v2 manifest asks for beyond capabilities, for review before enabling.
+fn v2_review(manifest: &Manifest) -> Vec<String> {
+	let mut lines = Vec::new();
+	if manifest.api_version < extensions::API_V2 {
+		return lines;
+	}
+	let limits = extensions::ResourceLimits::DEFAULT;
+	let quotas = manifest.quotas.effective(&limits);
+	let kib = |bytes: u64| {
+		if bytes >= 1024 * 1024 {
+			format!("{} MiB", bytes / (1024 * 1024))
+		} else {
+			format!("{} KiB", bytes.div_ceil(1024))
+		}
+	};
+	for (label, requested, default) in [
+		(
+			"local storage",
+			quotas.storage_bytes,
+			limits.storage_bytes.default,
+		),
+		(
+			"settings",
+			quotas.settings_bytes,
+			limits.settings_bytes.default,
+		),
+		(
+			"network responses",
+			quotas.network_response_bytes,
+			limits.network_response_bytes.default,
+		),
+	] {
+		if requested > default {
+			lines.push(format!("Up to {} of {label}", kib(requested)));
+		}
+	}
+	let secrets = manifest
+		.settings
+		.iter()
+		.filter(|field| field.kind == extensions::SettingType::Secret)
+		.count();
+	if secrets > 0 {
+		lines.push(format!(
+			"{secrets} secret value(s), kept in your system's credential store"
+		));
+	}
+	for dependency in manifest.dependencies.iter().filter(|d| !d.optional) {
+		lines.push(format!(
+			"Needs the extension {} {}",
+			dependency.id, dependency.version
+		));
+	}
+	if !manifest.requires.features.is_empty() {
+		lines.push(format!(
+			"Harmony features: {}",
+			manifest
+				.requires
+				.features
+				.keys()
+				.cloned()
+				.collect::<Vec<_>>()
+				.join(", ")
+		));
+	}
+	lines
+}
+
+/// One host-drawn settings field. Secrets are typed into a password box and sent once.
+fn settings_field(
+	ui: &mut egui::Ui,
+	colors: &design::Palette,
+	field: &extensions::SettingField,
+	editor: &mut SettingsEditor,
+	runtime: &ExtensionRuntime,
+	secret_requests: &mut Vec<(String, Option<SecretText>)>,
+) {
+	use extensions::{SettingType, SettingValue};
+	let description = (!field.description.is_empty()).then_some(field.description.as_str());
+	let heading = |ui: &mut egui::Ui| {
+		ui.label(design::semibold(ui, &field.label, 14.0).color(colors.text_strong));
+		if let Some(description) = description {
+			ui.label(
+				egui::RichText::new(description)
+					.size(12.0)
+					.color(colors.muted),
+			);
+		}
+	};
+	match field.kind {
+		SettingType::Toggle => {
+			let mut on = matches!(editor.values.get(&field.id), Some(SettingValue::Bool(true)));
+			if design::switch(ui, &field.label, description, &mut on).changed() {
+				editor
+					.values
+					.insert(field.id.clone(), SettingValue::Bool(on));
+			}
+		}
+		SettingType::Choice => {
+			heading(ui);
+			let current = match editor.values.get(&field.id) {
+				Some(SettingValue::Text(text)) => text.clone(),
+				_ => String::new(),
+			};
+			let shown = field
+				.options
+				.iter()
+				.find(|option| option.value == current)
+				.map_or(current.clone(), |option| option.label.clone());
+			crate::design::Select::from_id_salt(("extension-setting", &field.id))
+				.selected_text(shown)
+				.width(ui.available_width())
+				.show_ui(ui, |ui| {
+					for option in &field.options {
+						if ui
+							.selectable_label(option.value == current, &option.label)
+							.clicked()
+						{
+							editor
+								.values
+								.insert(field.id.clone(), SettingValue::Text(option.value.clone()));
+						}
+					}
+				});
+		}
+		SettingType::Text => {
+			heading(ui);
+			let limit = field.max_chars.unwrap_or(256) as usize;
+			let value = editor
+				.values
+				.entry(field.id.clone())
+				.or_insert_with(|| SettingValue::Text(String::new()));
+			if let SettingValue::Text(text) = value {
+				let edit = if field.multiline {
+					egui::TextEdit::multiline(text).desired_rows(3)
+				} else {
+					egui::TextEdit::singleline(text)
+				};
+				design::input(ui, edit.char_limit(limit));
+			}
+		}
+		SettingType::Number => {
+			heading(ui);
+			let text = editor.numbers.entry(field.id.clone()).or_default();
+			design::input(ui, egui::TextEdit::singleline(text).char_limit(20));
+			if field.min.is_some() || field.max.is_some() {
+				ui.label(
+					egui::RichText::new(format!(
+						"From {} to {}",
+						field.min.map_or("any".into(), |min| min.to_string()),
+						field.max.map_or("any".into(), |max| max.to_string())
+					))
+					.size(11.5)
+					.color(colors.muted),
+				);
+			}
+		}
+		SettingType::Secret => {
+			heading(ui);
+			let stored = runtime.secrets.get(&field.id).copied().unwrap_or(false);
+			ui.label(
+				egui::RichText::new(if stored {
+					"Saved in your system's credential store."
+				} else {
+					"Not set."
+				})
+				.size(12.0)
+				.color(if stored {
+					colors.positive
+				} else {
+					colors.muted
+				}),
+			);
+			let input = editor.secret_input.entry(field.id.clone()).or_default();
+			design::input(
+				ui,
+				egui::TextEdit::singleline(input)
+					.password(true)
+					.char_limit(extensions::MAX_SECRET_CHARS)
+					.hint_text(if stored {
+						"Replace secret"
+					} else {
+						"Enter secret"
+					}),
+			);
+			ui.horizontal(|ui| {
+				if ui
+					.add_enabled(!input.trim().is_empty(), egui::Button::new("Save secret"))
+					.clicked()
+				{
+					secret_requests.push((
+						field.id.clone(),
+						Some(SecretText::new(std::mem::take(input))),
+					));
+				}
+				if stored && ui.button("Remove").clicked() {
+					input.clear();
+					secret_requests.push((field.id.clone(), None));
+				}
+			});
+		}
+	}
+}
+
 fn request_bytes(request: &ExtensionRequest) -> usize {
 	std::mem::size_of_val(request)
 		+ match request {
@@ -2630,6 +3107,22 @@ fn request_bytes(request: &ExtensionRequest) -> usize {
 				result,
 				context,
 			} => id.len() + result.request_id.len() + context.draft.as_ref().map_or(0, String::len),
+			ExtensionRequest::SaveSettings { id, values } => {
+				id.len()
+					+ values
+						.iter()
+						.map(|(key, value)| {
+							key.len()
+								+ match value {
+									extensions::SettingValue::Text(text) => text.len(),
+									_ => 8,
+								}
+						})
+						.sum::<usize>()
+			}
+			ExtensionRequest::SaveSecret { id, field, value } => {
+				id.len() + field.len() + value.as_ref().map_or(0, SecretText::len)
+			}
 		}
 }
 
@@ -2940,8 +3433,15 @@ fn capability_label(capability: Capability) -> &'static str {
 		Capability::SelectedMessage => "Read the message I choose for an action",
 		Capability::ContextMenus => "Add actions to user, channel, server and role menus",
 		Capability::InterfaceTweaks => "Change how parts of the interface look or behave",
+		Capability::MediaLinks => {
+			"See links to the images, videos and files on a message I choose for an action"
+		}
+		Capability::AttachmentContents => {
+			"Read the start of an attachment on a message I choose for an action"
+		}
+		Capability::ServerProfiles => "Look up public details of servers I am in",
 		Capability::Composer => "Read my draft and propose text changes",
-		Capability::Storage => "Store up to 1 MiB of local data for this account",
+		Capability::Storage => "Store local data for this account, within its storage quota",
 		Capability::AppContext => "Read my account and current conversation details",
 		Capability::AccountProfile => "Read my loaded profile, including biography and pronouns",
 		Capability::GuildDirectory => "Read my loaded server names and identifiers",
@@ -3227,6 +3727,11 @@ mod tests {
 				license: "MIT".into(),
 				source: "https://example.com/source".into(),
 				kind: ExtensionKind::Plugin,
+				requires: Default::default(),
+				dependencies: Vec::new(),
+				conflicts: Vec::new(),
+				settings: Vec::new(),
+				quotas: Default::default(),
 				capabilities: vec![Capability::Composer],
 				actions: vec![],
 			},
@@ -3237,6 +3742,7 @@ mod tests {
 			cleanup_pending: false,
 			update_available: false,
 			update_manifest: None,
+			runtime: None,
 		}
 	}
 	/// Runs one frame that publishes context actions and draws `target`'s plugin entries, and
@@ -4193,5 +4699,76 @@ mod tests {
 		));
 		assert!(apply_proposal(&mut state, &context, "changed"));
 		assert_eq!(state.drafts[&Id(1)], "changed");
+	}
+
+	/// The host-built settings page saves only declared non-secret values, blocks invalid
+	/// numbers, and sends a typed secret once through its own request, never with settings.
+	#[test]
+	fn v2_settings_page_keeps_secrets_out_of_saved_settings() {
+		let ctx = egui::Context::default();
+		let width = 900.0;
+		let mut entry = entry();
+		entry.enabled = true;
+		let field = |id: &str, kind| extensions::SettingField {
+			id: id.into(),
+			label: id.into(),
+			description: String::new(),
+			kind,
+			default: None,
+			options: Vec::new(),
+			min: (kind == extensions::SettingType::Number).then_some(1),
+			max: (kind == extensions::SettingType::Number).then_some(5),
+			max_chars: None,
+			multiline: false,
+		};
+		entry.manifest.api_version = extensions::API_V2;
+		entry.manifest.settings = vec![
+			field("count", extensions::SettingType::Number),
+			field("token", extensions::SettingType::Secret),
+		];
+		entry.runtime = Some(Box::default());
+		let mut extensions = ExtensionUi::default();
+		extensions.set_entries(vec![entry.clone()]);
+		extensions.settings_editor = Some(SettingsEditor::new(&entry));
+		extensions
+			.settings_editor
+			.as_mut()
+			.unwrap()
+			.numbers
+			.insert("count".into(), "9".into());
+		frame(&ctx, &mut extensions, width, vec![]);
+		let labels = frame(&ctx, &mut extensions, width, vec![]);
+		click(&ctx, &mut extensions, width, &labels, "Save");
+		assert!(
+			extensions.requests.is_empty(),
+			"an out-of-range number must not be saved"
+		);
+		let editor = extensions.settings_editor.as_mut().unwrap();
+		editor.numbers.insert("count".into(), "4".into());
+		editor
+			.secret_input
+			.insert("token".into(), "synthetic-secret".into());
+		let labels = frame(&ctx, &mut extensions, width, vec![]);
+		click(&ctx, &mut extensions, width, &labels, "Save secret");
+		let labels = frame(&ctx, &mut extensions, width, vec![]);
+		click(&ctx, &mut extensions, width, &labels, "Save");
+		let [
+			ExtensionRequest::SaveSecret {
+				field,
+				value: Some(secret),
+				..
+			},
+			ExtensionRequest::SaveSettings { values, .. },
+		] = extensions.requests.as_slice()
+		else {
+			panic!("expected one secret then the settings");
+		};
+		assert_eq!(field, "token");
+		assert_eq!(format!("{secret:?}"), "SecretText(<redacted>)");
+		assert_eq!(
+			values,
+			&BTreeMap::from([("count".into(), extensions::SettingValue::Number(4))])
+		);
+		assert!(extensions.settings_editor.is_none());
 	}
 }

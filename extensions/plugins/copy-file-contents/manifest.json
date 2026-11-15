@@ -1,0 +1,33 @@
+{
+  "api_version": 2,
+  "id": "copy-file-contents",
+  "name": "Copy File Contents",
+  "version": "1.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/copy-file-contents",
+  "kind": "plugin",
+  "capabilities": ["selected_message", "media_links", "attachment_contents", "clipboard_write"],
+  "actions": [
+    { "id": "copy", "label": "Copy file contents", "surface": "message" }
+  ],
+  "requires": {
+    "features": {
+      "settings": "^1.0",
+      "host_requests": "^1.0",
+      "media.links": "^1.0",
+      "attachments.read": "^1.0"
+    }
+  },
+  "settings": [
+    {
+      "id": "max-kib",
+      "label": "Largest amount to read (KiB)",
+      "description": "Longer files are read and copied up to this size.",
+      "type": "number",
+      "min": 1,
+      "max": 64,
+      "default": 64
+    }
+  ]
+}

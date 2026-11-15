@@ -10,6 +10,8 @@ Rust code compiled to WebAssembly. Themes are declarative packages and do not
 need a handler.
 
 **Start here:** [Build your first plugin](../examples/extensions/README.md).
+**New in API v2 (Preview):** settings and secrets, key-value storage, host requests,
+dependencies and quotas — see [Extension API v2](extension-sdk-v2.md).
 For an existing plugin, use the [data reference](extension-sdk-reference.md#app-data)
 or [action reference](extension-sdk-actions.md#outputs-and-host-actions).
 

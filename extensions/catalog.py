@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Generate and check the immutable extension catalog; canonical package validation lives in Harmony.
+"""Generate and check the immutable extension catalogs; canonical package validation lives in Harmony.
+
+API version 1 packages go to `catalog.json`, which every Harmony release reads. API version 2
+packages go to `catalog-v2.json`, which only releases with API v2 fetch, so a v2 package can
+never make an older client reject the whole shop.
 
 Package URLs are pinned to a commit on `main`. Pull requests are squash-merged, so a branch
 commit can disappear; pins are therefore written after merge (`--pin`, run by CI) from the
@@ -20,6 +24,8 @@ PACKAGE_DIRS = ("themes", "plugins/packages")
 CAPABILITIES = {"selected_message", "composer", "storage", "deleted_messages", "image_sharing", "appearance", "rich_presence", "api_proxy", "external_navigation"}
 RESERVED = {"con", "prn", "aux", "nul"} | {f"{prefix}{n}" for prefix in ("com", "lpt") for n in range(1, 10)}
 MAX_PREVIEW = 256 * 1024
+CATALOG_FILES = {1: "catalog.json", 2: "catalog-v2.json"}
+V2_SURFACES = {"message", "composer", "panel", "activation", "message_event", "app_event", "tick", "user", "channel", "server", "role"}
 
 
 def require(condition, message):
@@ -46,15 +52,34 @@ def valid_https_url(value):
     return url.scheme == "https" and bool(url.hostname) and port in (None, 443)
 
 
+def validate_v2(package, manifest):
+    """Structural checks for an API v2 package; Harmony re-validates everything on install."""
+    capabilities = manifest.get("capabilities", [])
+    actions = manifest.get("actions", [])
+    require(isinstance(capabilities, list) and len(capabilities) <= 64 and len(set(capabilities)) == len(capabilities) and all(isinstance(c, str) and re.fullmatch(r"[a-z_]{1,64}", c) for c in capabilities), "invalid capabilities")
+    require(isinstance(actions, list) and len(actions) <= 16 and len({a["id"] for a in actions}) == len(actions), "invalid action list")
+    for action in actions:
+        require(valid_id(action["id"]) and action["surface"] in V2_SURFACES, "invalid action")
+    for field in manifest.get("settings", []):
+        require(valid_id(field["id"]), "invalid setting ID")
+    require(manifest["kind"] == "plugin" and actions and package.get("theme") is None, "API v2 packages must be plugins")
+    values = package.get("wasm", [])
+    require(isinstance(values, list) and len(values) <= 4 * 1024 * 1024 and all(type(b) is int and 0 <= b <= 255 for b in values), "invalid wasm bytes")
+    require(bytes(values).startswith(b"\0asm\x01\0\0\0"), "Wasm v1 module required")
+    return manifest
+
+
 def validate(data):
     require(0 < len(data) <= 16 * 1024 * 1024, "package exceeds 16 MiB")
     package = json.loads(data)
     manifest = package["manifest"]
-    require(manifest["api_version"] == 1 and valid_id(manifest["id"]), "invalid API version or ID")
+    require(manifest["api_version"] in CATALOG_FILES and valid_id(manifest["id"]), "invalid API version or ID")
     for key in ("name", "version", "author", "license"):
         value = manifest[key]
         require(isinstance(value, str) and 0 < len(value.encode()) <= 128 and not any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in value), f"invalid {key}")
     require(valid_https_url(manifest["source"]), "credential-free HTTPS source on the default port required")
+    if manifest["api_version"] == 2:
+        return validate_v2(package, manifest)
     capabilities = manifest.get("capabilities", [])
     actions = manifest.get("actions", [])
     require(isinstance(capabilities, list) and len(capabilities) <= 4 and len(set(capabilities)) == len(capabilities) and set(capabilities) <= CAPABILITIES, "invalid capabilities")
@@ -118,16 +143,19 @@ class WorkingTree:
         return path.read_bytes() if path.is_file() else None
 
 
-def entries(tree, base):
-    """Validate every package, its source manifest and preview; return catalog entries."""
+def entries(tree, base, version=None):
+    """Validate every package, its source manifest and preview; return catalog entries for
+    one API version (or every package, when `version` is None)."""
     paths = tree.packages()
-    require(0 < len(paths) <= 256, "catalog requires 1 to 256 packages")
+    require(0 < len(paths) <= 512, "catalogs require 1 to 512 packages")
     result, ids = [], set()
     for relative in paths:
         data = tree.read(relative)
         manifest = validate(data)
         require(manifest["id"] not in ids, "duplicate extension ID")
         ids.add(manifest["id"])
+        if version is not None and manifest["api_version"] != version:
+            continue
         stem = Path(relative).stem
         entry = dict(manifest=manifest, release_url=base + tree.prefix + relative, sha256=hashlib.sha256(data).hexdigest(), download_bytes=len(data), source_commit=getattr(tree, "commit", ""))
         if manifest["kind"] == "plugin":
@@ -138,20 +166,24 @@ def entries(tree, base):
             require(0 < len(image) <= MAX_PREVIEW, f"invalid preview: {stem}")
             entry["preview"] = dict(url=base + tree.prefix + f"previews/{stem}.png", sha256=hashlib.sha256(image).hexdigest(), download_bytes=len(image))
         result.append(entry)
+    require(len(result) <= 256, "a catalog lists at most 256 packages")
     return result
 
 
-def render(catalog_entries):
-    output = (json.dumps(dict(api_version=1, entries=catalog_entries), indent=2, ensure_ascii=False) + "\n").encode()
+def render(catalog_entries, version=1):
+    output = (json.dumps(dict(api_version=version, entries=catalog_entries), indent=2, ensure_ascii=False) + "\n").encode()
     require(len(output) <= 1024 * 1024, "catalog exceeds 1 MiB")
     return output
 
 
-def generate(commit, repository):
+def generate(commit, repository, version=1):
+    """The catalog for one API version, or None when no package of that version exists."""
     require(re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit), "explicit full Git commit SHA required")
     require(git("rev-parse", f"{commit}^{{commit}}").decode().strip() == commit, "commit must exist locally")
     require(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository), "repository must be owner/name")
-    return render(entries(Tree(commit), f"https://raw.githubusercontent.com/{repository}/{commit}/"))
+    listed = entries(Tree(commit), f"https://raw.githubusercontent.com/{repository}/{commit}/", version)
+    require(listed or version != 1, "catalog.json requires at least one package")
+    return render(listed, version) if listed else None
 
 
 def content(catalog, repository):
@@ -180,27 +212,41 @@ def main():
     mode.add_argument("--check", action="store_true", help="verify the catalog matches its pinned commit (needs that commit locally)")
     parser.add_argument("--repository", default=REPOSITORY)
     args = parser.parse_args()
-    catalog = ROOT / "catalog.json"
     if args.validate:
         count = len(entries(WorkingTree(), "https://example.invalid/"))
         print(f"Validated {count} packages in the checkout")
         return
     if args.check:
-        commits = {entry["source_commit"] for entry in json.loads(catalog.read_bytes())["entries"]}
-        require(len(commits) == 1, "catalog must pin one package commit")
-        commit = commits.pop()
-        require(catalog.read_bytes() == generate(commit, args.repository), "catalog differs from its pinned commit; regenerate it")
-        print(f"Catalog verified at {commit}")
+        for version, name in CATALOG_FILES.items():
+            catalog = ROOT / name
+            if not catalog.is_file():
+                require(version != 1, "catalog.json is missing")
+                continue
+            commits = {entry["source_commit"] for entry in json.loads(catalog.read_bytes())["entries"]}
+            require(len(commits) == 1, f"{name} must pin one package commit")
+            commit = commits.pop()
+            require(catalog.read_bytes() == generate(commit, args.repository, version), f"{name} differs from its pinned commit; regenerate it")
+            print(f"{name} verified at {commit}")
         return
     commit = args.pin or args.commit
-    output = generate(commit, args.repository)
+    for version, name in CATALOG_FILES.items():
+        pin(ROOT / name, commit, args, version)
+
+
+def pin(catalog, commit, args, version):
+    output = generate(commit, args.repository, version)
+    if output is None:
+        if catalog.is_file():
+            catalog.unlink()
+            print(f"{catalog.name} removed: no API version {version} packages")
+        return
     if args.pin and catalog.is_file():
         current = content(json.loads(catalog.read_bytes()), args.repository)
         if current is not None and current == content(json.loads(output), args.repository):
-            print("Catalog is already pinned to these package bytes")
+            print(f"{catalog.name} is already pinned to these package bytes")
             return
     catalog.write_bytes(output)
-    print(f"Catalog pinned: {len(json.loads(output)['entries'])} packages at {commit}")
+    print(f"{catalog.name} pinned: {len(json.loads(output)['entries'])} packages at {commit}")
 
 
 if __name__ == "__main__":

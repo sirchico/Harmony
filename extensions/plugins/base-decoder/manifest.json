@@ -1,0 +1,34 @@
+{
+  "api_version": 2,
+  "id": "base-decoder",
+  "name": "Base64 Decoder",
+  "version": "1.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/base-decoder",
+  "kind": "plugin",
+  "capabilities": ["selected_message", "composer", "clipboard_write"],
+  "actions": [
+    { "id": "decode", "label": "Decode Base64", "surface": "message" },
+    { "id": "encode", "label": "Encode draft as Base64", "surface": "composer" }
+  ],
+  "requires": { "features": { "settings": "^1.0" } },
+  "settings": [
+    {
+      "id": "min-length",
+      "label": "Shortest text to decode",
+      "description": "Runs of Base64 characters shorter than this are ignored.",
+      "type": "number",
+      "min": 4,
+      "max": 256,
+      "default": 8
+    },
+    {
+      "id": "url-safe",
+      "label": "Also decode URL-safe Base64",
+      "description": "Accept - and _ in place of + and /.",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# Pins extensions/catalog.json to the merged commit on main. Pull requests are squash-merged,
+# Pins extensions/catalog.json (API v1) and extensions/catalog-v2.json to the merged commit on main. Pull requests are squash-merged,
 # so their own commits are not durable; a catalog URL must name a commit that stays on main.
 # Pull requests only validate packages (ci.yml); the catalog is rewritten here, after merge,
 # and only when package bytes, manifests or previews changed (see extensions/README.md).
@@ -15,6 +15,7 @@ on:
       # A hand edit is regenerated. This workflow's own push uses GITHUB_TOKEN, which
       # never triggers workflows, so it cannot loop.
       - extensions/catalog.json
+      - extensions/catalog-v2.json
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,11 +38,13 @@ jobs:
         run: python3 extensions/catalog.py --pin "$GITHUB_SHA"
       - name: Commit catalog
         run: |
-          if git diff --quiet -- extensions/catalog.json; then
-            echo "Catalog already pins these package bytes."
+          git add -N extensions/catalog-v2.json 2>/dev/null || true
+          if git diff --quiet -- extensions/catalog.json extensions/catalog-v2.json; then
+            echo "Catalogs already pin these package bytes."
             exit 0
           fi
           cp extensions/catalog.json "$RUNNER_TEMP/catalog.json"
+          if [ -f extensions/catalog-v2.json ]; then cp extensions/catalog-v2.json "$RUNNER_TEMP/catalog-v2.json"; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # main may have moved on; the pin stays valid because it names this run's commit.
@@ -49,8 +52,13 @@ jobs:
             git fetch --depth=1 origin main
             git checkout --quiet --force -B pin FETCH_HEAD
             cp "$RUNNER_TEMP/catalog.json" extensions/catalog.json
-            git diff --quiet -- extensions/catalog.json && exit 0
-            git commit --quiet -m "chore(extensions): pin catalog to ${GITHUB_SHA::12}" -- extensions/catalog.json
+            if [ -f "$RUNNER_TEMP/catalog-v2.json" ]; then
+              cp "$RUNNER_TEMP/catalog-v2.json" extensions/catalog-v2.json
+              git add extensions/catalog-v2.json
+            fi
+            git add extensions/catalog.json
+            git diff --cached --quiet && exit 0
+            git commit --quiet -m "chore(extensions): pin catalogs to ${GITHUB_SHA::12}"
             git push origin HEAD:main && exit 0
           done
           exit 1

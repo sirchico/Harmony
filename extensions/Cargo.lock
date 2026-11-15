@@ -10,12 +10,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "base-decoder"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+]
+
+[[package]]
+name = "copy-file-contents"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+]
+
+[[package]]
 name = "custom-rpc"
 version = "1.0.0"
 dependencies = [
+ "harmony-extension-sdk",
  "serde",
  "serde_json",
- "harmony-extension-sdk",
 ]
 
 [[package]]
@@ -33,9 +47,9 @@ dependencies = [
 name = "external-search-tools"
 version = "1.0.3"
 dependencies = [
+ "harmony-extension-sdk",
  "serde",
  "serde_json",
- "harmony-extension-sdk",
  "url",
 ]
 
@@ -46,6 +60,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "harmony-extension-sdk"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "url",
 ]
 
 [[package]]
@@ -219,6 +242,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "reverse-image-search"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -262,12 +292,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "harmony-extension-sdk"
-version = "0.1.0"
+name = "server-info"
+version = "1.0.0"
 dependencies = [
- "serde",
- "serde_json",
- "url",
+ "harmony-extension-sdk",
 ]
 
 [[package]]
@@ -308,9 +336,9 @@ dependencies = [
 name = "text-commands"
 version = "1.0.1"
 dependencies = [
+ "harmony-extension-sdk",
  "serde",
  "serde_json",
- "harmony-extension-sdk",
 ]
 
 [[package]]

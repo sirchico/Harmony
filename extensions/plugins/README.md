@@ -56,6 +56,29 @@ python pack.py plugins/view-raw-message/manifest.json target/wasm32-unknown-unkn
 python pack.py plugins/external-search-tools/manifest.json target/wasm32-unknown-unknown/release/external_search_tools.wasm plugins/packages/external-search-tools.harmony-extension --license licenses/Equicord-GPL-3.0.txt
 ```
 
+## API v2 extensions (Preview)
+
+Written for Harmony from each plugin's described behavior (no third-party code), licensed
+MIT OR Apache-2.0, and built only from the public [API v2 SDK](../../docs/extension-sdk-v2.md).
+Each is off until enabled in Settings > Extensions and asks for its permissions there.
+
+| Package | Grants | Behavior |
+| --- | --- | --- |
+| **Base64 Decoder** | `selected_message`, `composer`, `clipboard_write` | Decodes Base64 runs in a chosen message (standard and URL-safe, configurable minimum length) and offers to copy the first result; encodes the draft on request. |
+| **Reverse Image Search** | `selected_message`, `media_links`, `external_navigation` | Opens an image from a chosen message in Google Lens, Bing, Yandex, TinEye, SauceNAO or IQDB (default engine is a setting); the browser fetches the image, the extension fetches nothing. |
+| **Server Info** | `context_menus`, `server_profiles`, `clipboard_write` | Shows a joined server's public details from its menu: owner, creation date, members, boosts, verification and filters, features. Can offer to copy the server ID. |
+| **Copy File Contents** | `selected_message`, `media_links`, `attachment_contents`, `clipboard_write` | Reads up to 64 KiB of a text attachment on a chosen message, shows a preview and offers to copy it; other text files on the message get their own buttons. |
+
+Build and package them like any plugin:
+
+```sh
+cargo build --locked --release --target wasm32-unknown-unknown -p base-decoder -p reverse-image-search -p server-info -p copy-file-contents
+python pack.py plugins/base-decoder/manifest.json target/wasm32-unknown-unknown/release/base_decoder.wasm plugins/packages/base-decoder.harmony-extension
+python pack.py plugins/reverse-image-search/manifest.json target/wasm32-unknown-unknown/release/reverse_image_search.wasm plugins/packages/reverse-image-search.harmony-extension
+python pack.py plugins/server-info/manifest.json target/wasm32-unknown-unknown/release/server_info.wasm plugins/packages/server-info.harmony-extension
+python pack.py plugins/copy-file-contents/manifest.json target/wasm32-unknown-unknown/release/copy_file_contents.wasm plugins/packages/copy-file-contents.harmony-extension
+```
+
 ## ABI and limits
 
 See [ABI version 1](../../examples/extensions/README.md#abi-version-1) in the SDK guide

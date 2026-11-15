@@ -1,0 +1,37 @@
+{
+  "api_version": 2,
+  "id": "quick-notes",
+  "name": "Quick Notes",
+  "version": "1.0.0",
+  "author": "Example author",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/examples/extensions/quick-notes",
+  "kind": "plugin",
+  "capabilities": ["selected_message", "storage"],
+  "actions": [
+    { "id": "save", "label": "Save to Quick Notes", "surface": "message" },
+    { "id": "show", "label": "Quick Notes", "surface": "panel" }
+  ],
+  "requires": {
+    "features": { "storage.kv": "^1.0", "host_requests": "^1.0", "settings": "^1.0" },
+    "optional_features": { "sync": "^1.0" }
+  },
+  "settings": [
+    {
+      "id": "max-notes",
+      "label": "Notes to keep",
+      "description": "Saving more removes the oldest.",
+      "type": "number",
+      "min": 1,
+      "max": 50,
+      "default": 20
+    },
+    {
+      "id": "with-link",
+      "label": "Add a link to the message",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "quotas": { "storage_bytes": 65536 }
+}

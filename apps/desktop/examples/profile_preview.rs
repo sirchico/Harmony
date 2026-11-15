@@ -678,6 +678,7 @@ fn seed_catalog(extensions: &mut ui::ExtensionUi, themes: bool) {
 					cleanup_pending: false,
 					update_available: false,
 					update_manifest: None,
+					runtime: None,
 				}
 			})
 			.collect();
@@ -715,6 +716,7 @@ fn seed_catalog(extensions: &mut ui::ExtensionUi, themes: bool) {
 				cleanup_pending: false,
 				update_available: false,
 				update_manifest: None,
+				runtime: None,
 			})
 			.collect(),
 	);
@@ -1304,6 +1306,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							cleanup_pending: false,
 							update_available: false,
 							update_manifest: None,
+							runtime: None,
 						}]);
 						messaging.extensions.present_output(
 							package.manifest.id.clone(),

@@ -51,6 +51,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "harmony-extension-sdk"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "icu_collections"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -176,8 +185,8 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 name = "message-counter"
 version = "1.0.0"
 dependencies = [
- "serde",
  "harmony-extension-sdk",
+ "serde",
 ]
 
 [[package]]
@@ -205,6 +214,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-notes"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -217,9 +233,9 @@ dependencies = [
 name = "rgb-cycle"
 version = "1.1.0"
 dependencies = [
+ "harmony-extension-sdk",
  "serde",
  "serde_json",
- "harmony-extension-sdk",
 ]
 
 [[package]]
@@ -263,15 +279,6 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
-]
-
-[[package]]
-name = "harmony-extension-sdk"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "url",
 ]
 
 [[package]]

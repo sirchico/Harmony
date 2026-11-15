@@ -39,6 +39,7 @@ fn main() {
 					cleanup_pending: false,
 					update_available: false,
 					update_manifest: None,
+					runtime: None,
 				}
 			})
 			.collect(),

@@ -8,6 +8,25 @@ use model::{
 use wreq::Method;
 
 impl DiscordApi {
+	/// Public details of a server the account is in; members may read this route.
+	pub(super) async fn server_profile(
+		&self,
+		guild: Id,
+	) -> Result<model::server_profile::ServerProfile, Failure> {
+		if guild.0 == 0 {
+			return Err(Failure::Protocol);
+		}
+		let body = self
+			.request_limited(
+				Method::GET,
+				&format!("/guilds/{guild}?with_counts=true"),
+				None,
+				discord_protocol::server_profile::MAX_PROFILE_WIRE,
+			)
+			.await?;
+		discord_protocol::server_profile::decode_server_profile(guild, &body)
+			.map_err(|_| Failure::ProtocolAt("Server details response was unsupported"))
+	}
 	async fn load_server_settings(&self, guild: Id) -> Result<Box<Settings>, Failure> {
 		if guild.0 == 0 {
 			return Err(Failure::Protocol);

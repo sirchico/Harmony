@@ -30,6 +30,7 @@ pub mod server_admin;
 pub mod server_audit_log;
 pub mod server_integrations;
 pub mod server_invites;
+pub mod server_profile;
 pub mod server_roles;
 pub mod server_settings;
 pub use reading_preferences::ReadingPreferences;

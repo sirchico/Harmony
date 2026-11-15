@@ -20,6 +20,8 @@ pub const MAX_APP_PRESENCES: usize = 100;
 pub const MAX_VOICE_PARTICIPANTS: usize = 64;
 pub const MAX_HOST_EFFECTS: usize = 1;
 pub const MAX_HOST_EFFECT_BYTES: usize = 8 * 1024;
+/// API v2 extensions may copy up to this much text in one `CopyText` effect; v1 keeps 4 KiB.
+pub const MAX_COPY_TEXT_BYTES_V2: usize = 64 * 1024;
 
 /// Each group is present only when granted and available; partial lists say so explicitly.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

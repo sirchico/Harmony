@@ -27,6 +27,11 @@ fn manifest(action: &str, surface: Surface) -> Manifest {
 		license: "MIT".into(),
 		source: "https://example.org/source".into(),
 		kind: ExtensionKind::Plugin,
+		requires: Default::default(),
+		dependencies: Vec::new(),
+		conflicts: Vec::new(),
+		settings: Vec::new(),
+		quotas: Default::default(),
 		capabilities,
 		actions: vec![Action {
 			id: action.into(),
@@ -465,4 +470,129 @@ fn every_sdk_panel_and_appearance_field_is_accepted_by_the_host() {
 	let roundtrip: sdk::Output =
 		serde_json::from_slice(&serde_json::to_vec(&host).unwrap()).unwrap();
 	assert_eq!(roundtrip, expected);
+}
+
+/// The SDK's v2 types and the host's must agree on the wire in both directions: what an
+/// independently built extension writes, the host reads, and what the host sends, it reads.
+#[test]
+fn v2_sdk_and_host_agree_on_requests_responses_and_storage_writes() {
+	let mut output = sdk::ExtensionOutput::default();
+	output.kv_set("a", "1");
+	output.kv_delete("b");
+	output.kv.push(sdk::KvOp::Clear);
+	for request in [
+		sdk::HostRequest::KvGet {
+			id: "get".into(),
+			keys: vec!["a".into()],
+		},
+		sdk::HostRequest::KvList {
+			id: "list".into(),
+			prefix: "note/".into(),
+			limit: Some(5),
+		},
+		sdk::HostRequest::AttachmentRead {
+			id: "read".into(),
+			attachment_id: "7".into(),
+			max_bytes: Some(1024),
+		},
+		sdk::HostRequest::ServerProfile {
+			id: "server".into(),
+			guild_id: "10".into(),
+		},
+	] {
+		output.request(request);
+	}
+	output.continuation = Some("state".into());
+	let host: Output = serde_json::from_slice(&serde_json::to_vec(&output).unwrap()).unwrap();
+	assert_eq!(host.kv.len(), 3);
+	assert_eq!(
+		host.requests
+			.iter()
+			.map(extensions::HostRequest::id)
+			.collect::<Vec<_>>(),
+		["get", "list", "read", "server"]
+	);
+	assert_eq!(host.continuation.as_deref(), Some("state"));
+
+	let invocation = Invocation {
+		action: "info".into(),
+		round: 1,
+		continuation: Some("state".into()),
+		button: Some("image-2".into()),
+		settings: Some(std::collections::BTreeMap::from([
+			("on".into(), extensions::SettingValue::Bool(true)),
+			("count".into(), extensions::SettingValue::Number(3)),
+		])),
+		secrets: Some(std::collections::BTreeMap::from([("token".into(), true)])),
+		responses: vec![
+			extensions::HostResponse::ok(
+				"get",
+				extensions::ResponseValue::Kv {
+					values: std::collections::BTreeMap::from([
+						("a".into(), Some("1".into())),
+						("b".into(), None),
+					]),
+				},
+			),
+			extensions::HostResponse::ok(
+				"server",
+				extensions::ResponseValue::ServerProfile {
+					profile: Box::new(extensions::ServerProfile {
+						id: "10".into(),
+						name: "Synthetic".into(),
+						description: None,
+						icon_url: None,
+						banner_url: None,
+						splash_url: None,
+						owner_id: None,
+						created_at_ms: 1,
+						verification_level: None,
+						explicit_content_filter: None,
+						nsfw_level: None,
+						mfa_level: None,
+						premium_tier: None,
+						premium_subscription_count: None,
+						approximate_member_count: Some(2),
+						approximate_presence_count: None,
+						max_members: None,
+						vanity_url_code: None,
+						preferred_locale: None,
+						features: Vec::new(),
+						roles: 0,
+						emojis: 0,
+						stickers: 0,
+					}),
+				},
+			),
+			extensions::HostResponse::error(
+				"read",
+				extensions::RequestErrorCode::NotFound,
+				"missing",
+			),
+		],
+		..Default::default()
+	};
+	let input: sdk::ExtensionInvocation =
+		serde_json::from_slice(&serde_json::to_vec(&invocation).unwrap()).unwrap();
+	assert_eq!(
+		(input.action(), input.round, input.button()),
+		("info", 1, Some("image-2"))
+	);
+	assert!(input.setting_bool("on") && input.setting_number("count") == Some(3));
+	assert!(input.secret_set("token"));
+	assert!(matches!(
+		input.response("get").and_then(|r| r.value.as_ref()),
+		Some(sdk::ResponseValue::Kv { values }) if values["a"].as_deref() == Some("1") && values["b"].is_none()
+	));
+	assert!(matches!(
+		input.response("server").and_then(|r| r.value.as_ref()),
+		Some(sdk::ResponseValue::ServerProfile { profile }) if profile.approximate_member_count == Some(2)
+	));
+	assert_eq!(
+		input
+			.response("read")
+			.and_then(|r| r.error.as_ref())
+			.map(|e| e.code),
+		Some(sdk::RequestErrorCode::NotFound)
+	);
 }

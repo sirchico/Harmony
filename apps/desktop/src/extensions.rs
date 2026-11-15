@@ -1,6 +1,7 @@
 //! Bounded extension work. No package IO or Wasm runs on the UI thread.
+mod v2;
 use std::{
-	collections::VecDeque,
+	collections::{BTreeMap, VecDeque},
 	fs::{self, File, OpenOptions},
 	io::{Cursor, Read, Write},
 	net::{IpAddr, Ipv4Addr},
@@ -14,8 +15,8 @@ use std::{
 };
 
 use extensions::{
-	Capability, Catalog, CatalogEntry, ExtensionKind, Invocation, Manifest, Output, Package,
-	Preview, Surface, Theme,
+	Capability, Catalog, CatalogEntry, EffectiveQuotas, ExtensionKind, HostRequest, Invocation,
+	Manifest, Output, Package, Preview, SettingValue, Surface, Theme,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -26,8 +27,12 @@ const CATALOG_URL: &str =
 const MAX_PACKAGE: usize = 16 * 1024 * 1024;
 const MAX_RECORD: usize = MAX_PACKAGE + 64 * 1024;
 const MAX_CATALOG: usize = 1024 * 1024;
+/// API v2 packages are listed separately so releases without API v2 never see them.
+const CATALOG_V2_URL: &str =
+	"https://raw.githubusercontent.com/sirchico/Harmony/main/extensions/catalog-v2.json";
 const MAX_STORAGE: usize = 1024 * 1024;
-const MAX_PER_SCOPE: usize = 8;
+/// Installed extensions per scope; packages are also bounded by total bytes.
+const MAX_PER_SCOPE: usize = extensions::ResourceLimits::DEFAULT.installed_plugins as usize;
 const MAX_ACCOUNTS: usize = 8;
 const MAX_QUEUE: usize = 4;
 
@@ -61,6 +66,8 @@ pub enum InstallSource {
 	},
 }
 
+// The worker queue holds at most four jobs, so an inline invocation costs little.
+#[allow(clippy::large_enum_variant)]
 pub enum Job {
 	EditTheme {
 		id: String,
@@ -101,6 +108,19 @@ pub enum Job {
 		id: String,
 		account: String,
 		invocation: Invocation,
+	},
+	/// API v2: save the non-secret settings the host-built page edited.
+	SaveSettings {
+		id: String,
+		account: String,
+		values: BTreeMap<String, SettingValue>,
+	},
+	/// API v2: store (`Some`) or clear (`None`) one declared secret.
+	SaveSecret {
+		id: String,
+		account: String,
+		field: String,
+		value: Option<String>,
 	},
 	Logout {
 		account: String,
@@ -231,7 +251,12 @@ pub fn demo_check_examples() -> Result<bool, String> {
 			sha256,
 			download_bytes: starter.download_bytes,
 		};
-		let summary = stored.summary(&gate, None, true);
+		let summary = stored.summary(
+			&gate,
+			None,
+			true,
+			&std::env::temp_dir().join("harmony-summary-check-missing"),
+		);
 		if let Some(error) = summary.error {
 			return Err(error);
 		}
@@ -245,7 +270,12 @@ pub fn demo_check_examples() -> Result<bool, String> {
 			}
 			activated = true;
 			stored.grants.clear();
-			let denied = stored.summary(&gate, None, true);
+			let denied = stored.summary(
+				&gate,
+				None,
+				true,
+				&std::env::temp_dir().join("harmony-summary-check-missing"),
+			);
 			if denied.preserve_deleted_messages || denied.image_sharing || denied.error.is_none() {
 				return Err("Plugin activation must require explicit permission".into());
 			}
@@ -322,6 +352,16 @@ pub struct InstalledExtension {
 	pub api_proxy: Option<extensions::ApiProxyConfig>,
 	/// Interface tweaks the granted activation action switched on.
 	pub interface_tweaks: Vec<extensions::InterfaceTweak>,
+	/// API v2: current settings, defaults filled in.
+	pub settings: BTreeMap<String, SettingValue>,
+	/// API v2: which declared secrets are set.
+	pub secrets: BTreeMap<String, bool>,
+	/// API v2: the budgets this extension gets.
+	pub quotas: EffectiveQuotas,
+	/// Bytes its key-value store uses.
+	pub storage_used: u64,
+	/// API v2: optional host features this Harmony lacks.
+	pub unavailable_features: Vec<String>,
 }
 
 pub enum Event {
@@ -357,6 +397,19 @@ pub enum Event {
 	Invoked {
 		id: String,
 		output: Output,
+	},
+	/// API v2: the extension asked for information only the app can provide. Answer every
+	/// request, put the answers in `invocation.responses` and submit the invocation again.
+	Requests {
+		id: String,
+		account: String,
+		invocation: Box<Invocation>,
+		requests: Vec<HostRequest>,
+	},
+	SettingsSaved {
+		id: String,
+		settings: BTreeMap<String, SettingValue>,
+		secrets: BTreeMap<String, bool>,
 	},
 	LoggedOut,
 }
@@ -507,7 +560,20 @@ struct Stored {
 impl Stored {
 	/// Builds the installed entry by running the activation action, if any, with saved storage,
 	/// and records what its granted output switched on.
-	fn summary(&self, gate: &Gate, storage: Option<String>, active: bool) -> InstalledExtension {
+	fn summary(
+		&self,
+		gate: &Gate,
+		storage: Option<String>,
+		active: bool,
+		directory: &Path,
+	) -> InstalledExtension {
+		let manifest = &self.package.manifest;
+		let v2 = manifest.api_version >= extensions::API_V2;
+		let settings = v2::settings(directory, manifest);
+		let secrets = v2::secret_presence(directory, manifest);
+		let unavailable_features = extensions::negotiate(manifest)
+			.map(|negotiation| negotiation.unavailable_optional)
+			.unwrap_or_default();
 		let activation = self
 			.package
 			.manifest
@@ -522,10 +588,15 @@ impl Stored {
 				&Invocation {
 					action: action.id.clone(),
 					storage,
+					settings: v2.then(|| settings.clone()),
+					secrets: v2.then(|| secrets.clone()),
 					..Default::default()
 				},
 			)
 			.map_err(|error| error.to_string())?;
+			if !output.requests.is_empty() || !output.kv.is_empty() {
+				return Err("Activation actions cannot make requests or change storage".into());
+			}
 			gate.check()?;
 			if output.preserve_deleted_messages
 				&& !self.grants.contains(&Capability::DeletedMessages)
@@ -599,6 +670,11 @@ impl Stored {
 				&& result.is_ok()
 				&& self.grants.contains(&Capability::DeletedMessages),
 			error: result.err(),
+			settings,
+			secrets,
+			quotas: v2::quotas(manifest),
+			storage_used: v2::kv_bytes(directory),
+			unavailable_features,
 		}
 	}
 }
@@ -684,6 +760,37 @@ fn validate_job(job: &Job) -> Result<(), String> {
 		}
 		Job::Enable { grants, .. } if grants.len() > extensions::MAX_CAPABILITIES => {
 			return Err("Invalid plugin grants".into());
+		}
+		Job::SaveSettings {
+			id,
+			account,
+			values,
+		} => {
+			valid_id(id)?;
+			if !account.is_empty() {
+				account_key(account)?;
+			}
+			if values.len() > extensions::MAX_SETTINGS {
+				return Err("Too many settings".into());
+			}
+		}
+		Job::SaveSecret {
+			id,
+			account,
+			field,
+			value,
+		} => {
+			valid_id(id)?;
+			if !account.is_empty() {
+				account_key(account)?;
+			}
+			if !extensions::valid_id(field)
+				|| value
+					.as_ref()
+					.is_some_and(|value| value.len() > extensions::MAX_SECRET_CHARS)
+			{
+				return Err("Invalid secret".into());
+			}
 		}
 		Job::InspectImport { path } if path.as_os_str().len() > 4096 => {
 			return Err("Import path is too long".into());
@@ -787,15 +894,26 @@ fn run(root: &Path, job: Job, gate: &Gate) -> Result<Event, String> {
 			})
 		}
 		Job::Load { account } => Ok(Event::Loaded {
-			catalog: read_bounded(&root.join("catalog.json"), MAX_CATALOG)
-				.ok()
-				.and_then(|bytes| extensions::parse_catalog(&bytes).ok()),
+			catalog: cached_catalog(root),
 			starters: starters()?,
 			installed: load(root, account.as_deref(), gate)?,
 		}),
 		Job::RefreshCatalog => {
 			let bytes = download(CATALOG_URL, MAX_CATALOG, gate, Duration::from_secs(15))?;
-			cache_catalog(root, &bytes, gate).map(Event::Catalog)
+			let v1 = cache_catalog(root, &bytes, gate)?;
+			// The v2 list is optional: when it is missing or invalid, keep the last good copy.
+			if let Ok(bytes) = download(CATALOG_V2_URL, MAX_CATALOG, gate, Duration::from_secs(15))
+			{
+				gate.check()?;
+				let _ = cache_catalog_v2(root, &bytes, gate);
+			}
+			gate.check()?;
+			let v2 = read_bounded(&root.join("catalog-v2.json"), MAX_CATALOG)
+				.ok()
+				.and_then(|bytes| extensions::parse_catalog_v2(&bytes).ok());
+			extensions::merge_catalogs(Some(v1), v2)
+				.map(Event::Catalog)
+				.ok_or_else(|| "Catalog is unavailable".into())
 		}
 		Job::Preview { id, preview } => {
 			let image = load_preview(&preview, gate);
@@ -874,13 +992,58 @@ fn run(root: &Path, job: Job, gate: &Gate) -> Result<Event, String> {
 			} else {
 				None
 			};
+			let manifest = &stored.package.manifest;
+			if manifest.api_version >= extensions::API_V2 {
+				invocation.settings = Some(v2::settings(&directory, manifest));
+				invocation.secrets = Some(v2::secret_presence(&directory, manifest));
+			}
 			if !trim_extended_input(&mut invocation, extensions::MAX_IO_BYTES) {
 				return Err("Plugin input exceeds 256 KiB".into());
 			}
-			gate.check()?;
-			let mut output =
-				extensions::invoke(&stored.package, &invocation).map_err(|e| e.to_string())?;
-			gate.check()?;
+			let mut output = loop {
+				gate.check()?;
+				let mut output =
+					extensions::invoke(&stored.package, &invocation).map_err(|e| e.to_string())?;
+				gate.check()?;
+				v2::apply_kv(&directory, manifest, &output.kv, gate)?;
+				output.kv.clear();
+				if output.requests.is_empty() {
+					break output;
+				}
+				if invocation.round >= extensions::MAX_REQUEST_ROUNDS {
+					return Err(format!(
+						"Plugin asked for more than {} rounds of information",
+						extensions::MAX_REQUEST_ROUNDS
+					));
+				}
+				let mut responses = Vec::with_capacity(output.requests.len());
+				let mut remote = Vec::new();
+				for request in std::mem::take(&mut output.requests) {
+					match v2::answer_local(&directory, manifest, &invocation, &request, gate) {
+						Some(response) => responses.push(response),
+						None => remote.push(request),
+					}
+				}
+				gate.check()?;
+				invocation.responses = responses;
+				invocation.continuation = output.continuation.take();
+				invocation.round += 1;
+				if !remote.is_empty() {
+					if let Some(data) = output.storage.take() {
+						if !stored.grants.contains(&Capability::Storage) || data.len() > MAX_STORAGE
+						{
+							return Err("Plugin data exceeds its granted storage budget".into());
+						}
+						atomic_write(&directory.join("data.json"), data.as_bytes(), gate)?;
+					}
+					return Ok(Event::Requests {
+						id,
+						account,
+						invocation: Box::new(invocation),
+						requests: remote,
+					});
+				}
+			};
 			if output.api_proxy.is_some() && !stored.grants.contains(&Capability::ApiProxy) {
 				return Err("API proxy access was not granted".into());
 			}
@@ -901,8 +1064,54 @@ fn run(root: &Path, job: Job, gate: &Gate) -> Result<Event, String> {
 			}
 			Ok(Event::Invoked { id, output })
 		}
+		Job::SaveSettings {
+			id,
+			account,
+			values,
+		} => {
+			let directory = plugin_directory(root, &id, &account)?;
+			let stored = read_stored(&directory.join("package.json"))?;
+			let settings = v2::save_settings(&directory, &stored.package.manifest, &values, gate)?;
+			Ok(Event::SettingsSaved {
+				secrets: v2::secret_presence(&directory, &stored.package.manifest),
+				id,
+				settings,
+			})
+		}
+		Job::SaveSecret {
+			id,
+			account,
+			field,
+			value,
+		} => {
+			let directory = plugin_directory(root, &id, &account)?;
+			let stored = read_stored(&directory.join("package.json"))?;
+			let secrets = v2::save_secret(
+				&directory,
+				&stored.package.manifest,
+				&field,
+				value.as_deref(),
+				gate,
+			)?;
+			Ok(Event::SettingsSaved {
+				settings: v2::settings(&directory, &stored.package.manifest),
+				id,
+				secrets,
+			})
+		}
 		Job::Logout { account } => {
 			let directory = scope(root, ExtensionKind::Plugin, Some(&account))?;
+			if directory.exists() {
+				for entry in fs::read_dir(&directory)
+					.map_err(|_| "Cannot read extensions")?
+					.take(MAX_PER_SCOPE * 4 + 1)
+					.flatten()
+				{
+					if entry.path().is_dir() {
+						v2::forget_secrets(&entry.path())?;
+					}
+				}
+			}
 			// The tombstone survives failed deletion and is retried before the next load.
 			if directory.exists() {
 				atomic_write(&directory.with_extension("disabled"), b"", gate)?;
@@ -912,6 +1121,44 @@ fn run(root: &Path, job: Job, gate: &Gate) -> Result<Event, String> {
 			Ok(Event::LoggedOut)
 		}
 	}
+}
+
+/// The directory of an installed, enabled plugin in the account (or connection) scope.
+fn plugin_directory(root: &Path, id: &str, account: &str) -> Result<PathBuf, String> {
+	valid_id(id)?;
+	let directory = scope(
+		root,
+		ExtensionKind::Plugin,
+		(!account.is_empty()).then_some(account),
+	)?
+	.join(id);
+	if directory.with_extension("disabled").exists() || !directory.join("package.json").exists() {
+		return Err("Plugin is not enabled".into());
+	}
+	let stored = read_stored(&directory.join("package.json"))?;
+	if stored.package.manifest.id != id || stored.package.manifest.kind != ExtensionKind::Plugin {
+		return Err("Installed plugin identity changed".into());
+	}
+	Ok(directory)
+}
+
+/// Both cached catalogs merged; either may be missing or invalid on its own.
+fn cached_catalog(root: &Path) -> Option<Catalog> {
+	let read = |name: &str, parse: fn(&[u8]) -> Result<Catalog, extensions::Error>| {
+		read_bounded(&root.join(name), MAX_CATALOG)
+			.ok()
+			.and_then(|bytes| parse(&bytes).ok())
+	};
+	extensions::merge_catalogs(
+		read("catalog.json", extensions::parse_catalog),
+		read("catalog-v2.json", extensions::parse_catalog_v2),
+	)
+}
+
+fn cache_catalog_v2(root: &Path, bytes: &[u8], gate: &Gate) -> Result<(), String> {
+	extensions::parse_catalog_v2(bytes).map_err(|error| error.to_string())?;
+	fs::create_dir_all(root).map_err(|_| "Cannot create catalog directory")?;
+	atomic_write(&root.join("catalog-v2.json"), bytes, gate)
 }
 
 fn cache_catalog(root: &Path, bytes: &[u8], gate: &Gate) -> Result<Catalog, String> {
@@ -1006,9 +1253,16 @@ fn install_stored(
 		return Err("Account extension cleanup is incomplete; reopen Extensions to retry".into());
 	}
 	if !directory.exists() && count_directories(&parent)? >= MAX_PER_SCOPE {
-		return Err(
-			"Disable an extension first; each scope allows eight installed extensions".into(),
-		);
+		return Err(format!(
+			"Disable an extension first; each scope allows {MAX_PER_SCOPE} installed extensions"
+		));
+	}
+	extensions::negotiate(&stored.package.manifest)?;
+	if stored.package.manifest.kind == ExtensionKind::Plugin {
+		v2::check_dependencies(
+			&stored.package.manifest,
+			&v2::installed_manifests(&parent, &stored.package.manifest.id),
+		)?;
 	}
 	if stored.package.manifest.kind == ExtensionKind::Plugin
 		&& !is_proxy(&stored.package.manifest)
@@ -1023,7 +1277,12 @@ fn install_stored(
 	let activate = !updating_theme
 		|| read_bounded(&parent.join("active.json"), 64)
 			.is_ok_and(|id| id == stored.package.manifest.id.as_bytes());
-	let mut summary = stored.summary(gate, activation_storage(&stored, &directory)?, true);
+	let mut summary = stored.summary(
+		gate,
+		activation_storage(&stored, &directory)?,
+		true,
+		&directory,
+	);
 	summary.active_theme = stored.package.manifest.kind == ExtensionKind::Theme && activate;
 	if !activate {
 		summary.background_image = None;
@@ -1034,6 +1293,14 @@ fn install_stored(
 	let record = serde_json::to_vec(&stored).map_err(|_| "Cannot encode extension package")?;
 	if record.len() > MAX_RECORD {
 		return Err("Extension package exceeds storage budget".into());
+	}
+	let existing = fs::metadata(directory.join("package.json")).map_or(0, |m| m.len());
+	if v2::installed_bytes(&parent).saturating_sub(existing) + record.len() as u64
+		> extensions::ResourceLimits::DEFAULT.installed_package_bytes
+	{
+		return Err(
+			"Installed extensions use their whole storage budget; disable one first".into(),
+		);
 	}
 	gate.check()?;
 	fs::create_dir_all(&directory).map_err(|_| "Cannot create extension directory")?;
@@ -1179,13 +1446,14 @@ fn load(
 								storage,
 								kind == ExtensionKind::Theme
 									&& active_theme.as_deref() == Some(id.as_str()),
+								&entry.path(),
 							);
 							summary.active_theme = kind == ExtensionKind::Theme
 								&& active_theme.as_deref() == Some(id.as_str());
 							summary
 						}
 						Err(error) => {
-							let mut summary = stored.summary(gate, None, false);
+							let mut summary = stored.summary(gate, None, false, &entry.path());
 							summary.theme = None;
 							summary.preserve_deleted_messages = false;
 							summary.image_sharing = false;
@@ -1215,6 +1483,11 @@ fn load(
 								Vec::new()
 							},
 							actions: Vec::new(),
+							requires: Default::default(),
+							dependencies: Vec::new(),
+							conflicts: Vec::new(),
+							settings: Vec::new(),
+							quotas: Default::default(),
 						},
 						theme: None,
 						reviewed: false,
@@ -1226,9 +1499,57 @@ fn load(
 						rich_presence: None,
 						api_proxy: None,
 						interface_tweaks: Vec::new(),
+						settings: BTreeMap::new(),
+						secrets: BTreeMap::new(),
+						quotas: v2::quotas(&Manifest {
+							api_version: extensions::API_VERSION,
+							id: String::new(),
+							name: String::new(),
+							version: String::new(),
+							author: String::new(),
+							license: String::new(),
+							source: String::new(),
+							kind,
+							capabilities: Vec::new(),
+							actions: Vec::new(),
+							requires: Default::default(),
+							dependencies: Vec::new(),
+							conflicts: Vec::new(),
+							settings: Vec::new(),
+							quotas: Default::default(),
+						}),
+						storage_used: 0,
+						unavailable_features: Vec::new(),
 					},
 				});
 			}
+		}
+	}
+	// A plugin whose required dependency is missing, disabled, failing or incompatible stays
+	// installed but inactive, with the reason shown. Fixed-point: a failure can cascade.
+	loop {
+		let healthy: Vec<Manifest> = installed
+			.iter()
+			.filter(|entry| entry.error.is_none() && entry.manifest.kind == ExtensionKind::Plugin)
+			.map(|entry| entry.manifest.clone())
+			.collect();
+		let mut changed = false;
+		for entry in installed
+			.iter_mut()
+			.filter(|entry| entry.error.is_none() && entry.manifest.kind == ExtensionKind::Plugin)
+		{
+			let others: Vec<Manifest> = healthy
+				.iter()
+				.filter(|other| other.id != entry.manifest.id)
+				.cloned()
+				.collect();
+			if let Err(reason) = v2::check_dependencies(&entry.manifest, &others) {
+				entry.error = Some(reason);
+				changed = true;
+			}
+		}
+		if !changed {
+			break;
 		}
 	}
 	Ok(installed)
@@ -1268,6 +1589,7 @@ fn disable(parent: &Path, id: &str, gate: &Gate) -> Result<(), String> {
 	}
 	let directory = parent.join(id);
 	atomic_write(&directory.with_extension("disabled"), b"", gate)?;
+	v2::forget_secrets(&directory)?;
 	remove_owned_directory(&directory)?;
 	if parent.join("active.json").exists()
 		&& read_bounded(&parent.join("active.json"), 64)? == id.as_bytes()
@@ -1299,6 +1621,7 @@ fn cleanup(parent: &Path, max: usize, gate: &Gate) -> Result<(), String> {
 				.to_string_lossy()
 				.into_owned();
 			valid_id(&id)?;
+			v2::forget_secrets(&parent.join(&id))?;
 			remove_owned_directory(&parent.join(&id))?;
 			remove_file(&entry.path())?;
 		} else if entry
@@ -1597,7 +1920,40 @@ fn download(raw: &str, limit: usize, gate: &Gate, timeout: Duration) -> Result<V
 		})
 }
 
+/// The first `limit` bytes of a public HTTPS resource, and whether more existed.
+fn download_prefix(
+	raw: &str,
+	limit: usize,
+	gate: &Gate,
+	timeout: Duration,
+) -> Result<(Vec<u8>, bool), String> {
+	tokio::runtime::Builder::new_current_thread()
+		.enable_all()
+		.build()
+		.map_err(|_| "Extension downloader unavailable")?
+		.block_on(async {
+			tokio::select! {
+				biased;
+				_ = gate.wake_cancel.notified() => Err("Extension operation cancelled".into()),
+				result = tokio::time::timeout(timeout, fetch_https(raw, limit, gate, true)) => result.map_err(|_| "Extension download timed out")?,
+			}
+		})
+}
+
 async fn download_https(raw: &str, limit: usize, gate: &Gate) -> Result<Vec<u8>, String> {
+	fetch_https(raw, limit, gate, false)
+		.await
+		.map(|(bytes, _)| bytes)
+}
+
+/// With `prefix`, asks for only the first `limit` bytes and returns them even when the
+/// resource is longer; otherwise a resource over `limit` is an error.
+async fn fetch_https(
+	raw: &str,
+	limit: usize,
+	gate: &Gate,
+	prefix: bool,
+) -> Result<(Vec<u8>, bool), String> {
 	let mut url = url::Url::parse(raw).map_err(|_| "Invalid extension download URL")?;
 	for _ in 0..6 {
 		gate.check()?;
@@ -1627,9 +1983,13 @@ async fn download_https(raw: &str, limit: usize, gate: &Gate) -> Result<Vec<u8>,
 			.timeout(Duration::from_secs(30))
 			.build()
 			.map_err(|_| "Extension downloader unavailable")?;
-		let response = client
+		let mut request = client
 			.get(url.as_str())
-			.header(wreq::header::ACCEPT_ENCODING, "identity")
+			.header(wreq::header::ACCEPT_ENCODING, "identity");
+		if prefix {
+			request = request.header(wreq::header::RANGE, format!("bytes=0-{}", limit.max(1) - 1));
+		}
+		let response = request
 			.send()
 			.await
 			.map_err(|_| "Extension download failed")?;
@@ -1644,14 +2004,23 @@ async fn download_https(raw: &str, limit: usize, gate: &Gate) -> Result<Vec<u8>,
 				.map_err(|_| "Invalid extension redirect")?;
 			continue;
 		}
-		if response.status() != wreq::StatusCode::OK {
+		let partial = prefix && response.status() == wreq::StatusCode::PARTIAL_CONTENT;
+		if response.status() != wreq::StatusCode::OK && !partial {
 			return Err(
 				"Extension download unavailable; refresh the catalog or use a local package".into(),
 			);
 		}
-		if response
-			.content_length()
-			.is_some_and(|size| size > limit as u64)
+		// A partial answer reports the full size after the slash: `bytes 0-99/1234`.
+		let total = response
+			.headers()
+			.get(wreq::header::CONTENT_RANGE)
+			.and_then(|value| value.to_str().ok())
+			.and_then(|value| value.rsplit('/').next())
+			.and_then(|total| total.parse::<u64>().ok());
+		if !prefix
+			&& response
+				.content_length()
+				.is_some_and(|size| size > limit as u64)
 			|| response
 				.headers()
 				.get(wreq::header::CONTENT_ENCODING)
@@ -1668,11 +2037,17 @@ async fn download_https(raw: &str, limit: usize, gate: &Gate) -> Result<Vec<u8>,
 		{
 			gate.check()?;
 			if bytes.len().saturating_add(chunk.len()) > limit {
-				return Err("Extension download exceeds its byte budget".into());
+				if !prefix {
+					return Err("Extension download exceeds its byte budget".into());
+				}
+				let room = limit - bytes.len();
+				bytes.extend_from_slice(&chunk[..room]);
+				return Ok((bytes, true));
 			}
 			bytes.extend_from_slice(&chunk);
 		}
-		return Ok(bytes);
+		let truncated = total.is_some_and(|total| total > bytes.len() as u64);
+		return Ok((bytes, truncated));
 	}
 	Err("Too many extension download redirects".into())
 }
@@ -1756,6 +2131,11 @@ mod tests {
 				license: "MIT".into(),
 				source: "https://github.com/ViceVerse-cz/rustcord".into(),
 				kind: ExtensionKind::Theme,
+				requires: Default::default(),
+				dependencies: Vec::new(),
+				conflicts: Vec::new(),
+				settings: Vec::new(),
+				quotas: Default::default(),
 				capabilities: Vec::new(),
 				actions: Vec::new(),
 			},
@@ -2399,5 +2779,311 @@ mod tests {
 			)
 			.is_err()
 		);
+	}
+
+	/// Phase 1 acceptance: the packaged API v2 plugins run in the real Wasm runtime through the
+	/// worker, with host-saved settings, a Discord lookup answered between rounds, a local
+	/// attachment read that refuses non-Discord hosts, and dependency checks at install time.
+	#[test]
+	fn v2_packages_run_through_the_worker_with_settings_and_request_rounds() {
+		use extensions::{
+			AttachmentSource, HostRequest, HostResponse, MediaKind, MediaLink, MediaSource,
+			ResponseValue, ServerProfile, SettingValue,
+		};
+		let profile = Profile::new();
+		let root = profile.0.join("extensions");
+		let install = |bytes: &[u8]| {
+			let package = extensions::parse_package(bytes).unwrap();
+			enable(
+				&root,
+				source(&profile, &package),
+				package.manifest.capabilities.clone(),
+				Some("account"),
+				&gate(),
+			)
+			.unwrap()
+		};
+		let invoke = |id: &str, invocation: Invocation| {
+			run(
+				&root,
+				Job::Invoke {
+					id: id.into(),
+					account: "account".into(),
+					invocation,
+				},
+				&gate(),
+			)
+			.unwrap()
+		};
+		let panel_text = |output: &extensions::Output| {
+			output
+				.panel
+				.iter()
+				.filter_map(|element| match element {
+					extensions::Element::Text { text } => Some(text.clone()),
+					_ => None,
+				})
+				.collect::<Vec<_>>()
+				.join("\n")
+		};
+
+		// Server Info: settings saved by the host, then one lookup round answered by the app.
+		let server = install(include_bytes!(
+			"../../../extensions/plugins/packages/server-info.harmony-extension"
+		));
+		assert!(server.error.is_none(), "{:?}", server.error);
+		assert_eq!(
+			server.settings.get("show-features"),
+			Some(&SettingValue::Bool(true))
+		);
+		let Event::SettingsSaved { settings, .. } = run(
+			&root,
+			Job::SaveSettings {
+				id: "server-info".into(),
+				account: "account".into(),
+				values: BTreeMap::from([("show-features".into(), SettingValue::Bool(false))]),
+			},
+			&gate(),
+		)
+		.unwrap() else {
+			panic!("settings were not saved");
+		};
+		assert_eq!(
+			settings.get("show-features"),
+			Some(&SettingValue::Bool(false))
+		);
+		let Event::Requests {
+			invocation,
+			requests,
+			..
+		} = invoke(
+			"server-info",
+			Invocation {
+				action: "info".into(),
+				menu_target: Some(Box::new(extensions::MenuTarget::Server {
+					guild_id: "10".into(),
+				})),
+				..Default::default()
+			},
+		)
+		else {
+			panic!("the first round must ask for the server");
+		};
+		let [HostRequest::ServerProfile { id, guild_id }] = &requests[..] else {
+			panic!("unexpected requests {requests:?}");
+		};
+		assert_eq!((invocation.round, guild_id.as_str()), (1, "10"));
+		let mut next = *invocation;
+		next.responses.push(HostResponse::ok(
+			id,
+			ResponseValue::ServerProfile {
+				profile: Box::new(ServerProfile {
+					id: "10".into(),
+					name: "Synthetic server".into(),
+					description: None,
+					icon_url: None,
+					banner_url: None,
+					splash_url: None,
+					owner_id: Some("20".into()),
+					created_at_ms: 1_420_070_400_000,
+					verification_level: Some(2),
+					explicit_content_filter: None,
+					nsfw_level: None,
+					mfa_level: None,
+					premium_tier: Some(1),
+					premium_subscription_count: Some(3),
+					approximate_member_count: Some(42),
+					approximate_presence_count: Some(7),
+					max_members: None,
+					vanity_url_code: None,
+					preferred_locale: None,
+					features: vec!["COMMUNITY".into()],
+					roles: 4,
+					emojis: 0,
+					stickers: 0,
+				}),
+			},
+		));
+		let Event::Invoked { output, .. } = invoke("server-info", next) else {
+			panic!("the answered round must finish");
+		};
+		let text = panel_text(&output);
+		assert!(text.contains("Members: 42 (7 online)"), "{text}");
+		assert!(
+			!text.contains("COMMUNITY"),
+			"the saved setting hides features"
+		);
+
+		// Copy File Contents: the worker answers the read itself and refuses other hosts.
+		install(include_bytes!(
+			"../../../extensions/plugins/packages/copy-file-contents.harmony-extension"
+		));
+		let mut read = Invocation {
+			action: "copy".into(),
+			selected_message: Some("see file".into()),
+			selected_message_ref: Some(Box::new(extensions::SelectedMessageRef {
+				channel_id: "1".into(),
+				message_id: "3".into(),
+				author_id: "4".into(),
+				guild_id: None,
+			})),
+			media: Some(vec![MediaLink {
+				source: MediaSource::Attachment,
+				kind: MediaKind::File,
+				url: "https://cdn.discordapp.com/attachments/1/2/notes.txt".into(),
+				attachment_id: Some("2".into()),
+				filename: Some("notes.txt".into()),
+				content_type: Some("text/plain".into()),
+				size: Some(5),
+				width: None,
+				height: None,
+			}]),
+			..Default::default()
+		};
+		read.attachment_sources = vec![AttachmentSource {
+			id: "2".into(),
+			filename: "notes.txt".into(),
+			content_type: Some("text/plain".into()),
+			size: 5,
+			url: "https://example.org/notes.txt".into(),
+		}];
+		let Event::Invoked { output, .. } = invoke("copy-file-contents", read) else {
+			panic!("local reads finish inside the worker");
+		};
+		let text = panel_text(&output);
+		assert!(text.contains("Could not read the file"), "{text}");
+		assert!(output.effects.is_empty());
+
+		// Base64 Decoder: defaults for unsaved settings, and a copy larger than v1 allows.
+		install(include_bytes!(
+			"../../../extensions/plugins/packages/base-decoder.harmony-extension"
+		));
+		let long = "x".repeat(6000);
+		let Event::Invoked { output, .. } = invoke(
+			"base-decoder",
+			Invocation {
+				action: "encode".into(),
+				composer: Some(long.clone()),
+				..Default::default()
+			},
+		) else {
+			panic!("encode must finish");
+		};
+		let encoded = output.replacement.unwrap();
+		let Event::Invoked { output, .. } = invoke(
+			"base-decoder",
+			Invocation {
+				action: "decode".into(),
+				selected_message: Some(format!("payload {encoded}")),
+				..Default::default()
+			},
+		) else {
+			panic!("decode must finish");
+		};
+		assert!(matches!(
+			&output.effects[..],
+			[extensions::HostEffect::CopyText { text }] if *text == long
+		));
+
+		// Dependencies: a required extension at a compatible version must be enabled first.
+		let mut dependent = extensions::parse_package(include_bytes!(
+			"../../../extensions/plugins/packages/reverse-image-search.harmony-extension"
+		))
+		.unwrap();
+		dependent.manifest.dependencies = vec![extensions::Dependency {
+			id: "server-info".into(),
+			version: "^2".into(),
+			optional: false,
+		}];
+		let refused = enable(
+			&root,
+			source(&profile, &dependent),
+			dependent.manifest.capabilities.clone(),
+			Some("account"),
+			&gate(),
+		);
+		assert!(refused.is_err_and(|error| error.contains("server-info")));
+		dependent.manifest.dependencies[0].version = "^1".into();
+		assert!(
+			enable(
+				&root,
+				source(&profile, &dependent),
+				dependent.manifest.capabilities.clone(),
+				Some("account"),
+				&gate(),
+			)
+			.is_ok()
+		);
+	}
+
+	/// A third-party example built only against the public SDK keeps notes in the host's
+	/// key-value store across invocations, within its quota, through multi-round requests.
+	#[test]
+	fn third_party_v2_example_keeps_kv_notes_within_its_quota() {
+		let profile = Profile::new();
+		let root = profile.0.join("extensions");
+		let package = extensions::parse_package(include_bytes!(
+			"../../../examples/extensions/packages/quick-notes.harmony-extension"
+		))
+		.unwrap();
+		let installed = enable(
+			&root,
+			source(&profile, &package),
+			package.manifest.capabilities.clone(),
+			Some("account"),
+			&gate(),
+		)
+		.unwrap();
+		assert_eq!(installed.quotas.storage_bytes, 65536);
+		// The manifest asks for an optional feature this host lacks; it still enables.
+		assert_eq!(installed.unavailable_features, ["sync"]);
+		let invoke = |action: &str, selected: Option<&str>, button: Option<&str>| {
+			let Event::Invoked { output, .. } = run(
+				&root,
+				Job::Invoke {
+					id: "quick-notes".into(),
+					account: "account".into(),
+					invocation: Invocation {
+						action: action.into(),
+						selected_message: selected.map(Into::into),
+						button: button.map(Into::into),
+						selected_message_ref: selected.map(|_| {
+							Box::new(extensions::SelectedMessageRef {
+								channel_id: "2".into(),
+								message_id: "3".into(),
+								author_id: "4".into(),
+								guild_id: Some("5".into()),
+							})
+						}),
+						..Default::default()
+					},
+				},
+				&gate(),
+			)
+			.unwrap_or_else(|error| panic!("{action}: {error}")) else {
+				panic!("KV requests are answered inside the worker");
+			};
+			output
+				.panel
+				.iter()
+				.filter_map(|element| match element {
+					extensions::Element::Text { text } => Some(text.clone()),
+					_ => None,
+				})
+				.collect::<Vec<_>>()
+		};
+		invoke("save", Some("first note"), None);
+		invoke("save", Some("second note"), None);
+		let listed = invoke("show", None, None);
+		assert!(listed[0].starts_with("second note"), "{listed:?}");
+		assert!(listed[1].contains("/channels/5/2/3"), "{listed:?}");
+		let after = invoke("show", None, Some("delete-00000002"));
+		assert!(after[0].starts_with("first note"), "{after:?}");
+		assert!(!after.iter().any(|text| text.starts_with("second")));
+		let directory = scope(&root, ExtensionKind::Plugin, Some("account"))
+			.unwrap()
+			.join("quick-notes");
+		let used = v2::kv_bytes(&directory);
+		assert!(used > 0 && used <= 65536);
 	}
 }

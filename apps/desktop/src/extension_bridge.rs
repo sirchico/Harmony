@@ -198,6 +198,7 @@ pub struct Bridge {
 	connection_interrupted: bool,
 	ticks: BTreeMap<String, TickSchedule>,
 	transitions: BTreeMap<String, Transition>,
+	lookups: crate::extension_lookups::Lookups,
 }
 impl Bridge {
 	fn tick_pending(&self, generation: u64, id: &str) -> bool {
@@ -598,6 +599,7 @@ impl Bridge {
 			self.theme_preview = None;
 			self.ticks.clear();
 			self.transitions.clear();
+			self.lookups.clear();
 			self.imported = None;
 			self.api_proxy_loaded = false;
 			self.installed.clear();
@@ -640,6 +642,9 @@ impl Bridge {
 			);
 			messaging.extensions.status =
 				"Result discarded because the conversation or draft changed.".into();
+		}
+		for lookup in self.lookups.poll(state, Instant::now()) {
+			self.continue_lookup(lookup, state, ctx, messaging);
 		}
 		while let Some((token, outcome)) = self.host.as_mut().unwrap().poll() {
 			let pending = self.pending.remove(&token);
@@ -789,6 +794,7 @@ impl Bridge {
 						enabled: false,
 						update_available: false,
 						update_manifest: None,
+						runtime: None,
 						cleanup_pending: false,
 					});
 					messaging.extensions.status =
@@ -971,6 +977,39 @@ impl Bridge {
 					preview,
 				),
 				Ok(Event::ThemeExported) => messaging.extensions.status = "Theme exported.".into(),
+				Ok(Event::Requests {
+					id,
+					account,
+					invocation,
+					requests,
+				}) => {
+					if let Some((requested, _, context)) = pending.and_then(|p| p.invocation)
+						&& requested == id && !self.disabled.contains(&id)
+						&& self.installed.iter().any(|e| e.manifest.id == id)
+						&& let Some(ready) = self.lookups.start(
+							state,
+							id,
+							account,
+							state.generation,
+							invocation,
+							context,
+							requests,
+						) {
+						self.continue_lookup(ready, state, ctx, messaging);
+					}
+				}
+				Ok(Event::SettingsSaved {
+					id,
+					settings,
+					secrets,
+				}) => {
+					if let Some(entry) = self.installed.iter_mut().find(|e| e.manifest.id == id) {
+						entry.settings = settings;
+						entry.secrets = secrets;
+					}
+					self.entries(messaging);
+					messaging.extensions.status = "Settings saved.".into();
+				}
 				Ok(Event::LoggedOut | Event::Preview { .. }) => {}
 			}
 		}
@@ -1192,6 +1231,27 @@ impl Bridge {
 							"Refresh the catalog or import this package again.".into();
 					}
 				}
+				ExtensionRequest::SaveSettings { id, values } => {
+					if let Some(job) =
+						self.settings_job(&id, account.as_ref(), |id, account| Job::SaveSettings {
+							id,
+							account,
+							values,
+						}) {
+						self.submit(job, None, state.generation, ctx, messaging);
+					}
+				}
+				ExtensionRequest::SaveSecret { id, field, value } => {
+					if let Some(job) =
+						self.settings_job(&id, account.as_ref(), |id, account| Job::SaveSecret {
+							id,
+							account,
+							field,
+							value: value.map(ui::SecretText::into_inner),
+						}) {
+						self.submit(job, None, state.generation, ctx, messaging);
+					}
+				}
 				ExtensionRequest::Disable { id } => {
 					self.message_events.retain(|event| event.id != id);
 					if let Some(entry) = self.installed.iter().find(|e| e.manifest.id == id) {
@@ -1245,6 +1305,16 @@ impl Bridge {
 							.manifest;
 						if !connection_plugin {
 							attach_app_data(&mut invocation, state, messaging, manifest);
+						}
+						if manifest.api_version >= extensions::API_V2 {
+							crate::extension_lookups::attach_message_media(
+								&mut invocation,
+								state,
+								manifest.capabilities.contains(&Capability::MediaLinks),
+								manifest
+									.capabilities
+									.contains(&Capability::AttachmentContents),
+							);
 						}
 						if crate::extension_app::uses_app(&manifest.capabilities) {
 							// App snapshots and proposals belong to the conversation that produced them.
@@ -1575,6 +1645,58 @@ impl Bridge {
 			messaging.extensions.retry_preview(id);
 		}
 	}
+	/// A settings job for an enabled v2 plugin, in the scope its data lives in.
+	fn settings_job(
+		&self,
+		id: &str,
+		account: Option<&String>,
+		job: impl FnOnce(String, String) -> Job,
+	) -> Option<Job> {
+		let entry = self.installed.iter().find(|entry| {
+			entry.manifest.id == id
+				&& entry.manifest.api_version >= extensions::API_V2
+				&& !self.disabled.contains(id)
+		})?;
+		let account = if entry.manifest.capabilities.contains(&Capability::ApiProxy) {
+			String::new()
+		} else {
+			account?.clone()
+		};
+		Some(job(id.to_owned(), account))
+	}
+	/// Discord lookups extensions asked for; the app sends them like its own commands.
+	pub fn take_commands(&mut self) -> Vec<client_core::Command> {
+		self.lookups.take_commands()
+	}
+	/// Runs the next round of an invocation whose host requests are answered.
+	fn continue_lookup(
+		&mut self,
+		lookup: crate::extension_lookups::Lookup,
+		state: &State,
+		ctx: &egui::Context,
+		messaging: &mut ui::MessagingUi,
+	) {
+		if lookup.generation != state.generation
+			|| !lookup.context.is_current(state)
+			|| self.disabled.contains(&lookup.id)
+			|| !self.installed.iter().any(|e| e.manifest.id == lookup.id)
+		{
+			return;
+		}
+		let invocation = *lookup.invocation;
+		let pending = Some((lookup.id.clone(), invocation.clone(), lookup.context));
+		self.submit(
+			Job::Invoke {
+				id: lookup.id,
+				account: lookup.account,
+				invocation,
+			},
+			pending,
+			state.generation,
+			ctx,
+			messaging,
+		);
+	}
 	fn submit(
 		&mut self,
 		job: Job,
@@ -1667,6 +1789,7 @@ impl Bridge {
 						enabled: false,
 						update_available: false,
 						update_manifest: None,
+						runtime: None,
 						cleanup_pending: false,
 					},
 				)
@@ -1697,6 +1820,7 @@ impl Bridge {
 					enabled: false,
 					update_available: false,
 					update_manifest: None,
+					runtime: None,
 					cleanup_pending: false,
 				},
 			);
@@ -1727,6 +1851,17 @@ impl Bridge {
 				cleanup_pending: self.disabled.contains(&installed.manifest.id),
 				update_available: update.is_some(),
 				update_manifest: update.map(|entry| entry.manifest.clone()),
+				runtime: (installed.manifest.kind == ExtensionKind::Plugin
+					&& installed.manifest.api_version >= extensions::API_V2)
+					.then(|| {
+						Box::new(ui::ExtensionRuntime {
+							settings: installed.settings.clone(),
+							secrets: installed.secrets.clone(),
+							storage_used: installed.storage_used,
+							storage_quota: installed.quotas.storage_bytes,
+							unavailable_features: installed.unavailable_features.clone(),
+						})
+					}),
 			};
 			entries.insert(installed.manifest.id.clone(), entry);
 		}
@@ -1862,6 +1997,11 @@ mod tests {
 			rich_presence: None,
 			api_proxy: None,
 			interface_tweaks: Vec::new(),
+			settings: Default::default(),
+			secrets: Default::default(),
+			quotas: Default::default(),
+			storage_used: 0,
+			unavailable_features: Vec::new(),
 		};
 		let bridge = Bridge {
 			scope: Some((

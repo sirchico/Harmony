@@ -477,7 +477,22 @@ pub(crate) fn effect_description(effect: &HostEffect) -> String {
 		}
 		HostEffect::Search { query } => format!("Search this conversation for:\n{query}"),
 		HostEffect::Notice { text } => format!("Show this local notice:\n{text}"),
-		HostEffect::CopyText { text } => format!("Replace clipboard text with:\n{text}"),
+		HostEffect::CopyText { text } => {
+			// Long copies are shown by their start; the confirmation stays readable.
+			let mut end = text.len().min(1024);
+			while !text.is_char_boundary(end) {
+				end -= 1;
+			}
+			if end < text.len() {
+				format!(
+					"Replace clipboard text with {} KiB starting:\n{}…",
+					text.len().div_ceil(1024),
+					&text[..end]
+				)
+			} else {
+				format!("Replace clipboard text with:\n{text}")
+			}
+		}
 		HostEffect::SetVoice { muted, deafened } => format!(
 			"Set the current call to {} and {}",
 			if *muted { "muted" } else { "unmuted" },
@@ -1046,6 +1061,11 @@ mod tests {
 				license: "MIT".into(),
 				source: "https://example.com/source".into(),
 				kind: ExtensionKind::Plugin,
+				requires: Default::default(),
+				dependencies: Vec::new(),
+				conflicts: Vec::new(),
+				settings: Vec::new(),
+				quotas: Default::default(),
 				capabilities: vec![capability],
 				actions: vec![],
 			},
@@ -1056,6 +1076,7 @@ mod tests {
 			cleanup_pending: false,
 			update_available: false,
 			update_manifest: None,
+			runtime: None,
 		});
 		view
 	}

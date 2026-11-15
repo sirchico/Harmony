@@ -1,8 +1,12 @@
-#[allow(dead_code)]
-#[path = "../src/extensions.rs"]
-mod host;
+// Loaded as a normal file module so its own `extensions/v2.rs` child resolves.
+#[path = "../src"]
+mod src {
+	#[allow(dead_code)]
+	pub mod extensions;
+}
 use client_core::{Envelope, Event};
 use eframe::egui;
+use src::extensions as host;
 
 fn job(host: &mut host::ExtensionHost, job: host::Job) -> host::Event {
 	host.submit(job, &egui::Context::default()).unwrap();

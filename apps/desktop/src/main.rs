@@ -24,6 +24,7 @@ mod extension_bridge;
 mod extension_data_events;
 mod extension_events;
 mod extension_forum_data;
+mod extension_lookups;
 mod extension_member_details;
 mod extension_message_content;
 mod extensions;
@@ -3785,6 +3786,44 @@ impl Desktop {
 					request,
 					edit,
 				} => server_settings_demo::execute(&self.state, guild, request, edit),
+				// Offline lookups answer from the fixture's own server; nothing is fetched.
+				Command::ServerProfile { guild, request } => Event::ServerProfile {
+					guild,
+					request,
+					result: self
+						.state
+						.guild(guild)
+						.map(|known| {
+							Box::new(model::server_profile::ServerProfile {
+								id: guild,
+								name: known.name.clone(),
+								description: Some("Offline preview server".into()),
+								icon: known.icon.clone(),
+								banner: None,
+								splash: None,
+								owner_id: self.state.user.as_ref().map(|user| user.id),
+								verification_level: Some(1),
+								explicit_content_filter: Some(2),
+								nsfw_level: Some(0),
+								mfa_level: Some(0),
+								premium_tier: Some(1),
+								premium_subscription_count: Some(3),
+								approximate_member_count: Some(4),
+								approximate_presence_count: Some(3),
+								max_members: Some(500_000),
+								vanity_url_code: None,
+								preferred_locale: Some("en-US".into()),
+								features: vec!["COMMUNITY".into(), "NEWS".into()],
+								roles: 3,
+								emojis: known.emojis.as_ref().map_or(0, |list| list.len() as u32),
+								stickers: known
+									.stickers
+									.as_ref()
+									.map_or(0, |list| list.len() as u32),
+							})
+						})
+						.ok_or(client_core::auth::Failure::ProtocolAt("Unknown server")),
+				},
 				Command::Onboarding {
 					guild,
 					request,
@@ -5852,6 +5891,9 @@ impl eframe::App for Desktop {
 			&self.window,
 			self.fixture_only,
 		);
+		for command in self.extensions.take_commands() {
+			self.command(command);
+		}
 		if self.extensions.api_proxy_ready() {
 			let route = self.proxy_auth.tick(
 				self.extensions.api_proxy(),

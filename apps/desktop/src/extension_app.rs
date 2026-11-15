@@ -1280,6 +1280,11 @@ mod tests {
 			license: "MIT".into(),
 			source: "https://example.org/source".into(),
 			kind: ExtensionKind::Plugin,
+			requires: Default::default(),
+			dependencies: Vec::new(),
+			conflicts: Vec::new(),
+			settings: Vec::new(),
+			quotas: Default::default(),
 			capabilities,
 			actions: vec![Action {
 				id: "show".into(),

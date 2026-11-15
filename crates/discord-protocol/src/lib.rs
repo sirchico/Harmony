@@ -35,6 +35,7 @@ pub mod server_admin;
 pub mod server_audit_log;
 pub mod server_integrations;
 pub mod server_invites;
+pub mod server_profile;
 pub mod server_roles;
 pub mod server_settings;
 pub mod settings_update;
@@ -81,7 +82,7 @@ pub fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, DecodeE
 pub fn decode_gateway<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, DecodeError> {
 	decode_limited(bytes, MAX_GATEWAY_WIRE)
 }
-fn decode_limited<T: serde::de::DeserializeOwned>(
+pub(crate) fn decode_limited<T: serde::de::DeserializeOwned>(
 	bytes: &[u8],
 	limit: usize,
 ) -> Result<T, DecodeError> {

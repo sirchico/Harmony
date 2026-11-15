@@ -114,6 +114,11 @@ fn test_manifest(capabilities: Vec<Capability>) -> Manifest {
 		license: "MIT".into(),
 		source: "https://example.org/source".into(),
 		kind: ExtensionKind::Plugin,
+		requires: Default::default(),
+		dependencies: Vec::new(),
+		conflicts: Vec::new(),
+		settings: Vec::new(),
+		quotas: Default::default(),
 		capabilities,
 		actions: vec![Action {
 			id: "run".into(),
@@ -912,12 +917,14 @@ fn discovery_is_forward_tolerant_and_does_not_change_legacy_input() {
 		label: "Events".into(),
 		surface: Surface::AppEvent,
 	});
+	// Every capability is available to v2 manifests; v1 keeps its original set.
+	supported.api_version = extensions::API_V2;
 	supported.validate().unwrap();
 	assert!(host.supports("rich_presence"));
 	assert!(host.supports("api_proxy"));
-	assert_eq!(caps.len(), 56);
+	assert_eq!(caps.len(), 59);
 	assert_eq!(HostInfo::current().app_events.len(), 21);
-	assert_eq!(std::collections::BTreeSet::from_iter(caps).len(), 56);
+	assert_eq!(std::collections::BTreeSet::from_iter(caps).len(), 59);
 }
 
 #[test]

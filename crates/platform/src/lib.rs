@@ -544,6 +544,46 @@ fn forget_entry(name: &str) -> Result<(), CredentialError> {
 		Err(_) => Err(CredentialError::Unavailable),
 	}
 }
+/// Extension secrets (API keys and similar) live only in the OS credential store. There is no
+/// plaintext fallback: on a system without a credential store, saving fails with `NoStore`.
+/// `name` must already identify the account scope, extension and field.
+pub fn save_extension_secret(name: &str, value: &str) -> Result<(), CredentialError> {
+	if !valid_extension_secret_name(name) || value.is_empty() || value.len() > 4096 {
+		return Err(CredentialError::Invalid);
+	}
+	entry(name)?
+		.set_password(value)
+		.map_err(|_| CredentialError::Unavailable)
+}
+/// Reads a stored extension secret. Only host services use the value; extension code never
+/// receives it.
+pub fn load_extension_secret(name: &str) -> Result<Option<String>, CredentialError> {
+	if !valid_extension_secret_name(name) {
+		return Err(CredentialError::Invalid);
+	}
+	match entry(name)?.get_password() {
+		Ok(value) => Ok(Some(value)),
+		Err(keyring_core::Error::NoEntry) => Ok(None),
+		Err(_) => Err(CredentialError::Unavailable),
+	}
+}
+/// Removes an extension secret; a secret that does not exist counts as removed.
+pub fn forget_extension_secret(name: &str) -> Result<(), CredentialError> {
+	if !valid_extension_secret_name(name) {
+		return Err(CredentialError::Invalid);
+	}
+	match forget_entry(name) {
+		Err(CredentialError::NoStore) => Ok(()),
+		other => other,
+	}
+}
+fn valid_extension_secret_name(name: &str) -> bool {
+	name.starts_with("extension-secret.")
+		&& name.len() <= 256
+		&& name
+			.bytes()
+			.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_'))
+}
 fn discord_origin(value: &str) -> bool {
 	url::Url::parse(value).is_ok_and(|url| {
 		url.scheme() == "https"

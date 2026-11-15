@@ -1256,6 +1256,11 @@ impl DiscordApi {
 				request,
 				edit,
 			} => Event::ServerSettings(self.server_settings(guild, request, edit).await),
+			Command::ServerProfile { guild, request } => Event::ServerProfile {
+				guild,
+				request,
+				result: self.server_profile(guild).await.map(Box::new),
+			},
 			Command::Onboarding {
 				guild,
 				request,

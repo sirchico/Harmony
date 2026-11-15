@@ -49,7 +49,9 @@ pub mod proxy_auth;
 mod rich_presence;
 mod theme_editor;
 mod thread_create;
-pub use extensions_ui::{ExtensionContext, ExtensionEntry, ExtensionRequest, ExtensionUi};
+pub use extensions_ui::{
+	ExtensionContext, ExtensionEntry, ExtensionRequest, ExtensionRuntime, ExtensionUi, SecretText,
+};
 pub mod emoji;
 mod emoji_details;
 mod emoji_picker;

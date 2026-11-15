@@ -1,5 +1,16 @@
 # Discord compatibility — checked 2026-09-10
 
+## Extension server lookups (November 15, 2026)
+
+Extensions granted `server_profiles` can ask for a joined server's public details. Harmony
+sends the documented [Get Guild](https://docs.discord.com/developers/resources/guild#get-guild)
+request, `GET /guilds/{guild}?with_counts=true`, only after the user runs the extension's
+action, and only for servers already in the account's server list. The response is bounded
+to 2 MiB, must name the requested server, and is reduced to scalar fields, feature flags and
+role, emoji and sticker counts; the role, emoji and sticker objects are counted, never kept.
+Image hashes become `cdn.discordapp.com` URLs. Verified with synthetic fixtures only; not
+verified against a live account.
+
 ## Game mentions (October 14, 2026)
 
 The native composer offers `@game`, a searchable game catalog and application references

@@ -652,6 +652,18 @@ bytes plus GPU/framework overhead. Images stay in memory only; no preview disk
 cache or periodic background polling is added. Existing single-worker/four-job bounds and
 session cancellation apply. See `extensions.md` for the creator and permission model.
 
+Extension API v2 (Preview, November 15, 2026): each installed v2 plugin's folder may also hold
+`settings.json` (validated non-secret settings, bounded by its settings quota: 16 KiB by
+default, at most 64 KiB), `kv.json` (its key-value store, bounded by its storage quota: 1 MiB
+by default, at most 64 MiB, written atomically) and `secrets.json` (only which declared
+secrets are set, never their values). Secret values are saved only in the OS credential store
+under `extension-secret.<scope digest>.<extension>.<field>`; with no credential store they are
+not saved at all, with no plaintext fallback. Disabling a plugin or logging out deletes its
+folder and its credential-store entries. One account may install at most 128 plugins and
+512 MiB of packages. Attachment reads for `attachment_contents` are streamed into memory up
+to 160 KiB per request and never written to disk; server lookups are kept in memory only
+until the requesting action continues (at most eight results). See `extension-sdk-v2.md`.
+
 The optional `message_events` grant delivers accepted live events from the active,
 accessible conversation. It excludes history replay, search, cached pages and
 ephemeral interaction replies. Text snapshots are limited to 16 KiB per event;

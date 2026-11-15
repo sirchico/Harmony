@@ -17,6 +17,117 @@ pub struct Manifest {
 	pub capabilities: Vec<Capability>,
 	#[serde(default)]
 	pub actions: Vec<Action>,
+	/// API v2: host features required (`features`) or used when present
+	/// (`optional_features`), each with a version requirement such as `"^1.0"`.
+	#[serde(default, skip_serializing_if = "Requirements::is_empty")]
+	pub requires: Requirements,
+	/// API v2: other extensions this one needs or can use.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub dependencies: Vec<Dependency>,
+	/// API v2: extensions that must not be enabled together with this one.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub conflicts: Vec<Conflict>,
+	/// API v2: the settings page the host builds, saves and passes to every invocation.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub settings: Vec<SettingField>,
+	/// API v2: resource budgets beyond the host defaults.
+	#[serde(default, skip_serializing_if = "Quotas::is_empty")]
+	pub quotas: Quotas,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Requirements {
+	#[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+	pub features: std::collections::BTreeMap<String, String>,
+	#[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+	pub optional_features: std::collections::BTreeMap<String, String>,
+}
+impl Requirements {
+	pub fn is_empty(&self) -> bool {
+		self.features.is_empty() && self.optional_features.is_empty()
+	}
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Dependency {
+	pub id: String,
+	/// Semantic-version requirement, such as `"^1.2"`.
+	pub version: String,
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub optional: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Conflict {
+	pub id: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub version: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SettingType {
+	Toggle,
+	Choice,
+	Text,
+	Number,
+	/// Kept in the OS credential store by the host; extension code never sees the value.
+	Secret,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingOption {
+	pub value: String,
+	pub label: String,
+}
+
+/// One field of the host-built settings page.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingField {
+	pub id: String,
+	pub label: String,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub description: String,
+	#[serde(rename = "type")]
+	pub kind: SettingType,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub default: Option<crate::SettingValue>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub options: Vec<SettingOption>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub min: Option<i64>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub max: Option<i64>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub max_chars: Option<u32>,
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub multiline: bool,
+}
+
+/// Resource budgets in bytes; absent values use the host defaults in `HostInfo::limits`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Quotas {
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub settings_bytes: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub storage_bytes: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub log_bytes: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub media_cache_bytes: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub network_response_bytes: Option<u64>,
+}
+impl Quotas {
+	pub fn is_empty(&self) -> bool {
+		*self == Self::default()
+	}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,6 +198,12 @@ pub enum Capability {
 	ExternalNavigation,
 	ContextMenus,
 	InterfaceTweaks,
+	/// API v2: links to media on the message a `message` action was chosen on.
+	MediaLinks,
+	/// API v2: read the start of an attachment on the chosen message.
+	AttachmentContents,
+	/// API v2: look up public details of servers the account is in.
+	ServerProfiles,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

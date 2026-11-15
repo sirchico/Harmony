@@ -75,6 +75,11 @@ pub const EVENT_SLOTS: usize = 8; // UI drain batch; reliable events share a 32 
 pub const COMMAND_SLOTS: usize = 16; // ordinary commands <=16 KiB; bulk DM settings <=33 KiB; channel edit <=128 KiB; group icon <=350 KiB
 
 pub enum Command {
+	/// Public details of a server, for an extension lookup. `request` matches the event.
+	ServerProfile {
+		guild: Id,
+		request: u64,
+	},
 	Polls(polls::Request),
 	StickerPacks,
 	Sticker(Id),
@@ -469,6 +474,11 @@ fn prepare_navigation(
 	Ok(permission_state)
 }
 pub enum Event {
+	ServerProfile {
+		guild: Id,
+		request: u64,
+		result: Result<Box<model::server_profile::ServerProfile>, auth::Failure>,
+	},
 	Polls(polls::Event),
 	StickerEntitlement {
 		user: Id,
@@ -778,6 +788,11 @@ pub struct State {
 	pub server_actions: server_actions::Actions,
 	pub channel_actions: channel_actions::Actions,
 	pub server_settings: server_settings::Editor,
+	/// Finished extension server lookups, oldest first; the extension bridge drains them.
+	pub server_profiles: std::collections::VecDeque<(
+		u64,
+		Result<Box<model::server_profile::ServerProfile>, auth::Failure>,
+	)>,
 	pub onboarding: onboarding::Onboarding,
 	pub server_admin: server_admin::View,
 	pub server_members_shortcuts: BTreeMap<Id, bool>,
@@ -1024,6 +1039,7 @@ impl Default for State {
 			server_actions: server_actions::Actions::default(),
 			channel_actions: channel_actions::Actions::default(),
 			server_settings: server_settings::Editor::default(),
+			server_profiles: Default::default(),
 			onboarding: onboarding::Onboarding::default(),
 			server_admin: server_admin::View::default(),
 			server_members_shortcuts: BTreeMap::new(),
@@ -2117,7 +2133,23 @@ impl State {
 		Some(self.pending.remove(index).channel)
 	}
 	/// Reports a command the transport could not accept as a bounded outcome error.
+	/// Keeps a finished extension server lookup for the bridge; bounded by item count.
+	pub fn finish_server_profile(
+		&mut self,
+		request: u64,
+		result: Result<Box<model::server_profile::ServerProfile>, auth::Failure>,
+	) {
+		const MAX_PENDING_PROFILES: usize = 8;
+		if self.server_profiles.len() >= MAX_PENDING_PROFILES {
+			self.server_profiles.pop_front();
+		}
+		self.server_profiles.push_back((request, result));
+	}
 	pub fn command_rejected(&mut self, command: Command) {
+		if let Command::ServerProfile { request, .. } = command {
+			self.finish_server_profile(request, Err(auth::Failure::Capacity));
+			return;
+		}
 		if let Command::Polls(request) = command {
 			let _ = self.apply_poll(polls::Event::Result {
 				channel: request.channel,
@@ -3085,6 +3117,12 @@ impl State {
 			Event::ServerAction(event) => self.apply_server_action(event),
 			Event::ChannelAction(event) => self.apply_channel_action(event),
 			Event::ServerSettings(event) => self.apply_server_settings(event),
+			Event::ServerProfile {
+				request, result, ..
+			} => {
+				self.finish_server_profile(request, result);
+				Ok(())
+			}
 			Event::Onboarding(event) => self.apply_onboarding(event),
 			Event::ServerAdmin(event) => self.apply_server_admin(event),
 			Event::GroupAction(event) => self.apply_group_action(event),
