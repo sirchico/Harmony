@@ -1050,6 +1050,7 @@ extensions-ui-toolbar-working-on-your-last-action = 正在處理你上次的動�
 fonts-show-inter-default = Noto Sans（預設）
 # Context: show
 fonts-show-interface-font = 介面字型
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = 重設
 fonts-show-search = 搜尋已安裝的字型

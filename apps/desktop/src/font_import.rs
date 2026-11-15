@@ -69,21 +69,135 @@ fn read_family(name: String) -> Result<CustomFont, &'static str> {
 	let family = collection
 		.family_by_name(&name)
 		.ok_or("This font is no longer installed.")?;
-	let font = family
+	// Every upright face at normal width, so Medium and SemiBold text use their real faces.
+	let mut fonts: Vec<_> = family
 		.fonts()
 		.iter()
 		.filter(|font| font.style() == fontique::FontStyle::Normal)
-		.min_by_key(|font| {
-			(
-				(font.width().ratio() - 1.0).abs().to_bits(),
-				(font.weight().value() - 400.0).abs().to_bits(),
-			)
-		})
-		.or_else(|| family.default_font())
-		.ok_or("This font has no usable style.")?;
-	let blob = font.load(None).ok_or("Could not read the font.")?;
-	let bytes = ui::fonts::standalone_face(blob.as_ref(), font.index())?;
-	CustomFont::new(name, bytes)
+		.filter(|font| (font.width().ratio() - 1.0).abs() < 0.01)
+		.take(ui::fonts::MAX_CUSTOM_FONT_FACES)
+		.collect();
+	if fonts.is_empty() {
+		fonts.extend(family.default_font());
+	}
+	if fonts.is_empty() {
+		return Err("This font has no usable style.");
+	}
+	let mut faces = Vec::with_capacity(fonts.len());
+	for font in fonts {
+		let blob = font.load(None).ok_or("Could not read the font.")?;
+		faces.push(ui::fonts::standalone_face(blob.as_ref(), font.index())?);
+	}
+	CustomFont::from_faces(name, faces)
+}
+
+/// Pick a font file or a ZIP of one family's weights, then read it off the UI thread.
+pub fn import(
+	runtime: &tokio::runtime::Runtime,
+	ctx: &eframe::egui::Context,
+	window: std::sync::Arc<winit::window::Window>,
+) -> mpsc::Receiver<Selected> {
+	let (send, receive) = mpsc::sync_channel(1);
+	let ctx = ctx.clone();
+	let picked = platform::save::font_source(window);
+	runtime.spawn(async move {
+		let result = match picked.await {
+			Some(path) => tokio::task::spawn_blocking(move || read_file(&path).map(Some))
+				.await
+				.unwrap_or(Err("Font import interrupted. Try again.")),
+			None => Ok(None),
+		};
+		let _ = send.send(result);
+		ctx.request_repaint();
+	});
+	receive
+}
+
+/// Largest ZIP accepted; a family of every weight and italic is a few megabytes.
+const MAX_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
+/// Most entries read from one archive, fonts or not.
+const MAX_ARCHIVE_ENTRIES: usize = 1024;
+/// Decompressed bytes read from one archive across all font entries.
+const MAX_EXTRACTED_BYTES: u64 = 128 * 1024 * 1024;
+
+fn read_file(path: &std::path::Path) -> Result<CustomFont, &'static str> {
+	use std::io::Read;
+	let stem = path
+		.file_stem()
+		.map(|stem| stem.to_string_lossy().into_owned())
+		.unwrap_or_default();
+	let mut file = std::fs::File::open(path).map_err(|_| "Could not read the font.")?;
+	let size = file
+		.metadata()
+		.map_err(|_| "Could not read the font.")?
+		.len();
+	let mut magic = [0_u8; 4];
+	let zipped = file.read_exact(&mut magic).is_ok() && magic == *b"PK\x03\x04";
+	if zipped {
+		if size > MAX_ARCHIVE_BYTES {
+			return Err("Choose a ZIP up to 128 MiB.");
+		}
+		let faces =
+			read_archive(std::fs::File::open(path).map_err(|_| "Could not read the ZIP.")?)?;
+		return CustomFont::from_faces(stem, faces);
+	}
+	if size > ui::fonts::MAX_CUSTOM_FONT_BYTES as u64 {
+		return Err("Choose a font up to 32 MiB.");
+	}
+	let bytes = std::fs::read(path).map_err(|_| "Could not read the font.")?;
+	CustomFont::from_faces(stem, vec![bytes])
+}
+
+/// The TTF and OTF members of a ZIP, bounded by count and by decompressed size.
+fn read_archive<R: std::io::Read + std::io::Seek>(reader: R) -> Result<Vec<Vec<u8>>, &'static str> {
+	use std::io::Read;
+	let mut archive = zip::ZipArchive::new(reader).map_err(|_| "This is not a readable ZIP.")?;
+	if archive.len() > MAX_ARCHIVE_ENTRIES {
+		return Err("This ZIP has too many files.");
+	}
+	let mut faces = Vec::new();
+	let mut extracted = 0_u64;
+	for index in 0..archive.len() {
+		let mut entry = archive
+			.by_index(index)
+			.map_err(|_| "Could not read a file in the ZIP.")?;
+		let name = entry
+			.name()
+			.map(|name| name.to_ascii_lowercase())
+			.unwrap_or_default();
+		let file_name = name.rsplit('/').next().unwrap_or_default();
+		let font = name.ends_with(".ttf") || name.ends_with(".otf");
+		// macOS archives carry `__MACOSX/._name` resource forks next to the real files.
+		if entry.is_dir()
+			|| entry.encrypted()
+			|| !font || name.contains("__macosx/")
+			|| file_name.starts_with("._")
+		{
+			continue;
+		}
+		if faces.len() == ui::fonts::MAX_CUSTOM_FONT_FACES {
+			return Err("This ZIP has too many fonts.");
+		}
+		// The header size can lie; never read more than one font's limit from an entry.
+		let limit = ui::fonts::MAX_CUSTOM_FONT_BYTES as u64;
+		let mut bytes = Vec::with_capacity(entry.size().min(limit) as usize);
+		(&mut entry)
+			.take(limit + 1)
+			.read_to_end(&mut bytes)
+			.map_err(|_| "Could not read a font in the ZIP.")?;
+		if bytes.len() as u64 > limit {
+			return Err("A font in the ZIP is larger than 32 MiB.");
+		}
+		extracted += bytes.len() as u64;
+		if extracted > MAX_EXTRACTED_BYTES {
+			return Err("The fonts in this ZIP are too large.");
+		}
+		faces.push(bytes);
+	}
+	if faces.is_empty() {
+		return Err("No TTF or OTF fonts were found in the ZIP.");
+	}
+	Ok(faces)
 }
 
 #[cfg(all(debug_assertions, feature = "demo"))]
@@ -120,7 +234,7 @@ pub fn debug_check() {
 	let path = directory.join("preferences.sqlite3");
 	let store = local_store::LocalStore::open(&path).unwrap();
 	store
-		.save_custom_font(Some((&font.name, font.bytes())))
+		.save_custom_font(Some((&font.name, &font.bytes())))
 		.unwrap();
 	let preferences = local_store::AppPreferences {
 		hide_window_decorations: true,
@@ -132,7 +246,7 @@ pub fn debug_check() {
 	let (name, bytes) = store.custom_font().unwrap().unwrap();
 	let restored = CustomFont::new(name, bytes).unwrap();
 	assert_eq!(restored.bytes(), font.bytes());
-	assert!(store.save_custom_font(Some(("", font.bytes()))).is_err());
+	assert!(store.save_custom_font(Some(("", &font.bytes()))).is_err());
 	assert_eq!(store.custom_font().unwrap().unwrap().0, font.name);
 	let mut view = ui::MessagingUi::default();
 	crate::app_settings::Settings {
@@ -203,7 +317,7 @@ pub fn debug_check() {
 		let font = CustomFont::new("CJK".into(), bytes).unwrap();
 		let store = local_store::LocalStore::open(&path).unwrap();
 		store
-			.save_custom_font(Some((&font.name, font.bytes())))
+			.save_custom_font(Some((&font.name, &font.bytes())))
 			.unwrap();
 		drop(store);
 		let store = local_store::LocalStore::open(&path).unwrap();
@@ -237,4 +351,74 @@ pub fn debug_check() {
 	println!(
 		"Font debug check passed: bounded CJK import and persistence, locale switching, invalid input, replacement during CJK loading, reset, and saved decoration preference."
 	);
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use std::io::Write;
+
+	fn asset(name: &str) -> Vec<u8> {
+		std::fs::read(
+			std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+				.join("../../assets/fonts")
+				.join(name),
+		)
+		.unwrap()
+	}
+
+	#[test]
+	fn family_zip_picks_faces_by_declared_weight_and_survives_saving() {
+		let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+		let options = zip::write::SimpleFileOptions::default();
+		// Names deliberately disagree with the weights inside; macOS junk must be skipped.
+		for (name, bytes) in [
+			("Family/A.ttf", asset("NotoSans-SemiBold.ttf")),
+			("Family/B.TTF", asset("NotoSans-Regular.ttf")),
+			("Family/C.otf", asset("NotoSans-Medium.ttf")),
+			("__MACOSX/Family/._B.TTF", b"resource fork".to_vec()),
+			("Family/._C.otf", b"resource fork".to_vec()),
+			("Family/OFL.txt", b"licence".to_vec()),
+		] {
+			writer.start_file(name, options).unwrap();
+			writer.write_all(&bytes).unwrap();
+		}
+		let archive = writer.finish().unwrap().into_inner();
+		let faces = read_archive(std::io::Cursor::new(archive)).unwrap();
+		assert_eq!(faces.len(), 3);
+		let font = CustomFont::from_faces("Fallback".into(), faces).unwrap();
+		assert_eq!(font.name, "Noto Sans");
+		assert_eq!(font.weights(), [400, 500, 600]);
+		let restored = CustomFont::new(font.name.clone(), font.bytes()).unwrap();
+		assert_eq!(restored.weights(), [400, 500, 600]);
+		assert_eq!(restored.bytes(), font.bytes());
+		// A lone face is still stored as the plain font file older builds read.
+		let single = CustomFont::from_faces("Single".into(), vec![asset("NotoSans-Regular.ttf")]);
+		assert_eq!(single.unwrap().bytes(), asset("NotoSans-Regular.ttf"));
+		// Truncated bundles are rejected rather than half-restored.
+		let mut damaged = font.bytes();
+		damaged.truncate(damaged.len() - 10);
+		assert!(CustomFont::new("Damaged".into(), damaged).is_err());
+	}
+
+	#[test]
+	fn archives_without_fonts_or_with_oversized_entries_are_rejected() {
+		let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+		writer
+			.start_file("readme.txt", zip::write::SimpleFileOptions::default())
+			.unwrap();
+		writer.write_all(b"no fonts").unwrap();
+		let archive = writer.finish().unwrap().into_inner();
+		assert!(read_archive(std::io::Cursor::new(archive)).is_err());
+
+		let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+		writer
+			.start_file("huge.ttf", zip::write::SimpleFileOptions::default())
+			.unwrap();
+		writer
+			.write_all(&vec![0_u8; ui::fonts::MAX_CUSTOM_FONT_BYTES + 1])
+			.unwrap();
+		let archive = writer.finish().unwrap().into_inner();
+		assert!(read_archive(std::io::Cursor::new(archive)).is_err());
+	}
 }

@@ -1063,6 +1063,7 @@ extensions-ui-toolbar-working-on-your-last-action = 마지막 작업 처리 중
 fonts-show-inter-default = Noto Sans(기본값)
 # Context: show
 fonts-show-interface-font = 인터페이스 글꼴
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = 초기화
 fonts-show-search = 설치된 글꼴 검색

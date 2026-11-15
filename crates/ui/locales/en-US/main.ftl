@@ -1063,6 +1063,7 @@ extensions-ui-toolbar-working-on-your-last-action = Working on your last action
 fonts-show-inter-default = Noto Sans (default)
 # Context: show
 fonts-show-interface-font = Interface font
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Reset
 fonts-show-search = Search installed fonts
@@ -1072,7 +1073,7 @@ fonts-show-none-installed = No installed fonts were found on this system.
 # Context: show
 fonts-show-the-quick-brown-fox-jumps-over-the-lazy-dog-0123456789 = The quick brown fox jumps over the lazy dog. 0123456789
 # Context: show
-fonts-show-ttf-or-otf-up-to-32-mib-saved-on-this = Fonts installed on this device, up to 32 MiB. A copy is saved for Serein. Code keeps its monospace font.
+fonts-show-ttf-or-otf-up-to-32-mib-saved-on-this = Pick an installed font, or import a TTF/OTF file or a ZIP of its weights (Regular, Medium, SemiBold or Bold), up to 32 MiB. A copy is saved for Serein. Code keeps its monospace font.
 # Context: show
 fonts-show-typography = Typography
 

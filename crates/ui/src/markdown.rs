@@ -225,7 +225,7 @@ struct Style {
 
 /// Split styled text into Unicode BiDi runs in visual order. The text inside each run stays in
 /// logical order so egui's shaper can still join Arabic-family scripts correctly.
-fn bidi_spans(spans: &[(String, Style)]) -> Option<(Vec<(String, Style)>, bool)> {
+fn bidi_spans(spans: &[(String, Style)]) -> Option<Vec<(String, Style)>> {
 	if spans.iter().all(|(text, _)| text.is_ascii()) {
 		return None;
 	}
@@ -234,15 +234,6 @@ fn bidi_spans(spans: &[(String, Style)]) -> Option<(Vec<(String, Style)>, bool)>
 	if !bidi.has_rtl() {
 		return None;
 	}
-	let right_aligned = bidi
-		.paragraphs
-		.iter()
-		.find(|paragraph| {
-			text[paragraph.range.clone()]
-				.chars()
-				.any(|c| !c.is_whitespace())
-		})
-		.is_some_and(|paragraph| paragraph.level.is_rtl());
 	let mut styled = Vec::with_capacity(spans.len());
 	let mut start = 0;
 	for (value, style) in spans {
@@ -278,7 +269,7 @@ fn bidi_spans(spans: &[(String, Style)]) -> Option<(Vec<(String, Style)>, bool)>
 			}
 		}
 	}
-	Some((visual, right_aligned))
+	Some(visual)
 }
 /// Emoji artwork is taller than the body font, so any line carrying it grows. Knowing this at
 /// parse time lets every widget on a line reserve that height before the first one is placed.
@@ -2662,14 +2653,10 @@ impl Formatted {
 		} else {
 			None
 		};
-		let (spans, right_aligned) = bidi
-			.as_ref()
-			.map_or((spans, false), |(spans, right)| (spans.as_slice(), *right));
-		job.halign = if right_aligned {
-			egui::Align::RIGHT
-		} else {
-			egui::Align::LEFT
-		};
+		// Right-to-left paragraphs keep their visual run order but stay left-aligned, like
+		// Discord's message column.
+		let spans = bidi.as_deref().unwrap_or(spans);
+		job.halign = egui::Align::LEFT;
 		let mut inlines: Vec<Inline> = Vec::new();
 		// Label overwrites the first section's leading space with the wrap indentation.
 		job.append("", 0.0, Self::format(ui, &Style::default()));
@@ -2793,11 +2780,7 @@ impl Formatted {
 		}
 		let label = egui::Label::new(job)
 			.wrap()
-			.halign(if right_aligned {
-				egui::Align::RIGHT
-			} else {
-				egui::Align::LEFT
-			})
+			.halign(egui::Align::LEFT)
 			.selectable(false);
 		let (pos, mut galley, mut response) = label.layout_in_ui(ui);
 		let first_row_leading = galley.job.sections.first().map_or(0.0, |s| s.leading_space);
@@ -3847,8 +3830,7 @@ mod tests {
 	#[test]
 	fn bidi_runs_keep_each_script_logical_and_follow_paragraph_direction() {
 		let style = Style::default();
-		let (rtl, right) = bidi_spans(&[("مرحبا English!".into(), style)]).unwrap();
-		assert!(right);
+		let rtl = bidi_spans(&[("مرحبا English!".into(), style)]).unwrap();
 		assert_eq!(
 			rtl.iter()
 				.map(|(text, _)| text.as_str())
@@ -3856,8 +3838,7 @@ mod tests {
 			"!Englishمرحبا "
 		);
 
-		let (ltr, right) = bidi_spans(&[("English مرحبا!".into(), style)]).unwrap();
-		assert!(!right);
+		let ltr = bidi_spans(&[("English مرحبا!".into(), style)]).unwrap();
 		assert_eq!(
 			ltr.iter()
 				.map(|(text, _)| text.as_str())

@@ -2836,6 +2836,12 @@ impl Desktop {
 					self.messaging.custom_font.busy = true;
 					self.messaging.custom_font.status = "Loading font…";
 				}
+				ui::fonts::Action::Import => {
+					self.font_picker =
+						Some(font_import::import(&self.runtime, ctx, self.window.clone()));
+					self.messaging.custom_font.busy = true;
+					self.messaging.custom_font.status = "Choose a font file or ZIP…";
+				}
 				ui::fonts::Action::Reset => self.save_font(ctx, None),
 			}
 		}

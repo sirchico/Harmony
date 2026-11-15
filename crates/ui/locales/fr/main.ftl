@@ -1038,6 +1038,7 @@ fonts-show-import-font = Importer la police…
 fonts-show-inter-default = Noto Sans (par défaut)
 # Context: show
 fonts-show-interface-font = Police d'interface
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Réinitialiser
 # Context: show

@@ -414,8 +414,13 @@ fn execute(
 				let store = store
 					.as_ref()
 					.map_err(|_| "Could not save the font. Try importing it again.")?;
+				let encoded = font.as_ref().map(|font| (font.name.as_str(), font.bytes()));
 				store
-					.save_custom_font(font.as_ref().map(|font| (font.name.as_str(), font.bytes())))
+					.save_custom_font(
+						encoded
+							.as_ref()
+							.map(|(name, bytes)| (*name, bytes.as_slice())),
+					)
 					.map_err(|_| "Could not save the font. Try again.")?;
 				Ok(font.clone())
 			})());

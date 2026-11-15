@@ -1039,6 +1039,7 @@ fonts-show-import-font = Импортировать шрифт…
 fonts-show-inter-default = Интер (по умолчанию)
 # Context: show
 fonts-show-interface-font = Шрифт интерфейса
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Перезагрузить
 # Context: show

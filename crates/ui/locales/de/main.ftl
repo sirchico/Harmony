@@ -1038,6 +1038,7 @@ fonts-show-import-font = Schriftart importieren…
 fonts-show-inter-default = Noto Sans (Standard)
 # Context: show
 fonts-show-interface-font = Schnittstellenschriftart
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Zurücksetzen
 # Context: show

@@ -17,6 +17,22 @@ pub fn extension_source(
 	}
 }
 
+/// One font file, or a ZIP holding a family's weights.
+pub fn font_source(
+	parent: Arc<winit::window::Window>,
+) -> impl std::future::Future<Output = Option<PathBuf>> + Send + 'static {
+	let dialog = rfd::AsyncFileDialog::new()
+		.set_parent(parent.as_ref())
+		.set_title("Import font")
+		.add_filter("Fonts and font ZIPs", &["ttf", "otf", "zip"])
+		.pick_file();
+	async move {
+		let file = dialog.await?;
+		drop(parent);
+		Some(file.path().to_owned())
+	}
+}
+
 pub fn icon_source(
 	parent: Arc<winit::window::Window>,
 	title: &'static str,

@@ -1039,6 +1039,7 @@ fonts-show-import-font = Yazı tipini içe aktar…
 fonts-show-inter-default = Noto Sans (varsayılan)
 # Context: show
 fonts-show-interface-font = Arayüz yazı tipi
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Sıfırla
 # Context: show

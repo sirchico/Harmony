@@ -367,12 +367,9 @@ fn layout_uncached(ctx: &egui::Context, spans: &[Span], width: f32) -> Option<La
 					};
 					end = earlier;
 				};
-				let x = if paragraph.level.is_rtl() {
-					(width - galley.size().x).max(0.0)
-				} else {
-					0.0
-				};
-				let position = Vec2::new(x, out.size.y);
+				// Like Discord, right-to-left lines keep their visual order but start at the
+				// left edge of the message column instead of hugging the right edge.
+				let position = Vec2::new(0.0, out.size.y);
 				for cell in &mut cells {
 					cell.rect = cell.rect.translate(position);
 				}

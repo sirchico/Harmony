@@ -553,12 +553,10 @@ fn reorder(
 	let mut directions = Vec::new();
 	let mut rows = Vec::new();
 	let mut y = 0.0;
+	// Right-to-left rows keep their visual order but start at the left edge, like messages.
 	let mut place = |row: egui::epaint::text::Row, rtl: bool, ends_with_newline: bool| {
-		let x = if rtl && width.is_finite() {
-			(width - row.size.x).max(0.0)
-		} else {
-			0.0
-		};
+		let _ = width;
+		let x = 0.0;
 		let height = row.size.y;
 		rows.push(PlacedRow {
 			pos: egui::pos2(x, y),
@@ -1000,11 +998,9 @@ mod tests {
 				text.chars().count(),
 				"one glyph per char"
 			);
-			assert_eq!(
-				row.pos.x > 0.0,
-				rtl_paragraph,
-				"only RTL paragraphs align right"
-			);
+			// Regression: RTL drafts used to hug the right edge; every paragraph starts left.
+			assert_eq!(row.pos.x, 0.0, "paragraphs start at the left edge");
+			let _ = rtl_paragraph;
 			let x = |index: usize| bidi.caret(index).unwrap().1;
 			let len = text.chars().count();
 			if rtl_paragraph {
@@ -1043,7 +1039,7 @@ mod tests {
 		})
 		.drop_without_applying_deltas();
 		let rows = &galley.unwrap().rows;
-		assert!(rows[0].pos.x > 0.0 && rows[1].pos.x == 0.0);
+		assert!(rows[0].pos.x == 0.0 && rows[1].pos.x == 0.0);
 		assert!(paragraph_rtl(text, 0) && !paragraph_rtl(text, 6));
 		ctx.run_ui(Default::default(), |ui| {
 			layout.galley(ui, "plain", 300.0, &[], &[], &[], false, &mut avatars, true);

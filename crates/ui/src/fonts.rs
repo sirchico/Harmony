@@ -10,42 +10,179 @@ const CUSTOM: [&str; 3] = [
 ];
 const DEFINITIONS_KEY: &str = "serein-font-definitions";
 
+/// Most faces one import may offer, for example every weight and italic in a family ZIP.
+pub const MAX_CUSTOM_FONT_FACES: usize = 64;
+/// Marks a saved font that carries more than one face; a single face is stored as plain bytes.
+const BUNDLE_MAGIC: &[u8; 8] = b"SRNFONT1";
+
+/// The interface font: a Regular face plus, when supplied, dedicated Medium and SemiBold faces.
+/// Missing heavier faces fall back to the Regular face (variable fonts still vary by weight).
 #[derive(Clone)]
 pub struct CustomFont {
 	pub name: String,
+	regular: Face,
+	medium: Option<Face>,
+	semibold: Option<Face>,
+}
+
+#[derive(Clone)]
+struct Face {
+	weight: u16,
 	data: FontData,
 }
 
+/// Validate one face before it reaches the renderer; returns its weight and whether it is upright.
+fn face(mut bytes: Vec<u8>) -> Result<(Face, bool), &'static str> {
+	use skrifa::{MetadataProvider, attribute::Style, raw::TableProvider};
+	if bytes.is_empty() || bytes.len() > MAX_CUSTOM_FONT_BYTES {
+		return Err("Choose a font up to 32 MiB.");
+	}
+	let font = skrifa::FontRef::new(&bytes).map_err(|_| "Choose a valid TTF or OTF font.")?;
+	if font.head().map_or(true, |head| head.units_per_em() == 0)
+		|| font.hhea().is_err()
+		|| font.maxp().is_err()
+		|| font.hmtx().is_err()
+		|| font.charmap().mappings().next().is_none()
+		|| font.outline_glyphs().format().is_none()
+	{
+		return Err("This font is missing readable text or outlines.");
+	}
+	let attributes = font.attributes();
+	let weight = attributes.weight.value().round().clamp(1.0, 1000.0) as u16;
+	let upright = attributes.style == Style::Normal;
+	bytes.shrink_to_fit();
+	let mut data = FontData::from_owned(bytes);
+	data.tweak.hinting = Some(false);
+	data.tweak.subpixel_binning = Some(true);
+	Ok((Face { weight, data }, upright))
+}
+
+/// The family name a font file declares (typographic family first), if it is usable.
+pub fn family_name(bytes: &[u8]) -> Option<String> {
+	use skrifa::{MetadataProvider, string::StringId};
+	let font = skrifa::FontRef::new(bytes).ok()?;
+	[StringId::TYPOGRAPHIC_FAMILY_NAME, StringId::FAMILY_NAME]
+		.into_iter()
+		.find_map(|id| {
+			let name = font.localized_strings(id).english_or_first()?.to_string();
+			let name = name.trim().to_owned();
+			(!name.is_empty() && name.len() <= 128 && !name.chars().any(char::is_control))
+				.then_some(name)
+		})
+}
+
 impl CustomFont {
-	/// Validate before handing user-selected bytes to the renderer. Called off the UI thread.
-	pub fn new(mut name: String, mut bytes: Vec<u8>) -> Result<Self, &'static str> {
-		use skrifa::{MetadataProvider, raw::TableProvider};
-		if bytes.is_empty() || bytes.len() > MAX_CUSTOM_FONT_BYTES {
-			return Err("Choose a font up to 32 MiB.");
+	/// Restore a saved font or accept one font file. Called off the UI thread.
+	pub fn new(name: String, bytes: Vec<u8>) -> Result<Self, &'static str> {
+		match bytes.strip_prefix(BUNDLE_MAGIC.as_slice()) {
+			Some(bundle) => Self::from_faces(name, decode_bundle(bundle)?),
+			None => Self::from_faces(name, vec![bytes]),
+		}
+	}
+
+	/// Pick the Regular, Medium and SemiBold faces from every face of one family (a ZIP or an
+	/// installed family). Italic faces are ignored while upright ones exist. Weights come from
+	/// each font's own OS/2 table, never from its file name.
+	pub fn from_faces(mut name: String, files: Vec<Vec<u8>>) -> Result<Self, &'static str> {
+		if files.is_empty() {
+			return Err("No TTF or OTF fonts were found.");
+		}
+		if files.len() > MAX_CUSTOM_FONT_FACES {
+			return Err("This archive has too many fonts.");
+		}
+		let mut faces = Vec::with_capacity(files.len());
+		let mut first_error = None;
+		for bytes in files {
+			match face(bytes) {
+				Ok(face) => faces.push(face),
+				Err(error) => {
+					first_error.get_or_insert(error);
+				}
+			}
+		}
+		if faces.is_empty() {
+			return Err(first_error.unwrap_or("Choose a valid TTF or OTF font."));
+		}
+		if faces.iter().any(|(_, upright)| *upright) {
+			faces.retain(|(_, upright)| *upright);
+		}
+		let mut faces: Vec<Face> = faces.into_iter().map(|(face, _)| face).collect();
+		let closest = |faces: &[Face], target: u16, range: std::ops::RangeInclusive<u16>| {
+			faces
+				.iter()
+				.enumerate()
+				.filter(|(_, face)| range.contains(&face.weight))
+				.min_by_key(|(_, face)| face.weight.abs_diff(target))
+				.map(|(index, _)| index)
+		};
+		let regular = closest(&faces, 400, 1..=1000).expect("at least one face");
+		let regular = faces.swap_remove(regular);
+		let medium = closest(&faces, 500, 450..=549).map(|index| faces.swap_remove(index));
+		let semibold = closest(&faces, 600, 550..=750).map(|index| faces.swap_remove(index));
+		let font = Self {
+			name: String::new(),
+			regular,
+			medium,
+			semibold,
+		};
+		if font
+			.faces()
+			.map(|face| face.data.bytes().len())
+			.sum::<usize>()
+			> MAX_CUSTOM_FONT_BYTES
+		{
+			return Err("The chosen faces add up to more than 32 MiB.");
+		}
+		if let Some(declared) = family_name(font.regular.data.bytes()) {
+			name = declared;
 		}
 		if name.is_empty() || name.len() > 128 || name.chars().any(char::is_control) {
 			return Err("The font name is invalid.");
 		}
-		let font = skrifa::FontRef::new(&bytes).map_err(|_| "Choose a valid TTF or OTF font.")?;
-		if font.head().map_or(true, |head| head.units_per_em() == 0)
-			|| font.hhea().is_err()
-			|| font.maxp().is_err()
-			|| font.hmtx().is_err()
-			|| font.charmap().mappings().next().is_none()
-			|| font.outline_glyphs().format().is_none()
-		{
-			return Err("This font is missing readable text or outlines.");
-		}
-		bytes.shrink_to_fit();
 		name.shrink_to_fit();
-		let mut data = FontData::from_owned(bytes);
-		data.tweak.hinting = Some(false);
-		data.tweak.subpixel_binning = Some(true);
-		Ok(Self { name, data })
+		Ok(Self { name, ..font })
 	}
-	pub fn bytes(&self) -> &[u8] {
-		self.data.bytes()
+
+	fn faces(&self) -> impl Iterator<Item = &Face> {
+		std::iter::once(&self.regular)
+			.chain(self.medium.as_ref())
+			.chain(self.semibold.as_ref())
 	}
+
+	/// Weights of the faces in use, Regular first.
+	pub fn weights(&self) -> Vec<u16> {
+		self.faces().map(|face| face.weight).collect()
+	}
+
+	/// Bytes to persist: the plain face when there is only one, otherwise a small bundle.
+	pub fn bytes(&self) -> Vec<u8> {
+		if self.medium.is_none() && self.semibold.is_none() {
+			return self.regular.data.bytes().to_vec();
+		}
+		let mut bundle = BUNDLE_MAGIC.to_vec();
+		for face in self.faces() {
+			let data = face.data.bytes();
+			bundle.extend((data.len() as u32).to_le_bytes());
+			bundle.extend_from_slice(data);
+		}
+		bundle
+	}
+}
+
+/// Split a saved bundle back into its faces; any malformed length rejects the whole bundle.
+fn decode_bundle(mut bundle: &[u8]) -> Result<Vec<Vec<u8>>, &'static str> {
+	const INVALID: &str = "The saved font is damaged. Import it again.";
+	let mut faces = Vec::new();
+	while !bundle.is_empty() {
+		let (length, rest) = bundle.split_first_chunk::<4>().ok_or(INVALID)?;
+		let length = u32::from_le_bytes(*length) as usize;
+		if length == 0 || length > rest.len() || faces.len() == 3 {
+			return Err(INVALID);
+		}
+		faces.push(rest[..length].to_vec());
+		bundle = &rest[length..];
+	}
+	Ok(faces)
 }
 
 /// One face as a standalone font file. A collection (`.ttc`) member is copied out with its own
@@ -98,6 +235,8 @@ pub enum Action {
 	/// Enumerate the installed families once the font settings are first shown.
 	List,
 	Select(String),
+	/// Pick a TTF/OTF file or a ZIP of a family's weights.
+	Import,
 	Reset,
 }
 
@@ -130,6 +269,11 @@ impl Settings {
 		design::group(ui, &crate::i18n::translate("fonts-show-typography"), |ui| {
 			ui.add_enabled_ui(!self.busy, |ui| {
 				design::row(ui, "fonts-show-interface-font", None, |ui| {
+					if design::text_action(ui, &crate::i18n::translate("fonts-show-import-file"))
+						.clicked()
+					{
+						self.request = Some(Action::Import);
+					}
 					if self.name.is_some()
 						&& design::text_action(ui, &crate::i18n::translate("fonts-show-reset"))
 							.clicked()
@@ -364,17 +508,19 @@ pub fn apply_custom(ctx: &Context, font: Option<&CustomFont>) {
 	});
 	let Some(shared) = shared else { return };
 	let mut definitions = shared.lock().expect("font definitions");
-	for (family, name, weight) in [
-		(FontFamily::Proportional, CUSTOM[0], 400.0),
+	for (family, name, weight, slot) in [
+		(FontFamily::Proportional, CUSTOM[0], 400.0, 0),
 		(
 			FontFamily::Name(crate::design::MEDIUM.into()),
 			CUSTOM[1],
 			500.0,
+			1,
 		),
 		(
 			FontFamily::Name(crate::design::SEMIBOLD.into()),
 			CUSTOM[2],
 			600.0,
+			2,
 		),
 	] {
 		definitions.font_data.remove(name);
@@ -384,8 +530,15 @@ pub fn apply_custom(ctx: &Context, font: Option<&CustomFont>) {
 			.or_default()
 			.retain(|entry| entry != name);
 		if let Some(font) = font {
-			let mut data = font.data.clone();
-			// Static faces keep their supplied weight; variable faces use the UI's three weights.
+			// A dedicated face wins; otherwise the Regular face stands in. Static faces keep
+			// their own weight, variable faces are set to the UI's three weights.
+			let face = match slot {
+				1 => font.medium.as_ref(),
+				2 => font.semibold.as_ref(),
+				_ => None,
+			}
+			.unwrap_or(&font.regular);
+			let mut data = face.data.clone();
 			data.tweak.coords = egui::epaint::text::VariationCoords::new([(b"wght", weight)]);
 			definitions.font_data.insert(name.into(), data.into());
 			definitions
@@ -857,10 +1010,7 @@ mod tests {
 			})
 			.drop_without_applying_deltas();
 		}
-		let custom = CustomFont {
-			name: "Synthetic".into(),
-			data: FontData::from_static(NOTO_SANS),
-		};
+		let custom = CustomFont::new("Synthetic".into(), NOTO_SANS.to_vec()).unwrap();
 		let family = FontFamily::Name("Serein Name Bangers".into());
 		apply_custom(&ctx, Some(&custom));
 		let list = ctx.fonts(|fonts| fonts.definitions().families[&family].clone());

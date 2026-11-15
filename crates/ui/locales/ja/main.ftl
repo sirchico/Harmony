@@ -1039,6 +1039,7 @@ fonts-show-import-font = フォントをインポート…
 fonts-show-inter-default = インター (デフォルト)
 # Context: show
 fonts-show-interface-font = インターフェースフォント
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = リセット
 # Context: show

@@ -1062,6 +1062,7 @@ extensions-ui-toolbar-working-on-your-last-action = Zpracovávám poslední akci
 fonts-show-inter-default = Noto Sans (výchozí)
 # Context: show
 fonts-show-interface-font = Písmo rozhraní
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Resetovat
 fonts-show-search = Hledat nainstalovaná písma

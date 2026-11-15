@@ -1038,6 +1038,7 @@ fonts-show-import-font = Importuj czcionkę…
 fonts-show-inter-default = Noto Sans (domyślny)
 # Context: show
 fonts-show-interface-font = Czcionka interfejsu
+fonts-show-import-file = Import file (TTF, OTF or ZIP)
 # Context: show
 fonts-show-reset = Nastawić
 # Context: show
