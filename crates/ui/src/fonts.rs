@@ -52,7 +52,7 @@ fn face(mut bytes: Vec<u8>) -> Result<(Face, bool), &'static str> {
 	let upright = attributes.style == Style::Normal;
 	bytes.shrink_to_fit();
 	let mut data = FontData::from_owned(bytes);
-	data.tweak.hinting = Some(false);
+	data.tweak.hinting = None;
 	data.tweak.subpixel_binning = Some(true);
 	Ok((Face { weight, data }, upright))
 }
@@ -849,7 +849,7 @@ fn add_fallback(definitions: &mut FontDefinitions, name: &str, data: FontData) {
 
 fn latin(data: &'static [u8]) -> FontData {
 	let mut font = FontData::from_static(data);
-	font.tweak.hinting = Some(false);
+	font.tweak.hinting = None;
 	font.tweak.subpixel_binning = Some(true);
 	font
 }
