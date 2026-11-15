@@ -1,0 +1,48 @@
+{
+  "app-id": "io.github.sirchico.harmony",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "51",
+  "sdk": "org.gnome.Sdk",
+  "sdk-extensions": ["org.freedesktop.Sdk.Extension.llvm22"],
+  "command": "harmony",
+  "rename-icon": "harmony",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--socket=wayland",
+    "--socket=x11",
+    "--device=dri",
+    "--socket=pulseaudio",
+    "--talk-name=org.freedesktop.secrets",
+    "--talk-name=org.kde.kwalletd6",
+    "--talk-name=org.kde.kwalletd5",
+    "--talk-name=org.freedesktop.Notifications",
+    "--talk-name=org.kde.StatusNotifierWatcher",
+    "--talk-name=org.kde.KWin",
+    "--env=WEBKIT_DISABLE_DMABUF_RENDERER=1"
+  ],
+  "modules": [
+    {
+      "name": "harmony",
+      "buildsystem": "simple",
+      "build-options": {
+        "append-path": "/run/build/harmony/flatpak-rust/bin",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm22/lib",
+        "env": {
+          "CARGO_NET_OFFLINE": "true",
+          "CARGO_HOME": "/run/build/harmony/flatpak-cargo-home",
+          "LIBCLANG_PATH": "/usr/lib/sdk/llvm22/lib",
+          "CLANG_PATH": "/usr/lib/sdk/llvm22/bin/clang"
+        }
+      },
+      "build-commands": [
+        "test \"$(rustc --version | cut -d ' ' -f 2)\" = 1.99.1",
+        "cargo xtask package --format dir",
+        "cp -a dist/linux-root/usr/. /app/",
+        "rm -f /app/share/icons/hicolor/1024x1024/apps/harmony.png",
+        "install -Dm644 packaging/flatpak/io.github.sirchico.harmony.metainfo.xml /app/share/metainfo/io.github.sirchico.harmony.metainfo.xml"
+      ],
+      "sources": [{"type": "dir", "path": "source"}]
+    }
+  ]
+}

@@ -1,9 +1,9 @@
-# Serein interface direction
+# Harmony interface direction
 
-Serein follows the familiar three-column messaging layout and density of a modern desktop chat
+Harmony follows the familiar three-column messaging layout and density of a modern desktop chat
 client. Its built-in colours follow Discord's current desktop themes (surface ladder, text,
 status colours and the blurple accent, read from Discord's published theme variables), while
-the brand mark and server-rail selection language remain Serein's own. The palette, typography
+the brand mark and server-rail selection language remain Harmony's own. The palette, typography
 and spacing live in `crates/ui/src/design.rs`; every view resolves colours through
 `design::palette(ui)`.
 
@@ -20,7 +20,7 @@ A process-wide `Variant` recolours the whole application on top of egui's light/
 
 | Preset | Surfaces |
 |---|---|
-| Serein | Discord Dark (`#121214` rail and lists / `#1a1a1e` chat / `#222327` raised) or Discord Light (`#f3f3f4` / `#fbfbfb` / `#ebeced`), following System/Light/Dark |
+| Harmony | Discord Dark (`#121214` rail and lists / `#1a1a1e` chat / `#222327` raised) or Discord Light (`#f3f3f4` / `#fbfbfb` / `#ebeced`), following System/Light/Dark |
 | Eclipse | Discord Onyx: black surfaces (`#000000` / `#131416` raised) with dimmer text for OLED displays |
 | Slate | Discord Ash (`#2c2d32` / `#323339` / `#393a41`) |
 | Nightfall, Ember, Verdant, Afterglow | Gradient backdrop painted under translucent dark surfaces |
@@ -28,7 +28,7 @@ A process-wide `Variant` recolours the whole application on top of egui's light/
 Gradient presets paint a full-window mesh in the background layer each frame and use
 translucent panel fills; they always use dark text. Presets are chosen from the account card's
 settings menu (swatch row) and persist in the application-wide SQLite `theme_variant` row next
-to the light/dark appearance; unknown keys fall back to Serein. The keys written by earlier
+to the light/dark appearance; unknown keys fall back to Harmony. The keys written by earlier
 builds (`onyx`, `ash`, `midnight-blurple`, `crimson-moon`, `forest`, `sunset`) still resolve to
 their renamed presets, so a stored preference survives the rename. `--demo --demo-theme=<key>` and
 `--demo-light` open fixtures in a preset for screenshots.
@@ -40,8 +40,8 @@ palette surfaces in both message and forum composers, independently of chat tran
 
 ## Brand mark and server rail
 
-The application mark is the Serein chat-wave (`assets/brand/`), not a third-party logo. Its
-silhouette is rasterized into the shared icon atlas as `serein-mark` and painted wherever the
+The application mark is a white silhouette of Ferris (`assets/brand/`), not a third-party logo. Its
+silhouette is rasterized into the shared icon atlas as `harmony-mark` and painted wherever the
 client identifies itself: the loading screen, the sign-in card and its button, the login header
 and the Direct Messages tile at the top of the server rail.
 
@@ -101,8 +101,8 @@ The bundled faces remain upstream's hinted TrueType builds. See `assets/README.m
   and exposes Copy ID/Link, Mark Unread, Pin, Reply, Translate, Add Reaction, Edit, Forward, then a
   red Delete. Right-click and Shift+F10 retain the full menu in either mode. Copy message stays in
   that menu. Translate hands at most 2 KiB of the selected text to the ordinary external-link
-  confirmation flow for Google Translate in the user's browser; Serein does not make a translation
-  request itself. A bookmark is not shown because Serein has no bookmark store/service path.
+  confirmation flow for Google Translate in the user's browser; Harmony does not make a translation
+  request itself. A bookmark is not shown because Harmony has no bookmark store/service path.
 - Composer: rounded `raised` bar with attach (+), placeholder `Message #channel`, emoji picker
   and send icons; a character counter appears within 200 characters of the limit.
   Typing `@game` offers a game-search option. Selecting it leaves an `@game` filter chip
@@ -159,7 +159,7 @@ and Delete uses its semantic danger color. `style.icon_size` scales shared glyph
 Shortcut capture also accepts egui's browser, media and system keys, including Caps Lock,
 Pause and the macOS Fn key, when the OS delivers them to the focused window. These bindings
 persist through the existing device settings. Global availability remains limited by the
-native shortcut adapter; unsupported global bindings continue to work while Serein is focused.
+native shortcut adapter; unsupported global bindings continue to work while Harmony is focused.
 
 Voice follows Discord's call screens: a black stage with 80px participant avatars (DM calls,
 above the conversation) or 16:9 tiles with name badges (guild channels), a bottom control bar
@@ -171,7 +171,7 @@ height/frame rate and a stop control. Activities and soundboard are shown disabl
 
 ## Verification notes
 
-Native macOS captures at 1120×760 in Serein dark, Eclipse, Slate, Nightfall and light were
+Native macOS captures at 1120×760 in Harmony dark, Eclipse, Slate, Nightfall and light were
 inspected on September 10, 2026 with the offline fixtures (`--demo`, `--demo-chat`,
 `--demo-notifications`, `--demo-voice`). Keyboard reachability of channel rows, the forum row,
 toolbar actions and members is covered by headless egui tests. Screen-reader/IME behaviour and
@@ -198,7 +198,7 @@ a question above stacked, left-aligned answer rows, right-edge selection circles
 and checkmarks, separate vote counts and percentages, and a compact vote/expiry
 footer. The card spans up to 472px including padding. Long answers wrap while
 their selection markers stay aligned; narrow result rows put tallies beneath the
-answer. Colors continue to resolve from the active Serein palette.
+answer. Colors continue to resolve from the active Harmony palette.
 
 Open poll creation from Create a poll in the composer's `+` menu.
 The creation dialog uses uppercase field labels, inset question/answer fields,

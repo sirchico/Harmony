@@ -3,12 +3,12 @@
   "use strict";
   const page = "https://discord.com/channels/@me";
   if (window !== window.top || location.href !== page) return;
-  const capability = "__SEREIN_CAPTCHA_CAPABILITY__";
+  const capability = "__HARMONY_CAPTCHA_CAPABILITY__";
   const opened = Date.now();
   let pending = null;
   let delivered = false;
   const active = () => window === window.top && location.href === page && Date.now() - opened <= 300000;
-  Object.defineProperty(window, "__serein_captcha_take_" + capability.slice(0, -1), {
+  Object.defineProperty(window, "__harmony_captcha_take_" + capability.slice(0, -1), {
     value: () => {
       const value = active() ? pending : null;
       pending = null;

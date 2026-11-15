@@ -1,0 +1,158 @@
+name: Fork release
+run-name: Release ${{ github.ref_name }}
+
+# Publishes the release that installed clients update from. Push a tag that matches the
+# workspace version in Cargo.toml, for example `v0.2.0` for version 0.2.0
+# (`v0.2.0-nightly.1` for the nightly channel). The updater reads these exact file names:
+#
+#   harmony-<tag>-Windows-X64.zip        update package and portable build
+#   harmony-<tag>-macOS-ARM64.zip        update package and portable build
+#   harmony-<tag>-Linux-X64.AppImage     update package and portable build (+ .zsync)
+#   SHA256SUMS.txt                      checked before any update is installed
+#
+# Installers (-Setup.exe, -Setup.dmg, .deb) are added for first-time installs.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tag must match the workspace version
+        run: |
+          version="$(awk '/^\[workspace.package\]/{p=1} p&&/^version/{gsub(/[" ]/,"");split($0,a,"=");print a[2];exit}' Cargo.toml)"
+          echo "Cargo.toml version: $version, tag: $TAG"
+          test "$TAG" = "v$version"
+
+  desktop:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows-X64
+          - os: macos-latest
+            name: macOS-ARM64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        run: choco install nsis --no-progress -y
+      - name: Package app
+        run: |
+          cargo xtask package
+          mkdir release-assets
+          echo "ASSET=harmony-$TAG-${{ matrix.name }}" >> "$GITHUB_ENV"
+      - name: Windows update package and installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/*" -DestinationPath "release-assets/$env:ASSET.zip"
+          $installer = Get-ChildItem -Path "dist-installer/*-setup.exe" | Select-Object -First 1
+          Copy-Item -LiteralPath $installer.FullName -Destination "release-assets/$env:ASSET-Setup.exe"
+      - name: macOS update package and disk image
+        if: runner.os == 'macOS'
+        run: |
+          ditto -c -k --sequesterRsrc dist "release-assets/$ASSET.zip"
+          mkdir dmg-root
+          cp -R dist/Harmony.app dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname Harmony -srcfolder dmg-root -ov -format UDZO "release-assets/$ASSET-Setup.dmg"
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ${{ env.ASSET }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    needs: check
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: |
+          bash packaging/linux/install-build-deps.sh
+          apt-get install -y --no-install-recommends zsync
+      - name: Create unprivileged builder
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+      - name: Build AppImage and Debian package
+        env:
+          HARMONY_RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          runuser -u builder -- env HOME=/home/builder HARMONY_RELEASE_TAG="$HARMONY_RELEASE_TAG" bash <<'BUILD'
+            set -eu
+            curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+            export PATH="$HOME/.cargo/bin:$PATH"
+            bash packaging/appimage/install-tools.sh
+            cargo xtask package --format appimage
+            cargo xtask package
+          BUILD
+      - name: Collect Linux packages
+        run: |
+          mkdir release-assets
+          set -- dist/harmony-*-Linux-X64.AppImage
+          test "$#" -eq 1 && test -f "$1" && test -s "$1.zsync"
+          cp "$1" "$1.zsync" release-assets/
+          deb="$(find dist -maxdepth 1 -name 'harmony_*.deb' -print -quit)"
+          test -n "$deb"
+          cp "$deb" "release-assets/harmony-$TAG-Linux-X64.deb"
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: harmony-${{ github.ref_name }}-Linux-X64
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: [desktop, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Checksums and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd release-assets
+          sha256sum -- * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" --verify-tag $prerelease --title "Harmony ${TAG}" \
+            --notes "Unsigned builds. Windows and macOS update from the .zip, Linux from the AppImage; the Setup installers and .deb are for first installs. SHA256SUMS.txt lists every file." \
+            -- *

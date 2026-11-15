@@ -2,7 +2,7 @@
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  * Copyright (c) 2023 Vendicated and contributors
- * Copyright (c) 2026 Serein port contributors
+ * Copyright (c) 2026 Harmony port contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  */
 
 use serde::{Deserialize, Serialize};
-use serein_extension_sdk::{Element, Invocation, MAX_IO_BYTES, Output};
+use harmony_extension_sdk::{Element, Invocation, MAX_IO_BYTES, Output};
 use std::collections::{BTreeMap, BTreeSet};
 
 const MAX_RULES: usize = 8;
@@ -772,7 +772,7 @@ fn handle(input: Invocation) -> Output {
 	}
 }
 
-serein_extension_sdk::export!(handle);
+harmony_extension_sdk::export!(handle);
 
 #[cfg(test)]
 mod tests {

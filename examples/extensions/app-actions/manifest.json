@@ -3,9 +3,9 @@
   "id": "app-actions",
   "name": "Conversation Actions",
   "version": "1.0.0",
-  "author": "Serein contributors",
+  "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
-  "source": "https://github.com/ViceVerse-cz/Serein/tree/main/examples/extensions/app-actions",
+  "source": "https://github.com/sirchico/Harmony/tree/main/examples/extensions/app-actions",
   "kind": "plugin",
   "capabilities": ["app_context", "timeline", "message_send", "message_manage", "reactions_control", "read_state_control", "threads_control"],
   "actions": [

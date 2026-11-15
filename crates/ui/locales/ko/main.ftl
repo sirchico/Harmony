@@ -3,7 +3,7 @@
 language-system = 시스템 설정
 language-group = 언어
 language-label = 표시 언어
-language-description = Serein의 언어를 선택하세요. Discord 콘텐츠는 번역하지 않습니다.
+language-description = Harmony의 언어를 선택하세요. Discord 콘텐츠는 번역하지 않습니다.
 section-user = 사용자 설정
 section-app = 앱 설정
 section-customization = 사용자 지정
@@ -28,11 +28,11 @@ description-appearance = 테마, 색상, 창 효과, 레이아웃을 설정합�
 description-chat = 메시지, 미디어, 링크, 스크롤 동작을 설정합니다.
 description-messaging-permissions = 연락할 수 있는 사람과 메시지 필터링 방식을 설정합니다.
 description-notifications = 받을 알림과 표시 방식을 선택하세요.
-description-registered-games = 플레이 중인 게임을 공유하고 Serein이 감지하는 게임을 수정하거나 추가하세요.
+description-registered-games = 플레이 중인 게임을 공유하고 Harmony이 감지하는 게임을 수정하거나 추가하세요.
 description-voice = 마이크, 스피커, 카메라, 음성 처리를 설정합니다.
-description-keybinds = Serein의 키보드 단축키입니다.
-description-storage = Serein이 이 기기에 보관하는 데이터를 관리합니다.
-description-updates = 이 기기의 Serein을 최신 상태로 유지하세요.
+description-keybinds = Harmony의 키보드 단축키입니다.
+description-storage = Harmony이 이 기기에 보관하는 데이터를 관리합니다.
+description-updates = 이 기기의 Harmony을 최신 상태로 유지하세요.
 description-extensions = 커뮤니티 플러그인을 관리합니다.
 description-themes = 커뮤니티 테마를 선택하세요.
 theme-maker = 테마 만들기
@@ -45,42 +45,42 @@ log-out = 로그아웃
 unofficial = 비공식 앱 · Discord의 승인을 받지 않았습니다
 offline-preview = 오프라인 미리보기 · 변경 사항은 이 세션에만 적용되며 전송되지 않습니다.
 general-startup = 시작
-general-open-at-startup = 컴퓨터를 시작할 때 Serein 실행
-general-open-at-startup-description = Serein이 백그라운드에서 로그인하고 연결합니다.
+general-open-at-startup = 컴퓨터를 시작할 때 Harmony 실행
+general-open-at-startup-description = Harmony이 백그라운드에서 로그인하고 연결합니다.
 general-start-minimized = 최소화 상태로 시작
 general-start-minimized-description = 작업을 방해하지 않도록 백그라운드에서 시작합니다.
 general-startup-unavailable = 자동 시작은 Windows와 macOS에서 지원됩니다.
 general-window = 창
 general-hide-decorations = 제목 표시줄 사용 안 함
-general-hide-decorations-description = 타일링 창 관리자용: Serein 자체 제목 표시줄을 포함한 모든 제목 표시줄과 테두리를 제거합니다. 창 관리자로 Serein을 이동하고, 크기를 조절하고, 닫으세요.
+general-hide-decorations-description = 타일링 창 관리자용: Harmony 자체 제목 표시줄을 포함한 모든 제목 표시줄과 테두리를 제거합니다. 창 관리자로 Harmony을 이동하고, 크기를 조절하고, 닫으세요.
 general-custom-title-bar = 사용자 지정 제목 표시줄
-general-custom-title-bar-description = 시스템 제목 표시줄을 Serein의 GTK 4 스타일 헤더로 바꿉니다.
-general-hide-title-bar = Serein 제목 표시줄 숨기기
+general-custom-title-bar-description = 시스템 제목 표시줄을 Harmony의 GTK 4 스타일 헤더로 바꿉니다.
+general-hide-title-bar = Harmony 제목 표시줄 숨기기
 general-hide-title-bar-description = 대신 시스템 제목 표시줄과 창 버튼을 사용합니다.
-general-keep-menu-bar = 메뉴 막대에 Serein 유지
-general-keep-system-tray = 시스템 트레이에 Serein 유지
-general-menu-bar-description = 창을 닫아도 Serein이 메뉴 막대에 남습니다. 완전히 종료하려면 메뉴에서 종료를 선택하세요.
-general-linux-tray-description = 창을 닫아도 Serein은 계속 실행됩니다. 트레이에서 표시, 최소화, 종료할 수 있습니다.
-general-windows-tray-description = 창을 닫아도 Serein이 알림 영역에 남습니다. 완전히 종료하려면 메뉴에서 종료를 선택하세요.
+general-keep-menu-bar = 메뉴 막대에 Harmony 유지
+general-keep-system-tray = 시스템 트레이에 Harmony 유지
+general-menu-bar-description = 창을 닫아도 Harmony이 메뉴 막대에 남습니다. 완전히 종료하려면 메뉴에서 종료를 선택하세요.
+general-linux-tray-description = 창을 닫아도 Harmony은 계속 실행됩니다. 트레이에서 표시, 최소화, 종료할 수 있습니다.
+general-windows-tray-description = 창을 닫아도 Harmony이 알림 영역에 남습니다. 완전히 종료하려면 메뉴에서 종료를 선택하세요.
 general-tray-unavailable = 이 플랫폼에서는 트레이를 사용할 수 없습니다.
 general-graphics = 그래픽
 general-render-with = 렌더링 장치
 general-graphics-api = 그래픽 API
-general-graphics-api-description = Serein을 다시 시작하면 적용됩니다. 선택한 API로 이 창을 표시할 수 없으면 자동 설정을 사용합니다.
+general-graphics-api-description = Harmony을 다시 시작하면 적용됩니다. 선택한 API로 이 창을 표시할 수 없으면 자동 설정을 사용합니다.
 general-graphics-api-env-override = 이번 실행에서는 WGPU_BACKEND가 API를 지정합니다. 이 설정을 사용하려면 해당 환경 변수 재정의를 제거하세요.
-general-gpu-restart = 다음에 Serein을 시작할 때 적용됩니다.
+general-gpu-restart = 다음에 Harmony을 시작할 때 적용됩니다.
 general-gpu-current-prefix = 현재 렌더링 장치
 general-steady-refresh-rate = 일정한 새로 고침 빈도
-general-steady-refresh-rate-description = Serein 창이 활성화되어 있을 때 디스플레이의 새로 고침 빈도로 그립니다. 가변 새로 고침 빈도(VRR, G-SYNC, FreeSync) 디스플레이에서 빈도를 일정하게 유지하여 깜박임을 줄입니다. 전력 사용량이 늘어납니다.
+general-steady-refresh-rate-description = Harmony 창이 활성화되어 있을 때 디스플레이의 새로 고침 빈도로 그립니다. 가변 새로 고침 빈도(VRR, G-SYNC, FreeSync) 디스플레이에서 빈도를 일정하게 유지하여 깜박임을 줄입니다. 전력 사용량이 늘어납니다.
 steady-refresh-prompt-title = G-SYNC 디스플레이 감지됨
-steady-refresh-prompt-body = Serein은 변경 사항이 있을 때만 다시 그리기 때문에 Serein 창이 활성화되어 있는 동안 G-SYNC 디스플레이가 깜박일 수 있습니다. 일정한 새로 고침 빈도를 켜면 디스플레이의 새로 고침 빈도로 그려 깜박임을 막지만 전력 사용량이 늘어납니다. 켜시겠습니까?
+steady-refresh-prompt-body = Harmony은 변경 사항이 있을 때만 다시 그리기 때문에 Harmony 창이 활성화되어 있는 동안 G-SYNC 디스플레이가 깜박일 수 있습니다. 일정한 새로 고침 빈도를 켜면 디스플레이의 새로 고침 빈도로 그려 깜박임을 막지만 전력 사용량이 늘어납니다. 켜시겠습니까?
 steady-refresh-prompt-turn-on = 켜기
 steady-refresh-prompt-keep-off = 괜찮습니다
 steady-refresh-prompt-settings = 나중에 설정 > { $page } > { $group }에서 변경할 수 있습니다.
 gpu-automatic = 자동
 gpu-high-performance = 고성능
 gpu-power-saving = 절전
-gpu-automatic-description = Serein이 이 창을 표시할 GPU를 선택합니다.
+gpu-automatic-description = Harmony이 이 창을 표시할 GPU를 선택합니다.
 gpu-high-performance-description = 사용 가능한 경우 외장 그래픽 카드를 사용합니다.
 gpu-power-saving-description = 내장 그래픽을 사용해 배터리를 절약합니다.
 direct-messages = 다이렉트 메시지
@@ -224,7 +224,7 @@ account-menu-custom-status-editor-clear-after = 상태 지우기
 # Context: custom_status_editor
 account-menu-custom-status-editor-no-custom-status = 사용자 지정 상태 없음
 # Context: custom_status_editor
-account-menu-custom-status-editor-serein-clears-it = Serein이 상태를 지웁니다
+account-menu-custom-status-editor-harmony-clears-it = Harmony이 상태를 지웁니다
 # Context: custom_status_editor
 account-menu-custom-status-editor-status-text = 상태 메시지
 # Context: custom_status_editor
@@ -1073,7 +1073,7 @@ fonts-show-none-installed = 이 시스템에서 설치된 글꼴을 찾을 수 �
 # Context: show
 fonts-show-the-quick-brown-fox-jumps-over-the-lazy-dog-0123456789 = 다람쥐 헌 쳇바퀴에 타고파. 0123456789
 # Context: show
-fonts-show-ttf-or-otf-up-to-32-mib-saved-on-this = 이 기기에 설치된 글꼴(최대 32 MiB)입니다. Serein용 사본을 저장합니다. 코드에는 고정폭 글꼴을 유지합니다.
+fonts-show-ttf-or-otf-up-to-32-mib-saved-on-this = 이 기기에 설치된 글꼴(최대 32 MiB)입니다. Harmony용 사본을 저장합니다. 코드에는 고정폭 글꼴을 유지합니다.
 # Context: show
 fonts-show-typography = 글꼴
 
@@ -1596,7 +1596,7 @@ keybinds-show-voice-enable-global-keybinds = 전역 단축키 활성화
 # Context: show_voice
 keybinds-show-voice-global-availability = 전역 사용 가능 여부
 # Context: show_voice
-keybinds-show-voice-use-voice-shortcuts-while-another-app-is-focused-when-off = 다른 앱을 사용하는 중에도 음성 단축키를 사용합니다. 끄면 Serein이 활성화된 동안에만 단축키가 작동합니다.
+keybinds-show-voice-use-voice-shortcuts-while-another-app-is-focused-when-off = 다른 앱을 사용하는 중에도 음성 단축키를 사용합니다. 끄면 Harmony이 활성화된 동안에만 단축키가 작동합니다.
 
 ## crates/ui/src/lib.rs
 # Context: account_card
@@ -1674,7 +1674,7 @@ main-restoring-checking-your-saved-login = 저장된 로그인 확인 중
 # Context: restoring
 main-restoring-connecting-to-discord = Discord에 연결 중
 # Context: restoring_screen
-main-restoring-screen-serein = Serein
+main-restoring-screen-harmony = Harmony
 # Context: restoring_screen
 main-restoring-screen-use-a-different-account = 다른 계정 사용
 # Context: restoring_screen
@@ -1684,11 +1684,11 @@ main-sign-in-accounts-saved-accounts = 저장된 계정
 # Context: sign_in_consent
 main-sign-in-consent-passwords-and-2fa-stay-on-discord-s-own-login-page = 비밀번호와 2단계 인증은 Discord 로그인 페이지 안에서만 처리됩니다. 세션 토큰만 운영체제 자격 증명 저장소에 보관합니다.
 # Context: sign_in_disclosures
-main-sign-in-disclosures-about-serein = Serein 정보
+main-sign-in-disclosures-about-harmony = Harmony 정보
 # Context: sign_in_disclosures
 main-sign-in-disclosures-connect-with-this-token = 이 토큰으로 연결
 # Context: sign_in_disclosures
-main-sign-in-disclosures-for-owners-who-already-hold-a-valid-discord-session-token = 다른 기기에 로그인한 Serein 등에서 유효한 Discord 세션 토큰을 이미 보유한 계정 소유자를 위한 기능입니다. 비밀번호와 2단계 인증은 사용하지 않으며 Discord의 로그인 페이지를 거치지 않습니다.
+main-sign-in-disclosures-for-owners-who-already-hold-a-valid-discord-session-token = 다른 기기에 로그인한 Harmony 등에서 유효한 Discord 세션 토큰을 이미 보유한 계정 소유자를 위한 기능입니다. 비밀번호와 2단계 인증은 사용하지 않으며 Discord의 로그인 페이지를 거치지 않습니다.
 # Context: sign_in_disclosures
 main-sign-in-disclosures-forget-saved-login = 저장된 로그인 삭제
 # Context: sign_in_disclosures
@@ -1702,7 +1702,7 @@ main-sign-in-header-sign-in-with-your-discord-account-to-get-started = Discord �
 # Context: sign_in_header
 main-sign-in-header-welcome-back = 다시 만나서 반가워요
 # Context: sign_in_header
-main-sign-in-header-welcome-to-serein = Serein에 오신 것을 환영합니다
+main-sign-in-header-welcome-to-harmony = Harmony에 오신 것을 환영합니다
 # Context: sign_in_preview
 main-sign-in-status-copy-failure-details = 실패 세부 정보 복사
 main-sign-in-preview-explore-the-offline-preview = 오프라인 미리보기 둘러보기
@@ -1711,7 +1711,7 @@ main-sign-in-preview-sample-conversations-no-discord-connection = 예시 대화,
 # Context: sign_in_screen
 main-sign-in-screen-independent-and-open-source-not-affiliated-with-discord = 독립 오픈 소스 프로젝트 · Discord와 무관합니다
 # Context: sign_in_screen
-main-sign-in-screen-serein = Serein
+main-sign-in-screen-harmony = Harmony
 # Context: ui
 main-ui-cancel = 취소
 # Context: ui
@@ -2312,13 +2312,13 @@ screen-body-refresh = 새로고침
 # Context: body
 screen-body-screen-or-window = 화면 또는 창
 # Context: body
-screen-body-send-what-your-mac-plays-along-with-the-screen-serein = Mac에서 재생되는 소리를 화면과 함께 전송합니다. Serein의 통화 소리는 제외합니다.
+screen-body-send-what-your-mac-plays-along-with-the-screen-harmony = Mac에서 재생되는 소리를 화면과 함께 전송합니다. Harmony의 통화 소리는 제외합니다.
 # Context: body
-screen-body-share-sound-from-other-apps-even-when-sharing-one-window = 창 하나만 공유할 때도 다른 앱의 소리를 공유합니다. Serein의 소리는 제외합니다.
+screen-body-share-sound-from-other-apps-even-when-sharing-one-window = 창 하나만 공유할 때도 다른 앱의 소리를 공유합니다. Harmony의 소리는 제외합니다.
 # Context: body
 screen-body-share-system-audio = 시스템 오디오 공유
 # Context: body
-screen-body-share-the-shared-apps-sound-or-other-apps-for-a-screen = 창 공유 시 해당 앱의 소리를, 화면 공유 시 다른 모든 앱의 소리를 공유합니다. Serein의 소리는 제외합니다.
+screen-body-share-the-shared-apps-sound-or-other-apps-for-a-screen = 창 공유 시 해당 앱의 소리를, 화면 공유 시 다른 모든 앱의 소리를 공유합니다. Harmony의 소리는 제외합니다.
 # Context: body
 screen-body-show-cursor = 커서 표시
 # Context: body
@@ -3474,7 +3474,7 @@ settings-activity-added-games = 추가한 게임
 # Context: activity_settings
 settings-activity-no-games-added = 추가한 게임 없음
 # Context: activity_settings
-settings-activity-hidden = 숨김 상태입니다. Serein이 이 게임을 감지하지 않습니다.
+settings-activity-hidden = 숨김 상태입니다. Harmony이 이 게임을 감지하지 않습니다.
 # Context: activity_settings
 settings-activity-detected = 자동 감지됨
 # Context: activity_settings
@@ -3496,7 +3496,7 @@ settings-activity-click-to-rename = 클릭해 이름 변경
 # Context: activity_settings
 settings-activity-add-a-game = 게임 추가
 # Context: activity_settings
-settings-activity-choose-program = 실행 중인 프로그램을 선택하세요. 실행될 때마다 Serein이 게임으로 표시합니다.
+settings-activity-choose-program = 실행 중인 프로그램을 선택하세요. 실행될 때마다 Harmony이 게임으로 표시합니다.
 # Context: activity_settings
 settings-activity-search-programs = 실행 중인 프로그램 검색
 # Context: activity_settings
@@ -3524,7 +3524,7 @@ settings-appearance-settings-primary-color = 기본 색상
 # Context: appearance_settings
 settings-appearance-settings-reset = 초기화
 # Context: appearance_settings
-settings-appearance-settings-restart-serein-after-changing-this-themes-can-customize-effects-while = 변경 후 Serein을 다시 시작하세요. 테마가 활성화되어 있으면 효과를 사용자 지정할 수 있습니다.
+settings-appearance-settings-restart-harmony-after-changing-this-themes-can-customize-effects-while = 변경 후 Harmony을 다시 시작하세요. 테마가 활성화되어 있으면 효과를 사용자 지정할 수 있습니다.
 # Context: appearance_settings
 settings-appearance-settings-the-active-theme-brings-its-own-accent-it-takes-over = 활성 테마의 강조색이 테마를 사용하는 동안 적용됩니다.
 # Context: appearance_settings
@@ -3561,11 +3561,11 @@ settings-storage-page-clear-cache = 캐시 지우기
 # Context: storage_page
 settings-storage-page-local-storage = 로컬 저장소
 # Context: storage_page
-settings-storage-page-messages-and-drafts-are-cached-on-this-device-inside-bounded = 메시지와 임시 메시지는 이 기기의 계정별로 분리된 용량 제한 파일에 캐시됩니다. Serein은 캐시 데이터를 암호화하지 않습니다. 저장된 로그인 토큰에는 운영체제 자격 증명 저장소를 사용합니다.
+settings-storage-page-messages-and-drafts-are-cached-on-this-device-inside-bounded = 메시지와 임시 메시지는 이 기기의 계정별로 분리된 용량 제한 파일에 캐시됩니다. Harmony은 캐시 데이터를 암호화하지 않습니다. 저장된 로그인 토큰에는 운영체제 자격 증명 저장소를 사용합니다.
 # Context: storage_page
 settings-storage-page-removes-cached-messages-and-media-drafts-and-your-login-stay = 캐시된 메시지와 미디어를 제거합니다. 임시 메시지와 로그인은 유지됩니다.
 # Context: storage_page
-settings-storage-page-serein-does-not-collect-telemetry-or-upload-diagnostics-discord-retains = Serein은 원격 측정 데이터를 수집하거나 진단 정보를 업로드하지 않습니다. Discord는 자체 정책에 따라 서비스 측 데이터를 보관합니다.
+settings-storage-page-harmony-does-not-collect-telemetry-or-upload-diagnostics-discord-retains = Harmony은 원격 측정 데이터를 수집하거나 진단 정보를 업로드하지 않습니다. Discord는 자체 정책에 따라 서비스 측 데이터를 보관합니다.
 # Context: storage_page
 settings-storage-page-your-privacy = 개인정보 보호
 # Context: cosmetic_settings
@@ -4041,7 +4041,7 @@ updates-update-settings-release-channel = 릴리스 채널
 # Context: update_settings
 updates-update-settings-restart-to-update = 다시 시작해 업데이트
 # Context: update_settings
-updates-update-settings-serein-was-installed-via-your-distribution-run-this-in-a = 배포판을 통해 Serein이 설치되었습니다. 터미널에서 이 명령어를 실행해 업데이트하세요.
+updates-update-settings-harmony-was-installed-via-your-distribution-run-this-in-a = 배포판을 통해 Harmony이 설치되었습니다. 터미널에서 이 명령어를 실행해 업데이트하세요.
 # Context: update_settings
 updates-update-settings-save-diagnostics = 진단 정보 저장
 # Context: update_settings
@@ -4063,7 +4063,7 @@ updates-update-settings-log-warnings = 오류 및 경고
 # Context: update_settings
 updates-update-settings-open-folder = 폴더 열기
 # Context: update_settings
-updates-update-settings-the-log-folder-could-not-be-written = 로그 폴더에 기록하지 못했습니다. Serein의 데이터 폴더를 확인하고 다시 시도하세요.
+updates-update-settings-the-log-folder-could-not-be-written = 로그 폴더에 기록하지 못했습니다. Harmony의 데이터 폴더를 확인하고 다시 시도하세요.
 # Context: update_settings
 updates-update-settings-timings-stages-and-failures-in-one-local-file-no-account-channel-or = 소요 시간, 단계, 실패 정보를 하나의 로컬 로그 파일에 기록합니다. 계정, 채널, 메시지, 자격 증명 데이터는 기록하지 않으며 업로드하지 않습니다.
 # Context: update_log
@@ -4131,7 +4131,7 @@ verification-show-verification-required = 인증 필요
 # Context: show
 verification-show-verify = 인증
 # Context: show
-verification-show-safer-in-the-official-discord-app = 공식 Discord 앱에서 이 확인을 완료하는 것이 더 안전합니다. Serein에서 확인을 완료하면 Discord가 새 계정에 전화번호 인증을 요구할 수 있습니다.
+verification-show-safer-in-the-official-discord-app = 공식 Discord 앱에서 이 확인을 완료하는 것이 더 안전합니다. Harmony에서 확인을 완료하면 Discord가 새 계정에 전화번호 인증을 요구할 수 있습니다.
 # Context: show
 verification-show-open-discord = Discord 열기
 
@@ -4543,7 +4543,7 @@ onboarding-rules-heading = 서버 규칙
 # Context: rules
 onboarding-rules-review = 채팅하기 전에 관리자가 답변을 검토합니다.
 # Context: field
-onboarding-field-unsupported = Serein이 아직 표시할 수 없는 질문이 있습니다. Discord 앱에서 참가를 완료하세요.
+onboarding-field-unsupported = Harmony이 아직 표시할 수 없는 질문이 있습니다. Discord 앱에서 참가를 완료하세요.
 # Context: field
 onboarding-field-agree = 규칙을 읽었으며 동의합니다
 
@@ -4583,7 +4583,7 @@ public-upload-host-catbox = 최대 200 MB(GIF 20 MB) · 2년간 접근하지 않
 public-upload-host-litterbox = 최대 1 GB · 임시 보관, 72시간 후 삭제
 public-upload-over-limit = { $size } · Discord 업로드 한도 { $limit } 초과
 public-upload-uploading = { $host }에 업로드 중 · { $total } 중 { $sent }
-public-upload-privacy = 링크가 있는 누구나 파일을 열 수 있습니다. 메타데이터를 포함한 원본 그대로 Discord 외부에 업로드되며, Serein에서 나중에 삭제할 수 없습니다.
+public-upload-privacy = 링크가 있는 누구나 파일을 열 수 있습니다. 메타데이터를 포함한 원본 그대로 Discord 외부에 업로드되며, Harmony에서 나중에 삭제할 수 없습니다.
 public-upload-review = 아직 아무것도 전송하지 않았습니다. 링크를 작성 중인 메시지에 추가하거나 복사한 후 직접 보내세요.
 public-upload-return = 링크를 추가하려면 원래 대화로 돌아가세요.
 public-upload-preparing = 공개 업로드 준비 중…
@@ -4734,7 +4734,7 @@ reading-double-click-reaction = 두 번 클릭 반응
 
 ## crates/platform/src/app_menu.rs
 # Context: macos_menu_bar
-app-menu-about = Serein 정보
+app-menu-about = Harmony 정보
 # Context: macos_menu_bar
 app-menu-updates = 업데이트 확인…
 # Context: macos_menu_bar
@@ -4742,13 +4742,13 @@ app-menu-settings = 설정…
 # Context: macos_menu_bar
 app-menu-services = 서비스
 # Context: macos_menu_bar
-app-menu-hide = Serein 숨기기
+app-menu-hide = Harmony 숨기기
 # Context: macos_menu_bar
 app-menu-hide-others = 다른 앱 숨기기
 # Context: macos_menu_bar
 app-menu-show-all = 모두 표시
 # Context: macos_menu_bar
-app-menu-quit = Serein 종료
+app-menu-quit = Harmony 종료
 # Context: macos_menu_bar
 app-menu-file = 파일
 # Context: macos_menu_bar
@@ -4790,7 +4790,7 @@ app-menu-bring-all-to-front = 모두 앞으로 가져오기
 # Context: macos_menu_bar
 app-menu-help = 도움말
 # Context: macos_menu_bar
-app-menu-github = GitHub의 Serein
+app-menu-github = GitHub의 Harmony
 # Context: macos_menu_bar
 app-menu-report-issue = 문제 신고…
 
@@ -5023,9 +5023,9 @@ new-message-cancel = 취소
 setup-appearance-title = 나만의 스타일로
 setup-appearance-body = 모드와 색상은 선택하는 즉시 적용됩니다
 setup-window-title = 투명한 창
-setup-window-body = Serein 패널 뒤로 바탕 화면이 보이도록 합니다
+setup-window-body = Harmony 패널 뒤로 바탕 화면이 보이도록 합니다
 setup-window-transparency-description = 효과가 켜져 있는 동안 테마에서 조절할 수 있습니다.
-setup-window-restart = 투명도를 켜거나 끄려면 Serein을 다시 시작해야 합니다. 선택 사항은 지금 저장됩니다.
+setup-window-restart = 투명도를 켜거나 끄려면 Harmony을 다시 시작해야 합니다. 선택 사항은 지금 저장됩니다.
 setup-desktop-title = 데스크톱에서
 setup-desktop-body = 컴퓨터 시작 시 실행, 제목 표시줄, 트레이 설정입니다
 setup-profiles-title = 프로필 꾸미기
@@ -5033,7 +5033,7 @@ setup-profiles-body = 이 기기에서 사람과 이름 주변에 표시할 요�
 setup-chat-title = 편안한 채팅
 setup-chat-body = 글자 크기, 메시지 간격, 메시지마다 표시되는 시간입니다
 setup-notifications-title = 알림 받기
-setup-notifications-body = 다른 작업을 할 때 메시지가 도착하면 Serein이 수행할 동작입니다
+setup-notifications-body = 다른 작업을 할 때 메시지가 도착하면 Harmony이 수행할 동작입니다
 setup-notifications-desktop-description = 다이렉트 메시지와 멘션 배너입니다. 서버와 채널은 각 메뉴에서 세부 조정하세요.
 setup-notifications-sounds = 알림음
 setup-notifications-sounds-description = 메시지, 통화, 음성 소리입니다. 개별 소리는 설정에서 선택하세요.

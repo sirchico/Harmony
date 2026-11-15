@@ -2,7 +2,7 @@
 //!
 //! Observed (unofficial): Discord's web client sends a super-properties payload, a browser
 //! user agent, locale and timezone on REST and the Gateway. How the service weighs any of
-//! them is unverified; an earlier Serein identity without them coincided with account
+//! them is unverified; an earlier Harmony identity without them coincided with account
 //! restrictions (spam flag, attachment limits), which is not proof of cause. Every transport
 //! uses the desktop metadata below. Embedded verification keeps its engine-specific identity.
 //! Locale and timezone come from the operating system. Host versions are observed
@@ -138,7 +138,7 @@ static INSTALLATION: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(
 
 /// Discord's installation ID for this device, sent as `X-Installation-ID` on REST and as
 /// `installation_id` in the Gateway identify (unofficial, observed in SakuraCord's desktop
-/// metadata). Serein never makes one up; without one, both are left out.
+/// metadata). Harmony never makes one up; without one, both are left out.
 pub fn installation_id() -> Option<String> {
 	INSTALLATION.read().ok()?.clone()
 }

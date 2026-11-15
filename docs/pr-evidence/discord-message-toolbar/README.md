@@ -1,8 +1,8 @@
 # Discord-style message toolbar evidence
 
-All application images show Serein's synthetic `--demo` workspace, never an authenticated or live
+All application images show Harmony's synthetic `--demo` workspace, never an authenticated or live
 Discord session. The English Discord reference images supplied with the request are design targets,
-not Serein evidence and are not committed here.
+not Harmony evidence and are not committed here.
 
 ## Baseline
 
@@ -28,15 +28,15 @@ settings page; the identical fixture source is copied into the baseline worktree
 Reproduce from the repository root:
 
 ```sh
-cargo run --locked -p serein --features demo --example profile_preview -- \
+cargo run --locked -p harmony --features demo --example profile_preview -- \
   --demo --toolbar-hover=normal --width=1120 --height=760 \
   --output=docs/pr-evidence/discord-message-toolbar/after.png
 
-cargo run --locked -p serein --features demo --example profile_preview -- \
+cargo run --locked -p harmony --features demo --example profile_preview -- \
   --demo --toolbar-hover=shift --width=1120 --height=760 \
   --output=docs/pr-evidence/discord-message-toolbar/after-shift.png
 
-cargo run --locked -p serein --features demo --example profile_preview -- \
+cargo run --locked -p harmony --features demo --example profile_preview -- \
   --demo --close-settings --page=chat --width=1120 --height=760 \
   --output=docs/pr-evidence/discord-message-toolbar/after-window.png
 ```
@@ -44,7 +44,7 @@ cargo run --locked -p serein --features demo --example profile_preview -- \
 The images were inspected after generation. Normal hover shows quick reactions, Translate, Add
 Reaction, Edit, Reply and More. Shift shows Copy ID/Link, Reply, Translate, Add Reaction, Edit,
 Forward and a red Delete, with no quick reactions or More. In this fixture optional Pin/Mark Unread
-are unavailable, and Bookmark is deliberately absent because Serein has no bookmark store.
+are unavailable, and Bookmark is deliberately absent because Harmony has no bookmark store.
 
 `after-shift-light.png` repeats the Shift capture in light mode and was inspected for contrast and
 clipping. It uses the identical native fixture. No screenshot shows outside-window or account data.

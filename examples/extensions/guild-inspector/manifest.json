@@ -3,9 +3,9 @@
   "id": "guild-inspector",
   "name": "Guild Inspector",
   "version": "1.0.0",
-  "author": "Serein contributors",
+  "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
-  "source": "https://github.com/ViceVerse-cz/Serein/tree/main/examples/extensions/guild-inspector",
+  "source": "https://github.com/sirchico/Harmony/tree/main/examples/extensions/guild-inspector",
   "kind": "plugin",
   "capabilities": [
     "channel_metadata",

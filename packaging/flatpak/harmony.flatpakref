@@ -1,0 +1,9 @@
+[Flatpak Ref]
+Name=io.github.sirchico.harmony
+Branch=master
+Title=Harmony
+Comment=Fast, secure and lightweight native Discord client
+Icon=https://sirchico.github.io/Harmony/icons/harmony.png
+Url=https://sirchico.github.io/Harmony/flatpak/repo
+RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false

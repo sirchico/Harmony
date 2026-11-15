@@ -436,7 +436,7 @@ mod tests {
 	#[test]
 	fn a_full_device_evicts_and_saves_privately() {
 		let directory = std::env::temp_dir().join(format!(
-			"serein-device-{}-{}",
+			"harmony-device-{}-{}",
 			std::process::id(),
 			unix_now()
 		));

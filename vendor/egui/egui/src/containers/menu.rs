@@ -23,7 +23,7 @@ use epaint::{Shape, Stroke};
 ///
 /// Mainly removes the background stroke and the inactive background fill.
 pub fn menu_style(style: &mut Style) {
-    // Serein: rows follow Discord's menus, an 8 px inset and a 36 px pitch (the 32 px
+    // Harmony: rows follow Discord's menus, an 8 px inset and a 36 px pitch (the 32 px
     // control height plus this gap) with a 4 px highlight radius.
     style.spacing.button_padding = vec2(8.0, 0.0);
     style.spacing.item_spacing.y = 4.0;

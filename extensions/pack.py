@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 WASM_HEADER = b"\0asm\x01\0\0\0"
-LICENSE_SECTION = "serein.license"
+LICENSE_SECTION = "harmony.license"
 MAX_WASM = 4 * 1024 * 1024
 
 
@@ -85,7 +85,7 @@ def main():
     parser.add_argument(
         "--license",
         type=Path,
-        help="append this exact file as an inert serein.license Wasm custom section",
+        help="append this exact file as an inert harmony.license Wasm custom section",
     )
     args = parser.parse_args()
     if args.manifest.stat().st_size > 16 * 1024 or args.wasm.stat().st_size > MAX_WASM:

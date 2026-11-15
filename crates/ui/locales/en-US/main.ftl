@@ -3,7 +3,7 @@
 language-system = System
 language-group = Language
 language-label = Display language
-language-description = Choose Serein's language. Discord content is never translated.
+language-description = Choose Harmony's language. Discord content is never translated.
 section-user = User settings
 section-app = App settings
 section-customization = Customization
@@ -28,11 +28,11 @@ description-appearance = Theme, colours, window effects and layout.
 description-chat = How messages, media, links and scrolling behave.
 description-messaging-permissions = Control who can contact you and how messages are filtered.
 description-notifications = Choose which notifications you receive and how they appear.
-description-registered-games = Share what you play, and fix or add the games Serein detects.
+description-registered-games = Share what you play, and fix or add the games Harmony detects.
 description-voice = Microphone, speakers, camera and voice processing.
-description-keybinds = Keyboard shortcuts for Serein.
-description-storage = What Serein keeps on this device.
-description-updates = Keep Serein up to date on this device.
+description-keybinds = Keyboard shortcuts for Harmony.
+description-storage = What Harmony keeps on this device.
+description-updates = Keep Harmony up to date on this device.
 description-extensions = Manage community plugins.
 description-themes = Choose a community theme.
 theme-maker = Theme maker
@@ -45,42 +45,42 @@ log-out = Log out
 unofficial = Unofficial · not endorsed by Discord
 offline-preview = Offline preview · changes stay in this session and are never sent.
 general-startup = Startup
-general-open-at-startup = Open Serein when your computer starts
-general-open-at-startup-description = Serein signs in and connects in the background.
+general-open-at-startup = Open Harmony when your computer starts
+general-open-at-startup-description = Harmony signs in and connects in the background.
 general-start-minimized = Start minimized
 general-start-minimized-description = Start in the background, out of your way.
 general-startup-unavailable = Automatic startup is available on Windows and macOS.
 general-window = Window
 general-hide-decorations = No title bar
-general-hide-decorations-description = For tiling window managers: remove every title bar and border, including Serein's own. Move, resize and close Serein with your window manager.
+general-hide-decorations-description = For tiling window managers: remove every title bar and border, including Harmony's own. Move, resize and close Harmony with your window manager.
 general-custom-title-bar = Custom title bar
-general-custom-title-bar-description = Replace the system title bar with Serein's own GTK 4 style header bar.
-general-hide-title-bar = Hide Serein title bar
+general-custom-title-bar-description = Replace the system title bar with Harmony's own GTK 4 style header bar.
+general-hide-title-bar = Hide Harmony title bar
 general-hide-title-bar-description = Use the system title bar and window buttons instead.
-general-keep-menu-bar = Keep Serein in the menu bar
-general-keep-system-tray = Keep Serein in the system tray
-general-menu-bar-description = Closing the window keeps Serein in the menu bar. Quit from its menu to exit.
-general-linux-tray-description = Closing keeps Serein running. Use the tray to show, minimize or quit.
-general-windows-tray-description = Closing the window keeps Serein in the notification area. Quit from its menu to exit.
+general-keep-menu-bar = Keep Harmony in the menu bar
+general-keep-system-tray = Keep Harmony in the system tray
+general-menu-bar-description = Closing the window keeps Harmony in the menu bar. Quit from its menu to exit.
+general-linux-tray-description = Closing keeps Harmony running. Use the tray to show, minimize or quit.
+general-windows-tray-description = Closing the window keeps Harmony in the notification area. Quit from its menu to exit.
 general-tray-unavailable = The tray is unavailable on this platform.
 general-graphics = Graphics
 general-render-with = Render with
 general-graphics-api = Graphics API
-general-graphics-api-description = Takes effect after restarting Serein. Uses Automatic if the selected API cannot draw this window.
+general-graphics-api-description = Takes effect after restarting Harmony. Uses Automatic if the selected API cannot draw this window.
 general-graphics-api-env-override = WGPU_BACKEND controls the API for this launch. Remove that environment override to use this setting.
-general-gpu-restart = Takes effect the next time Serein starts.
+general-gpu-restart = Takes effect the next time Harmony starts.
 general-gpu-current-prefix = Currently drawing with
 general-steady-refresh-rate = Steady refresh rate
-general-steady-refresh-rate-description = While Serein is the active window, draw at the display's refresh rate so variable refresh rate (VRR, G-SYNC, FreeSync) displays can hold one rate instead of flickering. Uses more power.
+general-steady-refresh-rate-description = While Harmony is the active window, draw at the display's refresh rate so variable refresh rate (VRR, G-SYNC, FreeSync) displays can hold one rate instead of flickering. Uses more power.
 steady-refresh-prompt-title = G-SYNC display detected
-steady-refresh-prompt-body = Serein only redraws when something changes, which can make a G-SYNC display flicker while Serein is the active window. Steady refresh rate avoids that by drawing at the display's refresh rate, and uses more power. Turn it on?
+steady-refresh-prompt-body = Harmony only redraws when something changes, which can make a G-SYNC display flicker while Harmony is the active window. Steady refresh rate avoids that by drawing at the display's refresh rate, and uses more power. Turn it on?
 steady-refresh-prompt-turn-on = Turn on
 steady-refresh-prompt-keep-off = No thanks
 steady-refresh-prompt-settings = Change it later in Settings > { $page } > { $group }.
 gpu-automatic = Automatic
 gpu-high-performance = High performance
 gpu-power-saving = Power saving
-gpu-automatic-description = Let Serein choose the GPU that can draw this window.
+gpu-automatic-description = Let Harmony choose the GPU that can draw this window.
 gpu-high-performance-description = Use the discrete graphics card when one is available.
 gpu-power-saving-description = Use integrated graphics to save battery.
 direct-messages = Direct Messages
@@ -224,7 +224,7 @@ account-menu-custom-status-editor-clear-after = Clear after
 # Context: custom_status_editor
 account-menu-custom-status-editor-no-custom-status = No custom status
 # Context: custom_status_editor
-account-menu-custom-status-editor-serein-clears-it = Serein clears it
+account-menu-custom-status-editor-harmony-clears-it = Harmony clears it
 # Context: custom_status_editor
 account-menu-custom-status-editor-status-text = Status text
 # Context: custom_status_editor
@@ -1073,7 +1073,7 @@ fonts-show-none-installed = No installed fonts were found on this system.
 # Context: show
 fonts-show-the-quick-brown-fox-jumps-over-the-lazy-dog-0123456789 = The quick brown fox jumps over the lazy dog. 0123456789
 # Context: show
-fonts-show-ttf-or-otf-up-to-32-mib-saved-on-this = Pick an installed font, or import a TTF/OTF file or a ZIP of its weights (Regular, Medium, SemiBold or Bold), up to 32 MiB. A copy is saved for Serein. Code keeps its monospace font.
+fonts-show-ttf-or-otf-up-to-32-mib-saved-on-this = Pick an installed font, or import a TTF/OTF file or a ZIP of its weights (Regular, Medium, SemiBold or Bold), up to 32 MiB. A copy is saved for Harmony. Code keeps its monospace font.
 # Context: show
 fonts-show-typography = Typography
 
@@ -1596,7 +1596,7 @@ keybinds-show-voice-enable-global-keybinds = Enable global keybinds
 # Context: show_voice
 keybinds-show-voice-global-availability = Global availability
 # Context: show_voice
-keybinds-show-voice-use-voice-shortcuts-while-another-app-is-focused-when-off = Use voice shortcuts while another app is focused. When off, shortcuts only work while Serein is focused.
+keybinds-show-voice-use-voice-shortcuts-while-another-app-is-focused-when-off = Use voice shortcuts while another app is focused. When off, shortcuts only work while Harmony is focused.
 
 ## crates/ui/src/lib.rs
 # Context: account_card
@@ -1674,7 +1674,7 @@ main-restoring-checking-your-saved-login = Checking your saved login
 # Context: restoring
 main-restoring-connecting-to-discord = Connecting to Discord
 # Context: restoring_screen
-main-restoring-screen-serein = Serein
+main-restoring-screen-harmony = Harmony
 # Context: restoring_screen
 main-restoring-screen-use-a-different-account = Use a different account
 # Context: restoring_screen
@@ -1684,11 +1684,11 @@ main-sign-in-accounts-saved-accounts = Saved accounts
 # Context: sign_in_consent
 main-sign-in-consent-passwords-and-2fa-stay-on-discord-s-own-login-page = Passwords and 2FA stay on Discord's own login page. Only the session token is kept, in your OS credential store.
 # Context: sign_in_disclosures
-main-sign-in-disclosures-about-serein = About Serein
+main-sign-in-disclosures-about-harmony = About Harmony
 # Context: sign_in_disclosures
 main-sign-in-disclosures-connect-with-this-token = Connect with this token
 # Context: sign_in_disclosures
-main-sign-in-disclosures-for-owners-who-already-hold-a-valid-discord-session-token = For owners who already hold a valid Discord session token, for example from another signed-in Serein install. Passwords and 2FA are never used here; this bypasses Discord's hosted login page entirely.
+main-sign-in-disclosures-for-owners-who-already-hold-a-valid-discord-session-token = For owners who already hold a valid Discord session token, for example from another signed-in Harmony install. Passwords and 2FA are never used here; this bypasses Discord's hosted login page entirely.
 # Context: sign_in_disclosures
 main-sign-in-disclosures-forget-saved-login = Forget saved login
 # Context: sign_in_disclosures
@@ -1702,7 +1702,7 @@ main-sign-in-header-sign-in-with-your-discord-account-to-get-started = Sign in w
 # Context: sign_in_header
 main-sign-in-header-welcome-back = Welcome back
 # Context: sign_in_header
-main-sign-in-header-welcome-to-serein = Welcome to Serein
+main-sign-in-header-welcome-to-harmony = Welcome to Harmony
 # Context: sign_in_preview
 main-sign-in-status-copy-failure-details = Copy failure details
 main-sign-in-preview-explore-the-offline-preview = Explore the offline preview
@@ -1711,7 +1711,7 @@ main-sign-in-preview-sample-conversations-no-discord-connection = Sample convers
 # Context: sign_in_screen
 main-sign-in-screen-independent-and-open-source-not-affiliated-with-discord = Independent and open source · Not affiliated with Discord
 # Context: sign_in_screen
-main-sign-in-screen-serein = Serein
+main-sign-in-screen-harmony = Harmony
 # Context: ui
 main-ui-cancel = Cancel
 # Context: ui
@@ -2312,13 +2312,13 @@ screen-body-refresh = Refresh
 # Context: body
 screen-body-screen-or-window = Screen or window
 # Context: body
-screen-body-send-what-your-mac-plays-along-with-the-screen-serein = Send what your Mac plays along with the screen. Serein's own call audio is left out.
+screen-body-send-what-your-mac-plays-along-with-the-screen-harmony = Send what your Mac plays along with the screen. Harmony's own call audio is left out.
 # Context: body
-screen-body-share-sound-from-other-apps-even-when-sharing-one-window = Share sound from other apps, even when sharing one window. Serein's own audio is left out.
+screen-body-share-sound-from-other-apps-even-when-sharing-one-window = Share sound from other apps, even when sharing one window. Harmony's own audio is left out.
 # Context: body
 screen-body-share-system-audio = Share system audio
 # Context: body
-screen-body-share-the-shared-apps-sound-or-other-apps-for-a-screen = Share the shared app's sound, or every other app's sound when sharing a screen. Serein's own audio is left out.
+screen-body-share-the-shared-apps-sound-or-other-apps-for-a-screen = Share the shared app's sound, or every other app's sound when sharing a screen. Harmony's own audio is left out.
 # Context: body
 screen-body-show-cursor = Show cursor
 # Context: body
@@ -3477,7 +3477,7 @@ settings-activity-added-games = Added Games
 # Context: activity_settings
 settings-activity-no-games-added = No games added
 # Context: activity_settings
-settings-activity-hidden = Hidden. Serein will not detect this game.
+settings-activity-hidden = Hidden. Harmony will not detect this game.
 # Context: activity_settings
 settings-activity-detected = Detected automatically
 # Context: activity_settings
@@ -3499,7 +3499,7 @@ settings-activity-click-to-rename = Click to rename
 # Context: activity_settings
 settings-activity-add-a-game = Add a game
 # Context: activity_settings
-settings-activity-choose-program = Choose a running program. Serein shows it as your game whenever it runs.
+settings-activity-choose-program = Choose a running program. Harmony shows it as your game whenever it runs.
 # Context: activity_settings
 settings-activity-search-programs = Search running programs
 # Context: activity_settings
@@ -3527,7 +3527,7 @@ settings-appearance-settings-primary-color = Primary color
 # Context: appearance_settings
 settings-appearance-settings-reset = Reset
 # Context: appearance_settings
-settings-appearance-settings-restart-serein-after-changing-this-themes-can-customize-effects-while = Restart Serein after changing this. Themes can customize effects while enabled.
+settings-appearance-settings-restart-harmony-after-changing-this-themes-can-customize-effects-while = Restart Harmony after changing this. Themes can customize effects while enabled.
 # Context: appearance_settings
 settings-appearance-settings-the-active-theme-brings-its-own-accent-it-takes-over = The active theme brings its own accent; it takes over while the theme is in use.
 # Context: appearance_settings
@@ -3564,11 +3564,11 @@ settings-storage-page-clear-cache = Clear cache
 # Context: storage_page
 settings-storage-page-local-storage = Local storage
 # Context: storage_page
-settings-storage-page-messages-and-drafts-are-cached-on-this-device-inside-bounded = Messages and drafts are cached on this device inside bounded, account-isolated files. Cache data is not encrypted by Serein; saved login tokens use the OS credential store.
+settings-storage-page-messages-and-drafts-are-cached-on-this-device-inside-bounded = Messages and drafts are cached on this device inside bounded, account-isolated files. Cache data is not encrypted by Harmony; saved login tokens use the OS credential store.
 # Context: storage_page
 settings-storage-page-removes-cached-messages-and-media-drafts-and-your-login-stay = Removes cached messages and media. Drafts and your login stay.
 # Context: storage_page
-settings-storage-page-serein-does-not-collect-telemetry-or-upload-diagnostics-discord-retains = Serein does not collect telemetry or upload diagnostics. Discord retains service-side data according to its own policies.
+settings-storage-page-harmony-does-not-collect-telemetry-or-upload-diagnostics-discord-retains = Harmony does not collect telemetry or upload diagnostics. Discord retains service-side data according to its own policies.
 # Context: storage_page
 settings-storage-page-your-privacy = Your privacy
 # Context: cosmetic_settings
@@ -4026,7 +4026,7 @@ updates-update-settings-could-not-load-or-save-update-preferences-changes-may-no
 # Context: update_settings
 updates-update-settings-download-update = Download update
 # Context: update_settings
-updates-update-settings-download-updates-in-the-background-restart-when-you-are-ready = Download updates in the background. Restart when you are ready. Serein still checks at startup and periodically when this is off.
+updates-update-settings-download-updates-in-the-background-restart-when-you-are-ready = Download updates in the background. Restart when you are ready. Harmony still checks at startup and periodically when this is off.
 # Context: update_settings
 updates-update-settings-early-builds-with-the-newest-changes-nightly-releases-can-be = Early builds with the newest changes. Nightly releases can be less reliable.
 # Context: update_settings
@@ -4052,7 +4052,7 @@ updates-update-settings-release-channel = Release channel
 # Context: update_settings
 updates-update-settings-restart-to-update = Restart to update
 # Context: update_settings
-updates-update-settings-serein-was-installed-via-your-distribution-run-this-in-a = Serein was installed via your distribution. Run this in a terminal to update.
+updates-update-settings-harmony-was-installed-via-your-distribution-run-this-in-a = Harmony was installed via your distribution. Run this in a terminal to update.
 # Context: update_settings
 updates-update-settings-save-diagnostics = Save diagnostics
 # Context: update_settings
@@ -4074,7 +4074,7 @@ updates-update-settings-log-warnings = Errors and warnings
 # Context: update_settings
 updates-update-settings-open-folder = Open folder
 # Context: update_settings
-updates-update-settings-the-log-folder-could-not-be-written = The log folder could not be written. Check Serein's data folder and try again.
+updates-update-settings-the-log-folder-could-not-be-written = The log folder could not be written. Check Harmony's data folder and try again.
 # Context: update_settings
 updates-update-settings-timings-stages-and-failures-in-one-local-file-no-account-channel-or = Timings, stages and failures in one local log file. Account, channel, message and credential data are never written, and nothing is uploaded.
 # Context: update_log
@@ -4142,7 +4142,7 @@ verification-show-verification-required = Verification required
 # Context: show
 verification-show-verify = Verify
 # Context: show
-verification-show-safer-in-the-official-discord-app = Completing this check in the official Discord app is safer. Discord may ask newer accounts to verify a phone number after a check solved in Serein.
+verification-show-safer-in-the-official-discord-app = Completing this check in the official Discord app is safer. Discord may ask newer accounts to verify a phone number after a check solved in Harmony.
 # Context: show
 verification-show-open-discord = Open Discord
 
@@ -4562,7 +4562,7 @@ onboarding-rules-heading = Server rules
 # Context: rules
 onboarding-rules-review = A moderator reviews these answers before you can chat.
 # Context: field
-onboarding-field-unsupported = This server asks a question Serein can't show yet. Finish joining in the Discord app.
+onboarding-field-unsupported = This server asks a question Harmony can't show yet. Finish joining in the Discord app.
 # Context: field
 onboarding-field-agree = I have read and agree to the rules
 
@@ -4602,7 +4602,7 @@ public-upload-host-catbox = Up to 200 MB (GIF 20 MB) · may be removed after two
 public-upload-host-litterbox = Up to 1 GB · temporary, deleted after 72 hours
 public-upload-over-limit = { $size } · over your { $limit } Discord upload limit
 public-upload-uploading = Uploading to { $host } · { $sent } of { $total }
-public-upload-privacy = Anyone with the link can open this file. It is uploaded unchanged, metadata included, outside Discord, and Serein cannot delete it later.
+public-upload-privacy = Anyone with the link can open this file. It is uploaded unchanged, metadata included, outside Discord, and Harmony cannot delete it later.
 public-upload-review = Nothing is sent yet. Add the link to your draft or copy it, then send it yourself.
 public-upload-return = Return to the original conversation to add its link.
 public-upload-preparing = Preparing public upload…
@@ -4757,7 +4757,7 @@ reading-double-click-reaction = Double-click reaction
 
 ## crates/platform/src/app_menu.rs
 # Context: macos_menu_bar
-app-menu-about = About Serein
+app-menu-about = About Harmony
 # Context: macos_menu_bar
 app-menu-updates = Check for Updates…
 # Context: macos_menu_bar
@@ -4765,13 +4765,13 @@ app-menu-settings = Settings…
 # Context: macos_menu_bar
 app-menu-services = Services
 # Context: macos_menu_bar
-app-menu-hide = Hide Serein
+app-menu-hide = Hide Harmony
 # Context: macos_menu_bar
 app-menu-hide-others = Hide Others
 # Context: macos_menu_bar
 app-menu-show-all = Show All
 # Context: macos_menu_bar
-app-menu-quit = Quit Serein
+app-menu-quit = Quit Harmony
 # Context: macos_menu_bar
 app-menu-file = File
 # Context: macos_menu_bar
@@ -4813,7 +4813,7 @@ app-menu-bring-all-to-front = Bring All to Front
 # Context: macos_menu_bar
 app-menu-help = Help
 # Context: macos_menu_bar
-app-menu-github = Serein on GitHub
+app-menu-github = Harmony on GitHub
 # Context: macos_menu_bar
 app-menu-report-issue = Report an Issue…
 
@@ -5049,17 +5049,17 @@ new-message-cancel = Cancel
 setup-appearance-title = Make it yours
 setup-appearance-body = Mode and colours apply as you pick them
 setup-window-title = See through the window
-setup-window-body = Let your desktop show behind Serein's panels
+setup-window-body = Let your desktop show behind Harmony's panels
 setup-window-transparency-description = Themes can tune the effect while it is on.
-setup-window-restart = Serein needs a restart before transparency turns on or off. Your choice is saved now.
+setup-window-restart = Harmony needs a restart before transparency turns on or off. Your choice is saved now.
 setup-desktop-title = On your desktop
-setup-desktop-body = Whether Serein opens with your computer, its title bar and the tray
+setup-desktop-body = Whether Harmony opens with your computer, its title bar and the tray
 setup-profiles-title = Profile cosmetics
 setup-profiles-body = What this device draws around people and their names
 setup-chat-title = How chat reads
 setup-chat-body = Text size, message spacing and the clock on every message
 setup-notifications-title = What reaches you
-setup-notifications-body = What Serein does when a message arrives while you are elsewhere
+setup-notifications-body = What Harmony does when a message arrives while you are elsewhere
 setup-notifications-desktop-description = Banners for direct messages and mentions. Fine-tune servers and channels from their menus.
 setup-notifications-sounds = Notification sounds
 setup-notifications-sounds-description = Message, call and voice sounds. Pick individual ones in Settings.

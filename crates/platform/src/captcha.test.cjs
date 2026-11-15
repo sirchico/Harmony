@@ -23,16 +23,16 @@ function page({invisible = false, origin = "https://discord.com", subframe = fal
     head: {appendChild: script => calls.push(["script", script])}
   };
   const config = {capability: "random-capability:", sitekey: "service-sitekey", rqdata: 'quoted"data', dark: true, invisible};
-  vm.runInNewContext(template.replace("__SEREIN_CAPTCHA_CONFIG__", JSON.stringify(config)), {window, document, location: {origin, href}});
+  vm.runInNewContext(template.replace("__HARMONY_CAPTCHA_CONFIG__", JSON.stringify(config)), {window, document, location: {origin, href}});
   listeners.DOMContentLoaded?.();
-  window.sereinCaptchaLoaded?.();
+  window.harmonyCaptchaLoaded?.();
   return {listeners, messages, calls, params};
 }
 let current = page();
 assert.equal(current.params.sitekey, "service-sitekey");
 assert.equal(current.params.theme, "dark");
 assert.equal(current.params.size, "normal");
-assert.equal(current.calls[0][1].src, "https://js.hcaptcha.com/1/api.js?onload=sereinCaptchaLoaded&render=explicit&recaptchacompat=off");
+assert.equal(current.calls[0][1].src, "https://js.hcaptcha.com/1/api.js?onload=harmonyCaptchaLoaded&render=explicit&recaptchacompat=off");
 assert.deepEqual(current.calls[1], ["data", 7, 'quoted"data']);
 assert.equal(current.calls.some(call => call[0] === "execute"), false);
 current.params.callback("synthetic-passcode");

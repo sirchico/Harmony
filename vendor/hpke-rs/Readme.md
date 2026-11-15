@@ -49,8 +49,8 @@ From the RFC:
 This crate does not implement the cryptographic primitives itself.
 Instead it expects an implementation of the [HpkeCrypto] trait.
 
-This Serein vendor patch retains only the RustCrypto backend declaration; see
-[SEREIN-PATCH.md](SEREIN-PATCH.md). Upstream also offers a libcrux backend.
+This Harmony vendor patch retains only the RustCrypto backend declaration; see
+[HARMONY-PATCH.md](HARMONY-PATCH.md). Upstream also offers a libcrux backend.
 
 - [RustCrypto backend]: a backend using well established crypto implementations
 

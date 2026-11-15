@@ -67,7 +67,7 @@ impl CaptchaView {
 	) -> Result<Self, &'static str> {
 		let (capability, _, html) = page(challenge, dark)?;
 		let script = script.replace(
-			"__SEREIN_CAPTCHA_CONFIG__",
+			"__HARMONY_CAPTCHA_CONFIG__",
 			&config(challenge, dark, &capability).to_string(),
 		);
 		let (send, results) = mpsc::sync_channel(1);
@@ -181,7 +181,7 @@ pub(super) fn page(
 		+ ":";
 	let config = config(challenge, dark, &capability);
 	let script =
-		include_str!("captcha.js").replace("__SEREIN_CAPTCHA_CONFIG__", &config.to_string());
+		include_str!("captcha.js").replace("__HARMONY_CAPTCHA_CONFIG__", &config.to_string());
 	let html = include_str!("captcha.html")
 		.replace("__THEME__", if dark { "dark" } else { "light" })
 		.replace("__BACKGROUND__", if dark { "#18191c" } else { "#f7f8fa" })
@@ -314,14 +314,14 @@ mod tests {
 					event_loop
 						.create_window(
 							Window::default_attributes()
-								.with_title("Serein — offline verification smoke")
+								.with_title("Harmony — offline verification smoke")
 								.with_inner_size(winit::dpi::PhysicalSize::new(500, 400)),
 						)
 						.expect("test window"),
 				);
 				let challenge = Challenge::new("synthetic-sitekey".into(), None, None, None, false)
 					.expect("synthetic challenge");
-				let script = r#"(() => { const config = __SEREIN_CAPTCHA_CONFIG__; document.addEventListener('DOMContentLoaded', () => { if(window === window.top && location.href === 'https://discord.com/channels/@me' && document.getElementById('captcha')) { document.getElementById('status').textContent = 'Offline verification surface loaded.'; window.ipc.postMessage(config.capability + 'verified:synthetic-passcode'); } }); })();"#;
+				let script = r#"(() => { const config = __HARMONY_CAPTCHA_CONFIG__; document.addEventListener('DOMContentLoaded', () => { if(window === window.top && location.href === 'https://discord.com/channels/@me' && document.getElementById('captcha')) { document.getElementById('status').textContent = 'Offline verification surface loaded.'; window.ipc.postMessage(config.capability + 'verified:synthetic-passcode'); } }); })();"#;
 				let view =
 					CaptchaView::build(window.clone(), &challenge, true, None, || {}, script)
 						.expect("native webview");

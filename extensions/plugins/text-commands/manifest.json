@@ -3,9 +3,9 @@
   "id": "text-commands",
   "name": "Text Commands",
   "version": "1.0.1",
-  "author": "Equicord/Vencord contributors; Serein port contributors",
+  "author": "Equicord/Vencord contributors; Harmony port contributors",
   "license": "GPL-3.0-or-later",
-  "source": "https://github.com/ViceVerse-cz/Serein/tree/main/extensions/plugins/text-commands",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/text-commands",
   "kind": "plugin",
   "capabilities": [
     "composer",

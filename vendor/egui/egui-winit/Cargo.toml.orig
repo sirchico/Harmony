@@ -115,7 +115,7 @@ windows-sys = { workspace = true, features = [
 
 [target.'cfg(any(target_os="linux", target_os="dragonfly", target_os="freebsd", target_os="netbsd", target_os="openbsd"))'.dependencies]
 smithay-clipboard = { workspace = true, optional = true }
-# Serein: decodes `image/png` read through smithay-clipboard; arboard already builds it.
+# Harmony: decodes `image/png` read through smithay-clipboard; arboard already builds it.
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 
 # The wayland-cursor normally selected doesn't properly enable all the features it uses

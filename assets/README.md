@@ -20,7 +20,7 @@ Downloaded from pinned upstream sources (September 10, 2026 unless specified):
 - Noto Sans 2.015 hinted static TrueType instances `NotoSans-Regular.ttf`, `NotoSans-Medium.ttf`, `NotoSans-SemiBold.ttf`, taken from `fonts/NotoSans/hinted/ttf/` of [notofonts/notofonts.github.io](https://github.com/notofonts/notofonts.github.io) (`main`), fetched November 14, 2026; `fonts/NotoSans-OFL.txt` is `OFL.txt` from [notofonts/latin-greek-cyrillic](https://github.com/notofonts/latin-greek-cyrillic). Noto Sans is the first fallback the Discord stylesheet names after its proprietary gg sans. SHA-256: Regular `478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823`, Medium `635d93d1131d791f2576de90b3bb0f7cdf61929906e8420a61b5f7f8e76420bb`, SemiBold `a4e91fd530ac2b4ef5367240144ff37d7d65d66cf76f2e9a2187b93c676f92d0`.
 
   These are the hinted TrueType builds. Upstream also ships CFF outlines. egui paints
-  grayscale coverage, not DirectWrite ClearType. Serein leaves the TrueType interpreter
+  grayscale coverage, not DirectWrite ClearType. Harmony leaves the TrueType interpreter
   off and keeps sub-pixel binning on. Dark mode remaps coverage with
   `FontColorTransferFunction::Gamma(0.5)`. Light mode leaves the transfer function off.
   Noto Sans faces set `FontTweak.hinting` to `Some(false)`. The files stay the hinted
@@ -35,7 +35,7 @@ Test detail: egui 0.36.2's [`Font::has_glyph`](https://github.com/emilk/egui/blo
 
 ### Display-name fonts
 
-Discord's Nitro display-name styles name a font by id. Serein bundles unmodified SIL Open Font License 1.1 faces for 14 of them, used only when Settings › Appearance › name styles is on. Each face is embedded in the executable but parsed only the first time a visible styled name uses it; there is no runtime font download. Variable faces render at weight 500. Néo-Castel (id 7) is distributed only through a store checkout and Hexagon (id 17) has no identified source, so those names, Default (id 11) and unknown ids keep the interface font. Whether each face matches the exact build Discord serves is unverified.
+Discord's Nitro display-name styles name a font by id. Harmony bundles unmodified SIL Open Font License 1.1 faces for 14 of them, used only when Settings › Appearance › name styles is on. Each face is embedded in the executable but parsed only the first time a visible styled name uses it; there is no runtime font download. Variable faces render at weight 500. Néo-Castel (id 7) is distributed only through a store checkout and Hexagon (id 17) has no identified source, so those names, Default (id 11) and unknown ids keep the interface font. Whether each face matches the exact build Discord serves is unverified.
 
 | Asset | Discord font id | Bytes | Copyright and license |
 |---|---:|---:|---|

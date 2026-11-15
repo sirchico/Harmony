@@ -1,6 +1,6 @@
-#[path = "serein_sha3.rs"]
-mod serein_sha3;
-use serein_sha3::shake256;
+#[path = "harmony_sha3.rs"]
+mod harmony_sha3;
+use harmony_sha3::shake256;
 
 use alloc::{vec, vec::Vec};
 

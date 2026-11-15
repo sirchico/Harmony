@@ -11,7 +11,7 @@ pub fn detect(report: impl FnOnce(bool) + Send + 'static) {
 	#[cfg(all(target_os = "windows", target_arch = "x86_64"))]
 	{
 		let _ = std::thread::Builder::new()
-			.name("serein-gsync".into())
+			.name("harmony-gsync".into())
 			.spawn(move || report(nvapi::enabled()));
 	}
 	#[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]

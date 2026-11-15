@@ -27,13 +27,13 @@
                 system,
                 ...
             }: {
-                packages.serein = pkgs.callPackage ./packaging/nix/package.nix {};
-                packages.default = config.packages.serein;
+                packages.harmony = pkgs.callPackage ./packaging/nix/package.nix {};
+                packages.default = config.packages.harmony;
 
                 devShells.default = pkgs.mkShell {
-                    name = "serein-dev";
+                    name = "harmony-dev";
 
-                    inputsFrom = [config.packages.serein];
+                    inputsFrom = [config.packages.harmony];
                 };
             };
         };

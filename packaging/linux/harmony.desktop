@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Harmony
+Comment=Experimental unofficial native Discord client
+Exec=harmony
+Icon=harmony
+StartupWMClass=io.github.sirchico.harmony
+Terminal=false
+Categories=Network;InstantMessaging;

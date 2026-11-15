@@ -4,7 +4,7 @@
 
 The native composer offers `@game`, a searchable game catalog and application references
 using `<@$APPLICATION_ID>`. This syntax is **unofficial**; service acceptance and rendering
-by another Discord account remain **unverified**. Serein treats these as game references,
+by another Discord account remain **unverified**. Harmony treats these as game references,
 never user or role IDs, and does not add them to the user/role notification allowlists.
 Names and icons come from the existing credential-free `/applications/detectable` route,
 including entries without detectable executables. The request runs lazily on first game
@@ -41,10 +41,10 @@ so they appear to be rolled out to some accounts only.
   - `progress[]` with current, threshold and helper text
   - `obtained_at` and `tier_obtained_at`
 
-  Serein reads it beside every opened profile, as the official client does for badge
+  Harmony reads it beside every opened profile, as the official client does for badge
   art. The account's own catalog uses `/users/@me/badges`, as the clients do.
   On October 12, a live owner test returned `404 Not Found` (`code` 0) for both
-  routes while Serein identified as web build 328,246. Unauthenticated requests to the
+  routes while Harmony identified as web build 328,246. Unauthenticated requests to the
   same routes return 401, so the routes exist. After the shared client fingerprint was
   updated to the current web build, 634,304 (from the public `discord.com/app`
   `GLOBAL_ENV`), the catalog loaded with 22 entries. This suggests a minimum-build gate;
@@ -52,7 +52,7 @@ so they appear to be rolled out to some accounts only.
   4 MiB / 4096 px budget, then scaled to 256 px. The read is optional, bounded to 256 KiB and shares the profile's two-second
   enrichment deadline. Failures leave the profile's own badge list. The retained catalog
   is capped at 40 badges and 48 KiB, and at 12 tiers per badge, keeping a window around
-  the current and next tiers. Over budget, Serein drops locked badges' other tiers, then
+  the current and next tiers. Over budget, Harmony drops locked badges' other tiers, then
   tier art, then owned badges' other tiers, then locked badges. Owned badges go last.
   SVG icons are skipped in favor of raster art. Oversized optional catalog responses leave
   the loaded profile available; authentication failures still end the session. Limited
@@ -79,7 +79,7 @@ so they appear to be rolled out to some accounts only.
 
 ## Profile cosmetics — October 11, 2026
 
-Serein shows equipped avatar decorations, nameplates, profile effects and profile frames.
+Harmony shows equipped avatar decorations, nameplates, profile effects and profile frames.
 All four are unofficial normal-client behavior: none appears in Discord's public bot
 documentation. Shapes come from the Userdoccers [user](https://docs.discord.food/resources/user#avatar-decoration-data-object),
 [collectibles](https://docs.discord.food/resources/collectibles) and
@@ -338,7 +338,7 @@ typed arguments. Root commands, subcommands and one subcommand-group level suppo
 integers, numbers, booleans, static choices and user/channel/role/mentionable IDs.
 Entity pickers use already loaded account data; they do not fetch a complete directory.
 Required fields, declared limits, choices, command context and channel access are checked
-before sending. Serein requires Send Messages (Send Messages in Threads for threads) for
+before sending. Harmony requires Send Messages (Send Messages in Threads for threads) for
 all slash commands, plus Use Application Commands for guild application commands. The picker and
 submission path also check default member permission bits and received application/command
 overrides for the current user, roles and channel. User overrides precede role overrides;
@@ -430,7 +430,7 @@ remote nickname mention insertion, stale replies and response limits.
 ## Chat links — October 8, 2026
 
 Clicked message and embed links matching HTTPS `/channels/{guild|@me}/{channel}`
-with an optional message ID navigate inside Serein. Exact discord.com and legacy
+with an optional message ID navigate inside Harmony. Exact discord.com and legacy
 discordapp.com hosts, including www, ptb and canary, are recognized, case-insensitively
 and with the default HTTPS port. Valid query/fragment suffixes do not change the
 target. Raw routing paths are validated before URL normalization; encoded paths,
@@ -860,9 +860,9 @@ the subsequent successful owner retest is recorded above.
 
 A subsequent owner-operated test on `fcf6fe62` used a different stream from the earlier
 1440p AV1 comparison: both clients received HEVC 1280×534 at about 59.8 decoded fps.
-Serein's 100.133-second post-startup payload sample averaged 1.299 Mbps (0.662–1.449),
+Harmony's 100.133-second post-startup payload sample averaged 1.299 Mbps (0.662–1.449),
 while eight official-client post-startup reports spanning 70.234 seconds averaged
-3.841 Mbps (2.601–4.151). Neither reported dropped video. Serein recorded timing jitter
+3.841 Mbps (2.601–4.151). Neither reported dropped video. Harmony recorded timing jitter
 and four audio rebuffer events; Discord audio interruptions were not assessed. Sequential
 scenes and accounting differ, so the reported ~2.96× gap does not prove its cause.
 Neither sample exercises AV1.
@@ -885,10 +885,10 @@ AV1 playback, as recorded above. See [voice details](voice.md).
 ### Linux watched-stream AV1 reception — October 23, 2026
 
 An owner-controlled sequential 1440p comparison of `8f79435b` found HEVC at 1.23 Mbps
-and 59.5 decoded fps in Serein, versus Discord's reported `AV1X` at 4.59 Mbps and 60 fps.
+and 59.5 decoded fps in Harmony, versus Discord's reported `AV1X` at 4.59 Mbps and 60 fps.
 Both received 2560×1440 and neither reported playback drops. Samples differ in content
 and bitrate accounting; they establish different received encodes, not the reason for
-the allocation. Serein previously offered no AV1 support.
+the allocation. Harmony previously offered no AV1 support.
 
 Capable Linux viewers now offer receive-only `AV1` before HEVC/H.264. `AV1X` is accepted
 as a session-name alias. Each source still routes authenticated advertised RTP independently
@@ -921,8 +921,8 @@ buffered video/decoder state and requires a recovery picture with VPS/SPS/PPS; d
 packets/RTX and session-only updates do not reset unrelated received media. SPS validation enforces the 3840×2160 live receive bound before native submission.
 Offline encrypted reassembly, malformed packet/bounds and native reference-picture checks
 cover the implementation. An owner-operated October 23 comparison of the same stream
-confirmed H.265, 1280×718 and approximately 30 fps in both Serein and official Discord;
-reported average bitrates were 1.13/1.11 Mbps respectively. Serein recorded no decoder
+confirmed H.265, 1280×718 and approximately 30 fps in both Harmony and official Discord;
+reported average bitrates were 1.13/1.11 Mbps respectively. Harmony recorded no decoder
 errors/playback drops, and Discord reported no dropped frames. This sequential test does
 not prove identical content, physical timing or behavior on every network. The owner
 reported satisfaction with playback; live 4K60 validation remains pending.
@@ -946,7 +946,7 @@ low-bitrate large-keyframe latency still need owner-controlled evidence; see
 September 21 interoperability correction: camera and screen-share H.264 SPS metadata
 is normalized before DAVE encryption to specify no frame reordering and bounded
 decoder buffering. The [WebRTC receiver rewrites unsuitable SPS metadata](https://github.com/webrtc-mirror/webrtc/blob/main/modules/rtp_rtcp/source/video_rtp_depacketizer_h264.cc)
-before frame decryption; that changes DAVE-authenticated bytes, while Serein's
+before frame decryption; that changes DAVE-authenticated bytes, while Harmony's
 receiver preserves them. The offline debug command
 `cargo run --locked -p discord-voice --example video_interop` exercises this
 authentication failure and normalized encryption/decryption/decoding with synthetic
@@ -1034,7 +1034,7 @@ stereo Opus and H.264, encrypted UDP forwarding, decoded audio and video. It ver
 local media handoff, not PulseAudio/WASAPI capture, speaker output, or Discord forwarding.
 Discord's [August 2025 patch notes](https://discord.com/blog/discord-patch-notes-august-4-2025)
 confirm Linux application-audio sharing; older articles saying Linux audio is unavailable
-are outdated. Unlike Discord's selected-application mode, Serein currently captures other
+are outdated. Unlike Discord's selected-application mode, Harmony currently captures other
 eligible applications too, even when sharing one window, excluding its own playback.
 
 September 12 local-preview update: DM and guild call stages display the owner's
@@ -1070,14 +1070,14 @@ measured performance, packaging or live Discord interoperability.
 
 System audio extension (September 15, 2026): Linux PulseAudio/PipeWire application monitors
 and Windows process loopback feed the existing stereo Opus/DAVE stream audio sender.
-Both are opt-in and exclude Serein's playback, including received call and stream audio.
+Both are opt-in and exclude Harmony's playback, including received call and stream audio.
 Other applications are included even for a single-window share, except on Windows, where a
 window share carries only that window's application. macOS ScreenCaptureKit
 continues excluding the current process. Windows uses native process-tree exclusion on build
 20348+ and per-application inclusion on older Windows 10 builds; a capture that fails reports
 its error visibly, without whole-output fallback.
 Linux uses `pa_stream_set_monitor_stream` before connecting each recording stream,
-rejects Serein/unknown application identities and disables recording-stream movement.
+rejects Harmony/unknown application identities and disables recording-stream movement.
 Audio access is separate from portal-approved video, using the existing PulseAudio socket.
 See [audio behavior and owner test steps](voice.md#screen-sharing).
 
@@ -1162,7 +1162,7 @@ to eight per two seconds. The UI schedules only the next visible expiry, with no
 Existing People typing subscriptions are unchanged; guild delivery may depend on that pane's
 subscription. Service availability and normal-account acceptance remain live-unverified.
 
-Typing indicators (October 17, 2026): Serein now sends this account's typing with the
+Typing indicators (October 17, 2026): Harmony now sends this account's typing with the
 documented [Trigger Typing Indicator](https://docs.discord.com/developers/resources/channel#trigger-typing-indicator)
 endpoint (`POST /channels/{id}/typing`, empty body). It is sent only when a keystroke changes
 a new-message draft in the open conversation (never while editing) and the account could send
@@ -1213,7 +1213,7 @@ Old cached component markers acquire controls only after normal history refresh.
 Run the offline native component preview with:
 
 ```bash
-cargo run --locked -p serein --features demo -- --demo --demo-components
+cargo run --locked -p harmony --features demo -- --demo --demo-components
 ```
 
 Choose a dropdown option or click **Open sample form** to inspect the synthetic controls.
@@ -1232,11 +1232,11 @@ resolution remain owner-unverified. The browser uses its own session and Discord
 
 Loaded threads (September 10): READY guild thread arrays follow the original [discord.py-self guild parser](https://github.com/dolfies/discord.py-self/blob/master/discord/guild.py); active create/update/delete, scoped sync, archive eviction and owner-removal handling are informed by its [dispatch implementation](https://github.com/dolfies/discord.py-self/blob/master/discord/state.py). Discord's [Gateway thread events](https://docs.discord.com/developers/events/gateway-events#thread-list-sync) document the guild/parent scope and membership fields. These primary sources establish wire evidence, not normal-account acceptance; no implementation blocks were copied. Active discovery is limited to service-supplied snapshots/events; explicit archive reads are described below, with existing subscriptions unchanged. A visible unresolved channel mention, and a Discord chat link to a thread this session never loaded, each perform one bounded documented channel read and admit only a same-guild thread whose loaded parent remains viewable; resolved names are retained in a bounded session-only cache. Unknown updates do not otherwise hydrate a missing thread. See native navigation scope.
 
-Serein is unofficial and not endorsed by Discord. No normal-user live session has been tested. Technical compatibility does not imply approval. Discord forbids normal-account automation outside its OAuth2/bot API and warns of account termination ([policy](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)); its [terms](https://discord.com/terms) also apply.
+Harmony is unofficial and not endorsed by Discord. No normal-user live session has been tested. Technical compatibility does not imply approval. Discord forbids normal-account automation outside its OAuth2/bot API and warns of account termination ([policy](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots)); its [terms](https://discord.com/terms) also apply.
 
-Server identity tags (September 19): Discord's documented [User object](https://docs.discord.com/developers/resources/user#user-object) may include `primary_guild` with an enabled identity, guild ID, tag and badge hash. Serein retains a valid identity from ordinary user payloads for profile cards, server-channel and thread member rows, and one-to-one DM rows. Profile cards can therefore show it before the unofficial extended-profile request completes or when that request fails; a completed extended profile remains authoritative, including removal of a stale tag. The older duplicated `clan` shape is accepted only as a bounded fallback. Normal-account delivery remains live-unverified.
+Server identity tags (September 19): Discord's documented [User object](https://docs.discord.com/developers/resources/user#user-object) may include `primary_guild` with an enabled identity, guild ID, tag and badge hash. Harmony retains a valid identity from ordinary user payloads for profile cards, server-channel and thread member rows, and one-to-one DM rows. Profile cards can therefore show it before the unofficial extended-profile request completes or when that request fails; a completed extended profile remains authoritative, including removal of a stale tag. The older duplicated `clan` shape is accepted only as a bounded fallback. Normal-account delivery remains live-unverified.
 
-| Capability | Credential / evidence | Classification | Serein status / fallback |
+| Capability | Credential / evidence | Classification | Harmony status / fallback |
 |---|---|---|---|
 | Supported sign-in | OAuth2 access token; [scopes](https://docs.discord.com/developers/topics/oauth2) | Documented for limited scopes; RPC/other scopes restricted | No full replacement-client grant established. No invented OAuth login |
 | Token sign-in | Normal-user session credential intentionally entered by its owner; [Abaddon source](https://github.com/uowuo/abaddon/tree/master/src/discord) reviewed today | Unofficial, unstable, account risk | Available on the main sign-in screen in every build, saved like a normal login, no extraction from other software; actual service validation pending |
@@ -1282,15 +1282,15 @@ The owner superseded the initial storage/login constraints during implementation
 
 The handoff is original code in `crates/platform/src/login-handoff.js` and the Linux WebKit resource observer. It observes an Authorization header only for this temporary webview’s own `https://discord.com/api/v*/` requests, after user-controlled authentication. It reads neither localStorage nor other applications, profiles or tabs, and does not inspect passwords or QR secrets. A random per-webview capability scopes the IPC handoff; Rust validates that capability, the IPC origin, and token length, then verifies the account via `/users/@me` and rejects bot accounts. This handoff is a technical hypothesis with offline tests; Discord’s current page may use an unsupported transport, reject the embedded engine, or change its behavior. Failure must not be called successful login.
 
-Navigation is limited to Discord’s HTTPS origin; new windows and downloads are blocked. Third-party challenge subframes are left to the platform engine; popup-dependent methods may fail. The login page keeps the platform engine; no official desktop-client user agent or properties are supplied. Serein's own connections present the browser identity described in [authentication](authentication.md) (unofficial, live-unverified). Resume URLs are restricted to recognized Discord gateway hosts.
+Navigation is limited to Discord’s HTTPS origin; new windows and downloads are blocked. Third-party challenge subframes are left to the platform engine; popup-dependent methods may fail. The login page keeps the platform engine; no official desktop-client user agent or properties are supplied. Harmony's own connections present the browser identity described in [authentication](authentication.md) (unofficial, live-unverified). Resume URLs are restricted to recognized Discord gateway hosts.
 
-September 10 People/avatar continuation: the member subscription uses the opcode 14 shape found in the current original discord.py-self implementation. [Original lazy-guild research](https://arandomnewaccount.gitlab.io/discord-unofficial-docs/lazy_guilds.html) describes list positions including groups and ambiguous empty SYNC responses; it is unofficial evidence, not a service guarantee. A newer opcode 37 has also been [reported by Userdoccers](https://github.com/discord-userdoccers/discord-userdoccers/issues/191); Serein does not claim opcode 14 works for every account. Channel-specific list identities require the available everyone-role permissions and channel overwrites. The small noncryptographic Murmur3 identity calculation is implemented locally and checked against known vectors; no third-party client code blocks were copied. This identity selects a list; it grants no permissions. No complete member directory is fetched or persisted. Profile cards expose only available name, ID and avatar, not invented bios, roles or relationships. Server-specific custom avatars and full profile endpoints remain unsupported.
+September 10 People/avatar continuation: the member subscription uses the opcode 14 shape found in the current original discord.py-self implementation. [Original lazy-guild research](https://arandomnewaccount.gitlab.io/discord-unofficial-docs/lazy_guilds.html) describes list positions including groups and ambiguous empty SYNC responses; it is unofficial evidence, not a service guarantee. A newer opcode 37 has also been [reported by Userdoccers](https://github.com/discord-userdoccers/discord-userdoccers/issues/191); Harmony does not claim opcode 14 works for every account. Channel-specific list identities require the available everyone-role permissions and channel overwrites. The small noncryptographic Murmur3 identity calculation is implemented locally and checked against known vectors; no third-party client code blocks were copied. This identity selects a list; it grants no permissions. No complete member directory is fetched or persisted. Profile cards expose only available name, ID and avatar, not invented bios, roles or relationships. Server-specific custom avatars and full profile endpoints remain unsupported.
 
 ## DM voice evidence — September 10
 
 Normal-user DM entry uses guild_id:null with main Gateway opcodes 13/4, based on the original [discord.py-self Gateway implementation](https://github.com/dolfies/discord.py-self/blob/master/discord/gateway.py). CALL_CREATE/UPDATE/DELETE and voice state/server shapes follow its [dispatch source](https://github.com/dolfies/discord.py-self/blob/master/discord/state.py) and [voice types](https://github.com/dolfies/discord.py-self/blob/master/discord/types/voice.py). Ring/stop-ringing use the [HTTP implementation](https://github.com/dolfies/discord.py-self/blob/master/discord/http.py); its [DM connect flow](https://github.com/dolfies/discord.py-self/blob/master/discord/channel.py) establishes voice before ringing. These are unofficial interoperability evidence, not approved normal-account APIs or a bot-token workaround. No source-code blocks were copied.
 
-Discord's documented voice transport and [DAVE protocol](https://daveprotocol.com/) supply encryption/protocol requirements. Serein uses Davey 0.1.4/OpenMLS, an unofficial implementation, rather than claiming to ship Discord's libdave or an independently audited engine. Real MLS, DAVE, RTP, Opus and loopback WebSocket/UDP tests exercise the adapter with synthetic participants. They do not verify current Discord acceptance, microphone permission, device quality or a remote official client. Existing group DMs, Stage channels and camera video remain unsupported; outgoing screen sharing is covered by the September 11 addendum. Guild voice is implemented separately below, with its live gate still unverified. See [voice scope and owner-operated gate](voice.md) and [adapter details](../crates/discord-voice/README.md).
+Discord's documented voice transport and [DAVE protocol](https://daveprotocol.com/) supply encryption/protocol requirements. Harmony uses Davey 0.1.4/OpenMLS, an unofficial implementation, rather than claiming to ship Discord's libdave or an independently audited engine. Real MLS, DAVE, RTP, Opus and loopback WebSocket/UDP tests exercise the adapter with synthetic participants. They do not verify current Discord acceptance, microphone permission, device quality or a remote official client. Existing group DMs, Stage channels and camera video remain unsupported; outgoing screen sharing is covered by the September 11 addendum. Guild voice is implemented separately below, with its live gate still unverified. See [voice scope and owner-operated gate](voice.md) and [adapter details](../crates/discord-voice/README.md).
 
 Image attachments: documented wire metadata and spoiler bit 3 are implemented; additional sensitive flags and proxy PNG conversion rely on unofficial implementation evidence. Native viewing and bounded cache/patch behavior have offline coverage; actual account image delivery remains unverified. Scope and sources.
 
@@ -1310,7 +1310,7 @@ establish successful sign-in. The guard intentionally also blocks ASCII-only
 Flatpak setups that might otherwise happen to work. Native non-Flatpak webview admission
 is unchanged. See [Flatpak troubleshooting](../packaging/flatpak/README.md#loginverification-locale-troubleshooting).
 
-Login compatibility correction (September 10): READY read_state accepts both the legacy array and the versioned entries/version/partial object, under the same 4000-entry bound. Serein's Identify does not request the versioned_read_states capability; rejecting the legacy shape previously rejected the entire login payload. The capability's effect is described in the original [discord.py-self capability definitions](https://github.com/dolfies/discord.py-self/blob/master/discord/flags.py), rechecked September 10. Partial snapshots leave omitted channels unknown. Identify capabilities remain unchanged. Static error labels distinguish account verification, Gateway discovery, READY decoding and connection setup without exposing payloads, credentials or remote error text. Synthetic regression and loopback evidence do not establish actual account login success.
+Login compatibility correction (September 10): READY read_state accepts both the legacy array and the versioned entries/version/partial object, under the same 4000-entry bound. Harmony's Identify does not request the versioned_read_states capability; rejecting the legacy shape previously rejected the entire login payload. The capability's effect is described in the original [discord.py-self capability definitions](https://github.com/dolfies/discord.py-self/blob/master/discord/flags.py), rechecked September 10. Partial snapshots leave omitted channels unknown. Identify capabilities remain unchanged. Static error labels distinguish account verification, Gateway discovery, READY decoding and connection setup without exposing payloads, credentials or remote error text. Synthetic regression and loopback evidence do not establish actual account login success.
 
 ## Reaction refresh and pinned messages - September 10
 
@@ -1332,11 +1332,11 @@ Pinned-message browsing uses GET /channels/{channel}/messages/pins?limit=25, fol
 
 ## Single-file uploads - September 10
 
-The selected file is uploaded only after Send. Serein requests a staging target with authenticated `POST /channels/{channel}/attachments`, using `files:[{id:"0",filename,file_size}]`; streams a credential-free PUT to its `upload_url`; then creates a message with `attachments:[{id:"0",filename,uploaded_filename}]`. Existing content, reply, explicit mention allowlists and nonce correlation are preserved, including attachment-only messages. This sequence follows the primary [HTTP implementation](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/http.py#L1073), [route](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/http.py#L1527) and [file serialization](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/file.py#L197), inspected at commit `2ba64a9a997e151a9c259984e0a179b1fdf4aff4`. No implementation source was copied. Public bot multipart examples do not verify this normal-user path.
+The selected file is uploaded only after Send. Harmony requests a staging target with authenticated `POST /channels/{channel}/attachments`, using `files:[{id:"0",filename,file_size}]`; streams a credential-free PUT to its `upload_url`; then creates a message with `attachments:[{id:"0",filename,uploaded_filename}]`. Existing content, reply, explicit mention allowlists and nonce correlation are preserved, including attachment-only messages. This sequence follows the primary [HTTP implementation](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/http.py#L1073), [route](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/http.py#L1527) and [file serialization](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/file.py#L197), inspected at commit `2ba64a9a997e151a9c259984e0a179b1fdf4aff4`. No implementation source was copied. Public bot multipart examples do not verify this normal-user path.
 
 Only `https://discord-attachments-uploads-prd.storage.googleapis.com` on effective port 443 is accepted. This exact origin was independently observed in the public `Content-Security-Policy` returned by unauthenticated `curl.exe --silent --head https://discord.com/app` on September 10. Userinfo, fragments and redirects are rejected; signed path/query values remain opaque, bounded and unlogged. A separate HTTP client sends neither Discord authorization nor cookies to storage. Test-only loopback origins are absent from shipped builds.
 
-The local limit is **up to ten nonempty regular files totaling at most 500,000,000 bytes**, Discord's published Nitro maximum. Discord's [File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ), updated August 13, 2026, states a 20 MB free limit, 50 MB Nitro Basic limit and 500 MB Nitro limit; server permissions, experiments and rejections remain authoritative. Serein does not infer the account tier or compress/rewrite files, so Discord may reject a selection below the local ceiling.
+The local limit is **up to ten nonempty regular files totaling at most 500,000,000 bytes**, Discord's published Nitro maximum. Discord's [File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ), updated August 13, 2026, states a 20 MB free limit, 50 MB Nitro Basic limit and 500 MB Nitro limit; server permissions, experiments and rejections remain authoritative. Harmony does not infer the account tier or compress/rewrite files, so Discord may reject a selection below the local ceiling.
 
 Application chunks are at most 64 KiB; negotiation and storage responses at most 64 KiB, signed URLs 4096 bytes, server upload names 1024 bytes, local paths 4096 encoded bytes and filenames 256 UTF-8 bytes. One upload job uses latest-value progress, not an expanding event queue. The PUT has a 300-second overall deadline, 10-second connection timeout and 30-second read timeout. Filesystem work stays outside rendering.
 
@@ -1346,12 +1346,12 @@ Application chunks are at most 64 KiB; negotiation and storage responses at most
 2026-11-11 (main file plus about 360 chunks). Nothing here was exercised against a live
 account, and no claim is made about how Discord classifies clients.**
 
-- **No host change on a block (unverified cause).** Serein used to move every request to
+- **No host change on a block (unverified cause).** Harmony used to move every request to
   `ptb.discord.com` after an HTML or plain-text 429 and retry there. It now stays on
   `discord.com`, stops the connection with a non-expiry block reason and prevents
   new dispatches until the owner explicitly reconnects. Requests already in flight may finish.
 - **No REST requests to learn the account or the Gateway address.** The web client reads the
-  Gateway address from its page config (`GATEWAY_ENDPOINT`) and the account from READY. Serein
+  Gateway address from its page config (`GATEWAY_ENDPOINT`) and the account from READY. Harmony
   no longer sends `GET /users/@me` and `GET /gateway` before connecting. A saved login is
   compared with READY's user id, a bot account is refused from READY, and a rejected token ends
   the session through Gateway close 4004 (documented). A sign-in without a remembered status
@@ -1362,7 +1362,7 @@ account, and no claim is made about how Discord classifies clients.**
   `Accept-Language` on REST and the Gateway WebSocket lists the OS language preferences the way
   the web client writes `navigator.languages` (first tag bare, then `;q=0.9` downwards).
   `X-Discord-Locale` is the [documented Discord locale](https://docs.discord.com/developers/reference#locales)
-  nearest to the OS locale; the web client sends its interface language there, and Serein's own
+  nearest to the OS locale; the web client sends its interface language there, and Harmony's own
   interface-language setting is not sent. A value the OS does not report, or one that is not a
   plain tag or zone name, falls back to `en-US` / `UTC`. The login and verification webviews
   take their language from the same OS settings through the platform web engine.
@@ -1371,7 +1371,7 @@ account, and no claim is made about how Discord classifies clients.**
   capped at one hour, or ten minutes when none is given. 40002 (account verification required) and 40004 (message sending disabled)
   now stop authenticated traffic until explicit reconnection and direct the owner to the official
   client. This replaces the initial five-minute route-only hold. 50007 (cannot message this user) refuses further messages to that conversation until
-  the next connection. These periods are Serein's choices, not Discord's. The account-wide codes end the
+  the next connection. These periods are Harmony's choices, not Discord's. The account-wide codes end the
   session; none is retried automatically, and one held DM-opening route and at most 64 conversations are
   remembered in RAM.
 - **Forwards are ordinary message creates.** A forward's body now has the same fixed fields
@@ -1380,14 +1380,14 @@ account, and no claim is made about how Discord classifies clients.**
   A captcha on a forward still fails locally with a bounded reason; it is never replayed as text.
 - **`X-Context-Properties`.** The web client's request helper sends its `context` option as
   base64 JSON in this header, and its message location enum includes `chat_input` and
-  `forwarding`. Serein sends `{"location":"chat_input"}` on message creates (text, sticker and
+  `forwarding`. Harmony sends `{"location":"chat_input"}` on message creates (text, sticker and
   attachment sends) and `{"location":"forwarding"}` on forwards. The call sites that pass these
   two locations are in on-demand chunks that were not fetched, so which sends carry them is
   unverified; a third-party client's protocol notes describe the same two values.
 - **`X-Failed-Requests` is not sent.** In the bundle this header counts the request helper's
   own retries after a network error or one of the statuses 502, 504, 507, 522, 523, 524, 598
   and 599. A 429 on message create is handled by the send queue, which builds a fresh request
-  without it. Serein never retries a write after a network error or 5xx (the outcome is
+  without it. Harmony never retries a write after a network error or 5xx (the outcome is
   ambiguous), so it has no request that would carry the header, and its 429 resends match the
   web client by omitting it.
 
@@ -1395,21 +1395,21 @@ account, and no claim is made about how Discord classifies clients.**
 
 **Unofficial, observed in Discord's public web bundle fetched 2026-11-11; live interoperability remains unverified.** The upload requests now follow the shapes the official web client builds. Identity headers, `X-Super-Properties` and the client fingerprint are unchanged by this section.
 
-- Staging stays one `POST /channels/{channel}/attachments` per file with `files:[{id,filename,file_size,is_clip:false,original_content_type}]`. `original_content_type` is the web client's browser `File.type`. Serein has no browser MIME registry, so it derives the value from a short table of well-known filename extensions and omits the field for every other extension, as the web client does for an unknown type. A browser's value for the same file can differ by platform.
-- The storage PUT sets `Content-Type: application/octet-stream` for every file. It previously sent a type guessed from the extension. Serein never recompresses a file, so it sends no MD5 header, matching the web client's path for unmodified files.
+- Staging stays one `POST /channels/{channel}/attachments` per file with `files:[{id,filename,file_size,is_clip:false,original_content_type}]`. `original_content_type` is the web client's browser `File.type`. Harmony has no browser MIME registry, so it derives the value from a short table of well-known filename extensions and omits the field for every other extension, as the web client does for an unknown type. A browser's value for the same file can differ by platform.
+- The storage PUT sets `Content-Type: application/octet-stream` for every file. It previously sent a type guessed from the extension. Harmony never recompresses a file, so it sends no MD5 header, matching the web client's path for unmodified files.
 - Message create (text and attachment sends) carries `mobile_network_type:"unknown"`, `tts:false` and an always-present integer `flags` (0, or the suppress-notifications bit for `@silent`), next to the existing `content`, `nonce`, optional `message_reference`, `sticker_ids` and `attachments:[{id,filename,uploaded_filename}]` with ids `"0"`, `"1"`, …
-- **Deliberate difference:** Serein still always sends an explicit `allowed_mentions` allowlist computed from the message text and reply choice. The web client omits the field when it has nothing to restrict. Dropping it was not shown to be behavior-identical, so mention behavior is unchanged.
-- **Remaining difference:** the web client stages and uploads files concurrently. Serein stages and uploads them one at a time, which keeps the single latest-value progress counter, the per-file completeness check and one visible challenge at a time.
+- **Deliberate difference:** Harmony still always sends an explicit `allowed_mentions` allowlist computed from the message text and reply choice. The web client omits the field when it has nothing to restrict. Dropping it was not shown to be behavior-identical, so mention behavior is unchanged.
+- **Remaining difference:** the web client stages and uploads files concurrently. Harmony stages and uploads them one at a time, which keeps the single latest-value progress counter, the per-file completeness check and one visible challenge at a time.
 
-The web client answers any 400 whose body has `captcha_key` by showing hCaptcha with the response's parameters and replaying the same request with `X-Captcha-Key`, plus `X-Captcha-Rqtoken` and `X-Captcha-Session-Id` when present. Serein now does the same for an attachment message's staging request and its message create, through the existing user-operated verification panel and the same five-minute, single-use, redacted challenge types as text messages. Nothing is solved or bypassed automatically. The upload stays in place while the user decides, so a challenge on message create replays only that POST with the already staged `uploaded_filename` values and never transfers a file again, and a challenge on staging replays only that file's staging request. Each challenged request is replayed once; a second challenge on the replay fails the send with a bounded reason. Dismissing the panel, expiry, leaving the conversation or cancelling the upload reports the message as not sent; bytes already staged may remain remotely as described below. A challenged modal-file submission or forum-post upload has no pending message to verify and still fails with the existing "complete it in the official client" reason. One synthetic loopback test covers the message-create challenge, its three replay headers and the absence of a second staging request or PUT; no live challenge has been exercised.
+The web client answers any 400 whose body has `captcha_key` by showing hCaptcha with the response's parameters and replaying the same request with `X-Captcha-Key`, plus `X-Captcha-Rqtoken` and `X-Captcha-Session-Id` when present. Harmony now does the same for an attachment message's staging request and its message create, through the existing user-operated verification panel and the same five-minute, single-use, redacted challenge types as text messages. Nothing is solved or bypassed automatically. The upload stays in place while the user decides, so a challenge on message create replays only that POST with the already staged `uploaded_filename` values and never transfers a file again, and a challenge on staging replays only that file's staging request. Each challenged request is replayed once; a second challenge on the replay fails the send with a bounded reason. Dismissing the panel, expiry, leaving the conversation or cancelling the upload reports the message as not sent; bytes already staged may remain remotely as described below. A challenged modal-file submission or forum-post upload has no pending message to verify and still fails with the existing "complete it in the official client" reason. One synthetic loopback test covers the message-create challenge, its three replay headers and the absence of a second staging request or PUT; no live challenge has been exercised.
 
-Path and open-file size/modification metadata are checked before transfer and again before message creation. Missing or observably changed files fail explicitly. These checks are not an immutable snapshot or a defense against a writer restoring identical metadata; no hidden recovery copy is created. Cancellation before message creation prevents the message POST, but staged bytes already sent may remain remotely; Serein does not claim remote deletion or a retention deadline. Cancellation after message POST begins reports an unknown outcome. No transfer or message write is automatically retried. Signed upload targets and local source paths are session-only.
+Path and open-file size/modification metadata are checked before transfer and again before message creation. Missing or observably changed files fail explicitly. These checks are not an immutable snapshot or a defense against a writer restoring identical metadata; no hidden recovery copy is created. Cancellation before message creation prevents the message POST, but staged bytes already sent may remain remotely; Harmony does not claim remote deletion or a retention deadline. Cancellation after message POST begins reports an unknown outcome. No transfer or message write is automatically retried. Signed upload targets and local source paths are session-only.
 
 Synthetic tests cover actual loopback HTTP, credential isolation, redirects, file bounds/changes, cancellation during PUT and cancellation during message creation. They do not establish normal-user interoperability: an owner-controlled developer-session test with an official-client recipient remains required. Multiple attachments, tier-dependent larger files and remote staging cleanup remain unimplemented.
 
-File selection also accepts one native file dropped into the active conversation window. The pinned egui 0.37.0 DroppedFileHandle exposes a path; Serein moves the event handles, accepts only one absolute path within the existing path limit, and never invokes their whole-file bytes API. Drops reuse the picker validation and cancellation slot. They cannot replace an existing selection or active operation and never start an upload themselves. Unsupported/multiple drops and unavailable conversation states report an error. A composer hover hint explains the limit and explicit Send behavior. Native OS drag/drop delivery remains unverified; synthetic handle admission and late-result isolation are tested.
+File selection also accepts one native file dropped into the active conversation window. The pinned egui 0.37.0 DroppedFileHandle exposes a path; Harmony moves the event handles, accepts only one absolute path within the existing path limit, and never invokes their whole-file bytes API. Drops reuse the picker validation and cancellation slot. They cannot replace an existing selection or active operation and never start an upload themselves. Unsupported/multiple drops and unavailable conversation states report an error. A composer hover hint explains the limit and explicit Send behavior. Native OS drag/drop delivery remains unverified; synthetic handle admission and late-result isolation are tested.
 
-Archived-thread browsing (September 10): [Discord public/private/joined-private archive endpoints](https://docs.discord.com/developers/resources/channel#list-public-archived-threads) describe public and private pages ordered by archive timestamp with an ISO8601 before cursor; joined-private pages use descending thread IDs and a snowflake cursor. The primary normal-user implementation exposes the [same three HTTP routes](https://github.com/dolfies/discord.py-self/blob/master/discord/http.py) and [channel archive selection](https://github.com/dolfies/discord.py-self/blob/master/discord/channel.py). These sources supply wire evidence, not live account acceptance. Serein makes only explicit GET requests, limits each page to 25 entries, checks archived metadata, guild/parent/type, duplicates and cursor progress, and ignores member summaries. Public/private timestamps preserve nanoseconds. Private archive enumeration requires the service permissions described by Discord, including MANAGE_THREADS; joined-private is a separate choice. Open loads history without a join/reopen mutation. No live account was used to validate these routes.
+Archived-thread browsing (September 10): [Discord public/private/joined-private archive endpoints](https://docs.discord.com/developers/resources/channel#list-public-archived-threads) describe public and private pages ordered by archive timestamp with an ISO8601 before cursor; joined-private pages use descending thread IDs and a snowflake cursor. The primary normal-user implementation exposes the [same three HTTP routes](https://github.com/dolfies/discord.py-self/blob/master/discord/http.py) and [channel archive selection](https://github.com/dolfies/discord.py-self/blob/master/discord/channel.py). These sources supply wire evidence, not live account acceptance. Harmony makes only explicit GET requests, limits each page to 25 entries, checks archived metadata, guild/parent/type, duplicates and cursor progress, and ignores member summaries. Public/private timestamps preserve nanoseconds. Private archive enumeration requires the service permissions described by Discord, including MANAGE_THREADS; joined-private is a separate choice. Open loads history without a join/reopen mutation. No live account was used to validate these routes.
 
 ### Unicode emoji artwork (September 10, 2026)
 
@@ -1440,7 +1440,7 @@ documented [custom emoji CDN endpoint](https://docs.discord.com/developers/refer
 With GIF animation enabled, `<a:name:id>` (and animated named artwork links) loads the same
 endpoint's documented GIF format at 64px and plays through the existing bounded off-UI decoder
 and animation pool, falling back to the still PNG when animation is off or the GIF fails.
-Reactions do not carry an animated flag in Serein's model and stay static. Custom reactions
+Reactions do not carry an animated flag in Harmony's model and stay static. Custom reactions
 use the same bounded media worker. Deleted/failing previews have a fixed
 placeholder and retain copyable original markup. Standard Unicode and custom image widgets
 participate in text selection: copying a selection retains Unicode sequences/custom markup,
@@ -1489,7 +1489,7 @@ The member pane previously sent deprecated opcode 14 with `typing:false`. Curren
 [Gateway implementation](https://github.com/dolfies/discord.py-self/blob/master/discord/gateway.py)
 and [channel subscription prerequisites](https://github.com/dolfies/discord.py-self/blob/master/discord/state.py)
 show opcode 37 and a guild typing subscription before requesting channel member ranges.
-Serein now enables that subscription only for the active member pane and clears it with
+Harmony now enables that subscription only for the active member pane and clears it with
 channel ranges when the pane closes or navigation changes. This receives typing events;
 it does not send typing notifications. Incoming typing for the selected conversation is
 handled as described below; other conversations' typing is discarded.
@@ -1597,7 +1597,7 @@ The open guild People pane consumes standalone PRESENCE_UPDATE for users in its 
 100-row subscription mirror. [Discord's presence event](https://docs.discord.com/developers/events/gateway-events#presence-update)
 documents partial user objects and online/idle/dnd/offline status. The pinned normal-user
 [dispatcher](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/state.py#L2040)
-allows an optional guild scope. Serein ignores guildless updates and does not request a
+allows an optional guild scope. Harmony ignores guildless updates and does not request a
 friends/global directory or additional subscription flags. These are primary wire references,
 not proof that a normal-user account receives these updates through this client's subscription.
 
@@ -1679,7 +1679,7 @@ and its repair, not acceptance by Discord; owner-operated live verification rema
 
 The original [Gateway wire types](https://github.com/dolfies/discord.py-self/blob/2ba64a9a997e151a9c259984e0a179b1fdf4aff4/discord/types/gateway.py)
 distinguish top-level group summaries (ID plus count) from group items inside SYNC ranges
-(ID only). Serein incorrectly required a count in every group item, rejecting the complete
+(ID only). Harmony incorrectly required a count in every group item, rejecting the complete
 member update. It now reads only the group ID needed to recognize an index placeholder;
 counts are not fabricated. An exact synthetic ID-only-header regression loads the following
 member at the correct position. The owner-run redacted trace confirms that member replies
@@ -1767,7 +1767,7 @@ Join/spectate actions and progress timers remain unsupported.
 DM recipients who are not friends (October 17, 2026): Discord subscribes a normal account
 to the presence of users it has an open DM with, but reports non-friends through guilds:
 READY `guilds[].presences`, READY_SUPPLEMENTAL `merged_presences.guilds` and guild-scoped
-PRESENCE_UPDATE. Serein previously read none of these for DMs, so such a recipient stayed
+PRESENCE_UPDATE. Harmony previously read none of these for DMs, so such a recipient stayed
 Offline whatever their status. These guild sources now stand in for DM recipients who are
 not friends only, batched separately within the same 100-ms window and limits; friends keep
 using only the direct feed. The gateway drops guild updates for anyone else before batching,
@@ -1853,7 +1853,7 @@ opening an audio device or contacting Discord.
 M4A, AAC and FLAC (October 17, 2026): `.m4a`, `.aac` and `.flac` attachments, and the
 `audio/mp4`, `audio/x-m4a`, `audio/aac` and `audio/flac` MIME families, now use the inline audio
 player. An audio extension takes precedence over a `video/*` MIME type, which can be reported for
-MP4-family audio; Serein previously sent such files to the video player, which showed an empty
+MP4-family audio; Harmony previously sent such files to the video player, which showed an empty
 stage. Symphonia's ISO MP4, AAC-LC, ALAC and FLAC readers decode them. The bounded source
 keeps its rule that demuxers never parse attachment metadata: FLAC forwards only STREAMINFO and
 skips tag, picture and padding blocks unread; MP4 validates the top-level layout, reads a movie
@@ -1866,7 +1866,7 @@ of these types is unverified.
 ### Unknown Gateway variants (September 10, 2026)
 
 Unknown dispatches remain ignored without granting capabilities; unsupported opcodes retain the
-existing protocol-error behavior. Opt-in `SEREIN_GATEWAY_DIAGNOSTICS=1` now records bounded fixed
+existing protocol-error behavior. Opt-in `HARMONY_GATEWAY_DIAGNOSTICS=1` now records bounded fixed
 categories for these cases and missing dispatch names. Received names and payloads never enter
 diagnostics. This changes observability, not the supported service contract. Offline local-socket
 checks cover continued message delivery and heartbeat cursor advancement; normal-user service
@@ -1878,7 +1878,7 @@ The saved, off-by-default Game Activity setting now hosts a local activity-only 
 instead of polling an executable allowlist. It tries `discord-ipc-0` through `discord-ipc-9`
 without replacing an occupied endpoint. Windows named pipes and Unix runtime/temp sockets
 follow [Discord's RPC transport](https://docs.discord.com/developers/topics/rpc).
-Games must connect to Serein; IPC is point-to-point, not an eavesdropping/subscription feed
+Games must connect to Harmony; IPC is point-to-point, not an eavesdropping/subscription feed
 from an already-running Discord instance. Enable sharing before launching the game; another
 Discord client may win the game's connection. Games without IPC integration remain unsupported.
 
@@ -1903,7 +1903,7 @@ are shared across the session's metadata lookups. Unresolved artwork is
 omitted and application-name lookup failures are visible. These routes and normal-user Gateway
 publication remain unofficial/unstable. The existing [Update Presence](https://docs.discord.com/developers/events/gateway-events#update-presence)
 path waits for READY/RESUMED, coalesces updates and limits attempts (including clears) to one
-per five seconds. After system inactivity, Serein sends `afk: true` with `since` set to when
+per five seconds. After system inactivity, Harmony sends `afk: true` with `since` set to when
 it marked the session idle and shows Online as `idle` (DND, Invisible and manual Idle stay as
 chosen; the saved status is unchanged) so Discord can route push notifications to the phone. The
 inactivity timeout is the account's `voice_and_video.afk_timeout` in settings-proto/1 (60 to 3600
@@ -1993,7 +1993,7 @@ public server directory in the browser; native Discovery is not implemented.
 ### Account activity sharing and server observations (September 11, 2026)
 
 The local Share game activity switch does not itself enable Discord's account-wide
-`show_current_game` preference. Serein now reads that preference after local opt-in
+`show_current_game` preference. Harmony now reads that preference after local opt-in
 and offers Enable on Discord only when it is disabled. This explicit action uses
 normal-user `GET/PATCH /users/@me/settings-proto/1`, preserving other status/custom
 status bytes and guarding the fresh data version. Unconfirmed writes are not retried
@@ -2117,7 +2117,7 @@ unavailable in the current agent environment.
 ### Session presence publication
 
 Click the footer avatar or account name to preview the global profile, select Online,
-Idle, Do Not Disturb or Invisible, and apply/clear a custom status. Serein reads
+Idle, Do Not Disturb or Invisible, and apply/clear a custom status. Harmony reads
 the account's Discord status from unofficial `settings-proto/1` before identify
 and writes that field when the owner changes it. A local `account_presence` row
 is only the fallback when that read fails. Profile loading reuses the existing
@@ -2256,12 +2256,12 @@ documents that "friend requests from users Discord ascertains to be strangers re
 confirmation to accept" and resends the same `PUT` with `confirm_stranger_request: true` after
 its warning; without it the acceptance is rejected.
 
-Serein sends the plain `PUT .../{id}` with an empty object first, as before, and only after that
+Harmony sends the plain `PUT .../{id}` with an empty object first, as before, and only after that
 request is rejected (a protocol-level or forbidden answer) resends it once with
 `confirm_stranger_request: true` and reports that second outcome. A relationship `PUT` assigns
 state rather than sending content, and the account owner already chose Accept, so the retry
 carries that same deliberate choice; removes, blocks, notes, nicknames and every other account
-write keep their single attempt. Serein has no warning dialog of its own yet, so the official
+write keep their single attempt. Harmony has no warning dialog of its own yet, so the official
 client's stranger prompt has no local equivalent. Synthetic local-HTTP tests cover the first
 rejection, the confirmation body and the second outcome; normal-user acceptance remains
 live-unverified beyond the owner's report.
@@ -2480,7 +2480,7 @@ HTTPS URL. A URL is never fetched or forwarded raw; it is exchanged for a media-
 through `/applications/{id}/external-assets`, the same unofficial route Discord's client uses,
 and cached per connection so repeated identical updates cost nothing. Registered assets are
 refetched at most once a minute when a key misses, so artwork uploaded seconds after a game
-connects still resolves. This addresses [#237](https://github.com/ViceVerse-cz/Serein/issues/237),
+connects still resolves. This addresses [#237](https://github.com/sirchico/Harmony/issues/237),
 where a plugin published its cover art as a URL.
 
 A small image is a corner badge. Both the outgoing path and received presences now fall back
@@ -2496,7 +2496,7 @@ bounds when read back. Entries without executables are kept as titles only: a ma
 game whose name exactly matches one application, or whose process matches a detectable entry,
 publishes that application so both clients show its artwork. A title shared by several
 applications resolves to none. Discord itself detects some of these games by unknown means
-(unverified); Serein still cannot detect them from a process alone. Matching compares path suffixes longest-first, plus `.app` bundle
+(unverified); Harmony still cannot detect them from a process alone. Matching compares path suffixes longest-first, plus `.app` bundle
 components for macOS entries; an executable-name index keeps a full sweep at roughly 6 ms for
 900 processes instead of ~920 ms for a linear scan. Processes are enumerated read-only through
 `/proc` on Linux, `ps` on macOS and `tasklist` on Windows: executable paths only, never
@@ -2554,7 +2554,7 @@ Artwork uses the existing credential-free, redirect-free bounded image worker an
 account-isolated image cache, with the existing 1024px decode limit for media previews.
 Normal-account behavior and live artwork delivery remain unverified.
 
-Serein also polls the linked Spotify account at most every 15 seconds while visible (sooner
+Harmony also polls the linked Spotify account at most every 15 seconds while visible (sooner
 at track end, with a one-second minimum interval), independently
 of local game detection. It reads the connection's `show_activity` preference, obtains a
 session-only bearer through Discord's unofficial connection access-token endpoint, and reads
@@ -2569,7 +2569,7 @@ sender alongside games/custom status. The local profile previews Spotify when no
 Unlinking or disabling Spotify activity is detected on the next poll; service cooldowns apply.
 Track-end polls retain the previous activity while awaiting the next response, with a
 10–30 second request timeout instead of cancelling immediately at the old track deadline.
-The offline debug command is `cargo run --locked -p serein --features demo -- --demo --demo-check-spotify`.
+The offline debug command is `cargo run --locked -p harmony --features demo -- --demo --demo-check-spotify`.
 
 ### Outgoing message forwarding
 
@@ -2579,7 +2579,7 @@ dialog is loaded on demand and was not in the bundle chunks fetched on 2026-11-1
 destination limit is unverified. Forward creation uses the documented
 [`message_reference` type 1](https://github.com/discord/discord-api-docs/blob/main/developers/resources/message.mdx),
 including the source channel/message and guild when known. The service captures the snapshot;
-Serein does not download and re-upload source attachments. Basic supported message types are
+Harmony does not download and re-upload source attachments. Basic supported message types are
 eligible; ephemeral, poll and unsupported payloads are excluded. Forwarded context-menu command
 snapshots (type 23) use the existing bounded renderer too.
 
@@ -2662,7 +2662,7 @@ conservative. Expired guild mute timers no longer suppress alerts indefinitely.
 The new mute switch sets an untimed mute; it does not add a duration picker.
 
 The guild stream-preview part of issue #458 was already delivered in
-[PR #457](https://github.com/ViceVerse-cz/Serein/pull/457): hover a LIVE participant
+[PR #457](https://github.com/sirchico/Harmony/pull/457): hover a LIVE participant
 for a still preview and an explicit Watch Stream action. This change adds no
 stream transport or automatic call joining. Notification writes and previews
 remain unofficial normal-account behavior, verified with synthetic fixtures
@@ -2744,7 +2744,7 @@ separate high-CPU playback report remain unverified and are not fixed here.
 ## Optional REST API proxy plugin (preview)
 
 The API Proxy community plugin can select an HTTP/HTTPS CONNECT proxy
-for Serein's Discord REST requests, including native account validation, Gateway
+for Harmony's Discord REST requests, including native account validation, Gateway
 URL discovery and public application metadata. It is a connection-scoped plugin:
 its narrow grant allows configuration before sign-in and exposes no account data,
 Discord credentials, sockets or general network API to WebAssembly.
@@ -2777,7 +2777,7 @@ this warning for HTTP endpoints; HTTPS proxies encrypt the proxy connection.
 ## Native polls (September 30, 2026)
 
 Poll messages now retain bounded questions, up to ten answers, optional emoji, expiry,
-single/multiple choice and supplied results. Native cards use Serein surfaces and accent
+single/multiple choice and supplied results. Native cards use Harmony surfaces and accent
 colors with Discord-style answer rows, selection checkmarks, result fills and a vote footer.
 The composer `+` menu's Create a poll option opens a creation dialog (300-character question, 55-character
 answers, Unicode emoji and the usual 1h/4h/8h/1d/3d/1w durations). Readers can vote,
@@ -2832,7 +2832,7 @@ the active history; a REST-only reload during an outage completes as stale rathe
 than leaving Refresh disabled in Loading.
 
 The offline debug command is
-`cargo run --locked -p serein --features demo -- --demo --demo-check-resume-send`.
+`cargo run --locked -p harmony --features demo -- --demo --demo-check-resume-send`.
 It exercises synthetic composer/Refresh/Reconnect input, disconnected sending,
 terminal auth and access gates, uncertain-write preservation and coalesced recovery
 waits without opening a network connection or audio device. Workspace tests also
@@ -2875,7 +2875,7 @@ messages show it when retained wire flags include `SUPPRESS_NOTIFICATIONS`, incl
 cached history. Notification targeting remains session-only. These indicators
 describe intent/metadata; they do not establish notification delivery at a recipient.
 
-`@time` is a local Serein composer shortcut, including in message edits. Selecting it
+`@time` is a local Harmony composer shortcut, including in message edits. Selecting it
 opens a bounded native dialog and does not send or modify the draft. Its date, time
 and explicit UTC offset initially represent the current local clock. The offset is
 editable, including for a different time zone or daylight saving period. Insert replaces
@@ -2949,7 +2949,7 @@ reveal, emoji details and search highlights retain their explicit native actions
 unavailable custom artwork shows its bounded `:name:` label with original wire
 selection/copy, and offscreen runs do not request the image;
 copy, drafts, edits and stored service content keep logical text. No protocol
-capability or service endpoint changes. Serein's epaint patch (`vendor/egui`) exposes only
+capability or service endpoint changes. Harmony's epaint patch (`vendor/egui`) exposes only
 opt-in direction and cluster metadata; ordinary native labels keep their default
 layout/selection behavior. macOS Control-click keeps logical RTL selection, and
 mapped context-menu Copy resolves current visible source before emitting text.
@@ -2982,7 +2982,7 @@ GIF embeds and external GIFs with an admitted Discord media proxy. Shared HTTPS
 links may come from any host; this does not authorize fetching arbitrary origins.
 Previews still use the existing provider/Discord media admission and bounded
 pipeline. The original share URL, including attachment signatures, is retained.
-The offline debug check is `cargo run --locked -p serein --features demo --example gif_favorites`.
+The offline debug check is `cargo run --locked -p harmony --features demo --example gif_favorites`.
 
 ## Private profiles - October 15, 2026
 
@@ -2994,14 +2994,14 @@ reads as "private to this viewer"; this field is unofficial, taken from the publ
 bundle, and not documented. When it is true, the card shows a "Private Profile" strip and
 the official notice in place of the withheld details, and omits Member Since and the note,
 matching the official client. Roles, mutuals and the message field stay. The service
-withholds the hidden data itself; Serein never infers privacy from missing fields. No live
+withholds the hidden data itself; Harmony never infers privacy from missing fields. No live
 private-profile response has been used as validation.
 
 ## Member list on a return visit — October 25, 2026
 
 On large servers Discord remembers which member-list rows a client asked for, even after the
-pane moves to another server. On a return visit Serein asked for the same rows again; Discord
-saw no change and never re-sent the list, so it stayed on "Loading people…". Serein now first
+pane moves to another server. On a return visit Harmony asked for the same rows again; Discord
+saw no change and never re-sent the list, so it stayed on "Loading people…". Harmony now first
 asks for a different row window, then the real one, which Discord treats as new and answers.
 Clearing the rows with an empty list is not an option: Discord disconnects with code 4002.
 
@@ -3042,12 +3042,12 @@ offline embeds preview, not a live payload, so that link's exact wire shape stay
 ## Opening an unloaded thread — October 26, 2026
 
 The owner reported a private thread that opens in the official desktop and mobile clients but
-not in Serein: its link did nothing, the thread was missing from the sidebar, and its starter
+not in Harmony: its link did nothing, the thread was missing from the sidebar, and its starter
 message had no thread card. A private thread only reaches a session's navigation when the
 service lists it, which the READY/thread-sync scope the loader implements does not do for a
 thread the account may view through MANAGE_THREADS without being a member of it — inferred
 from that owner report, not an established rule for every normal-user payload. Official
-clients read such a thread on demand; Serein only knew threads the service had already listed
+clients read such a thread on demand; Harmony only knew threads the service had already listed
 or an already open archive page carried.
 
 A Discord chat link now resolves an unloaded destination with one bounded `GET
@@ -3095,7 +3095,7 @@ public asset host, recorded with its source URL and SHA-256 in the sound assets 
 The card under a message that started a thread now follows the official client's layout: the
 thread's name and message count, then its latest author, the first line of that reply and its
 relative time, with the whole card as the one open affordance. It is a side-by-side comparison
-of the official client and Serein that the owner supplied, not a wire observation.
+of the official client and Harmony that the owner supplied, not a wire observation.
 
 The gateway's channel list carries a thread's name and count but no message body, so the last
 line needs a read. A visible card whose latest message this session does not know asks for one
@@ -3138,10 +3138,10 @@ key cannot be read. As on the service, a repeated key ranks by its last value. A
 save is dropped rather than retried, and pending uses are lost on exit or sign-out. At most 64
 distinct emoji and ten use times each wait in memory.
 
-Unverified: the Unicode key format (Serein writes the primary Discord name, such as `joy`, and
+Unverified: the Unicode key format (Harmony writes the primary Discord name, such as `joy`, and
 reads names, aliases or the emoji itself; a numeric key is a custom emoji only when one is
 loaded, so `100` still resolves to 💯), the score weights (an approximation of the official
-client by recency of the newest uses), and that other clients rank Serein's saves as their own.
+client by recency of the newest uses), and that other clients rank Harmony's saves as their own.
 Picks count when chosen in a picker or the quick reaction bar, not when a message is sent.
 Synthetic tests cover parsing, untouched-entry preservation, batching and the rows' merge; no
 live account was used.
@@ -3164,7 +3164,7 @@ types in invite responses remain unverified against live Discord.
 
 The [unofficial read-state automation reference](https://docs.discord.food/topics/read-state#channel-read-state-automations)
 excludes blocked/ignored authors and applies private mute and ping rules at message creation.
-Serein snapshots proven contribution evidence from committed relationship/mute state and admitted
+Harmony snapshots proven contribution evidence from committed relationship/mute state and admitted
 guild preferences/member roles when observing a message. Unknown relationship lists, incomplete
 overrides, and non-ping guild contributions are not safe to subtract from an opaque service count.
 In particular, the current settings model does not represent `MENTION_ON_ALL_MESSAGES`; it is
@@ -3184,19 +3184,19 @@ desktop 0.0.408, Electron 42.7.1 and Chromium 148.0.7778.280. These are its
 reference constants, not independently verified current Discord versions or
 proof that this identity prevents account restrictions.
 
-Serein retains that paired Electron/Chromium 148 transport baseline and client
+Harmony retains that paired Electron/Chromium 148 transport baseline and client
 hints, but refreshes `client_version` and the user agent host version per platform
 from the official stable update manifests: Linux 1.0.169, Windows 1.0.9268 and
 macOS 0.0.422. The public web build is now 670026. Provenance and limitations
 are recorded below.
 The host OS and locale remain platform-derived. Embedded login and verification
 webviews keep their separate WebKit/WebView2 identity; changing a user agent
-does not turn them into Chromium or change Serein into an Electron application.
-Serein still uses its existing JSON Gateway encoding.
+does not turn them into Chromium or change Harmony into an Electron application.
+Harmony still uses its existing JSON Gateway encoding.
 
 SakuraCord additionally generates launch identifiers and a patterned launch
 signature, persists a server-issued installation ID, and sends analytics
-heartbeat metadata including Gateway opcode 41. Serein does not adopt those
+heartbeat metadata including Gateway opcode 41. Harmony does not adopt those
 analytics or persistence mechanisms, native build claims or `has_client_mods:false`.
 Its CAPTCHA handler carries the challenge fields and permits one user-solved
 replay, consistent with the bounded replay already implemented here. No account
@@ -3221,7 +3221,7 @@ does not establish the current Electron application's complete behavior.
   cooldown and proxy configuration waits. Already dispatched requests may finish.
   40001 stops the session as expired; 40012 remains a linked-resource refusal; a guild ban (40007) remains local.
 - Gateway 4001–4005 and 4008 stop recovery. Discord permits reconnection for
-  several of these; Serein deliberately requires explicit reconnection so a bad
+  several of these; Harmony deliberately requires explicit reconnection so a bad
   producer cannot repeatedly send invalid or rate-limited payloads. Normal
   network recovery and 4007/4009 fresh identification remain supported.
 - Voice 4021 (rate limit) and 4022 (call terminated) join 4014 in terminal call

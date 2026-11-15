@@ -458,7 +458,7 @@ mod tests {
 		pub struct CycleClock;
 		#[glib::object_subclass]
 		impl ObjectSubclass for CycleClock {
-			const NAME: &'static str = "SereinTestCycleClock";
+			const NAME: &'static str = "HarmonyTestCycleClock";
 			type Type = super::CycleClock;
 			type ParentType = gst::SystemClock;
 		}
@@ -478,7 +478,7 @@ mod tests {
 		pub struct ClockSource;
 		#[glib::object_subclass]
 		impl ObjectSubclass for ClockSource {
-			const NAME: &'static str = "SereinTestClockSource";
+			const NAME: &'static str = "HarmonyTestClockSource";
 			type Type = super::ClockSource;
 			type ParentType = gst::Bin;
 		}

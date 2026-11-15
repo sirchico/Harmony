@@ -6,7 +6,7 @@ and lockfile. No account, Discord connection, microphone or live media was used.
 
 ## Native synthetic screenshots
 
-The screenshots are actual Serein X11 windows in a dedicated Xvfb display, using
+The screenshots are actual Harmony X11 windows in a dedicated Xvfb display, using
 Mesa llvmpipe (LLVM 20.1.2) through Vulkan, at scale 1.0. They are debug builds with
 `--features demo`, launched with `--demo --demo-settings=general`. The source for
 the baseline is an untouched separate worktree. Workspace artifacts were cleared
@@ -31,8 +31,8 @@ layout were inspected. Windows/macOS surfaces and the reporter's older GPU remai
 To reproduce, build each revision with:
 
 ```sh
-cargo build --locked -p serein --features demo --bin serein
-DISPLAY=:99 target/debug/serein --demo --demo-settings=general
+cargo build --locked -p harmony --features demo --bin harmony
+DISPLAY=:99 target/debug/harmony --demo --demo-settings=general
 ```
 
 Use a dedicated Xvfb display with a 1360 × 1040 screen, resize the app window to the
@@ -43,7 +43,7 @@ For the override state, launch the candidate with `WGPU_BACKEND=gl` as well.
 
 Standard voice-enabled release packages were built separately with `cargo xtask package`
 and the repository's unchanged fat-LTO release profile. Executable bytes come from
-`dist/serein`; installed bytes sum regular files extracted from the DEB; compressed
+`dist/harmony`; installed bytes sum regular files extracted from the DEB; compressed
 bytes are the DEB size. Both packages undergo the existing package smoke validation.
 
 The supplementary native process samples use the debug demo builds above, not the

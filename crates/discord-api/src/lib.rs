@@ -346,7 +346,7 @@ impl DiscordApi {
 	}
 	/// Asks Discord once for this device's installation ID and keeps it, before the Gateway
 	/// identifies. Unofficial: SakuraCord's desktop sign-in reads it from an unauthenticated
-	/// `GET /apex/experiments?surface=2`. Best effort and bounded; Serein works without it.
+	/// `GET /apex/experiments?surface=2`. Best effort and bounded; Harmony works without it.
 	pub async fn ensure_installation(&self) {
 		#[derive(serde::Deserialize)]
 		struct Apex {

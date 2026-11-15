@@ -12,7 +12,7 @@ mod wayland;
 mod x11;
 
 /// Whether Windows visual styles are on. With them off (the classic look) native windows are
-/// square, so Serein's window should not ask DWM for rounded corners either.
+/// square, so Harmony's window should not ask DWM for rounded corners either.
 #[cfg(target_os = "windows")]
 pub fn visual_styles() -> bool {
 	dwm::visual_styles()

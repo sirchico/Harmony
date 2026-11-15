@@ -461,7 +461,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "serein-fuzz"
+name = "harmony-fuzz"
 version = "0.0.0"
 dependencies = [
  "client-core",

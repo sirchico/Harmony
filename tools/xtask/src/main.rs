@@ -261,7 +261,7 @@ fn package_windows(root: &std::path::Path) -> Result<(), String> {
 		println!(
 			"Windows installer created: {}",
 			installer_dir
-				.join(format!("serein-{version}-setup.exe"))
+				.join(format!("harmony-{version}-setup.exe"))
 				.display()
 		);
 	} else {
@@ -293,19 +293,19 @@ fn package() -> Result<(), String> {
 		"--release",
 		"--locked",
 		"-p",
-		"serein",
+		"harmony",
 		"--no-default-features",
 	];
 	run(&arguments)?;
 	let root = PathBuf::from("dist");
 	std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
 	let exe = if cfg!(windows) {
-		"serein.exe"
+		"harmony.exe"
 	} else {
-		"serein"
+		"harmony"
 	};
 	let destination = if cfg!(target_os = "macos") {
-		let app = root.join("Serein.app/Contents");
+		let app = root.join("Harmony.app/Contents");
 		std::fs::create_dir_all(app.join("MacOS")).map_err(|e| e.to_string())?;
 		std::fs::copy("packaging/macos/Info.plist", app.join("Info.plist"))
 			.map_err(|e| e.to_string())?;
@@ -347,7 +347,7 @@ fn package() -> Result<(), String> {
 		std::fs::copy(file, root.join(file)).map_err(|e| e.to_string())?;
 	}
 	let resources = if cfg!(target_os = "macos") {
-		root.join("Serein.app/Contents/Resources")
+		root.join("Harmony.app/Contents/Resources")
 	} else {
 		root.clone()
 	};
@@ -449,13 +449,13 @@ fn package() -> Result<(), String> {
 	if cfg!(target_os = "macos") {
 		// Seal only after every bundle resource has been staged. Ad-hoc signing
 		// needs no identity and makes no Developer ID or notarization claim.
-		let bundle = root.join("Serein.app");
+		let bundle = root.join("Harmony.app");
 		let bundle = bundle.to_str().ok_or("Invalid bundle path")?;
 		// An ad-hoc signature's identity is its own hash, so it changes with every build and
 		// macOS keychain grants ("Always Allow") never survive one. A locally configured
 		// Developer ID identity keeps that trust stable across rebuilds; releases are signed
 		// and notarized separately by packaging/macos/sign-release.sh, which overrides this.
-		let identity = std::env::var("SEREIN_SIGNING_IDENTITY").unwrap_or_default();
+		let identity = std::env::var("HARMONY_SIGNING_IDENTITY").unwrap_or_default();
 		let identity = if identity.trim().is_empty() {
 			"-".to_owned()
 		} else {
@@ -529,7 +529,15 @@ fn main() -> ExitCode {
 					])
 				})
 				.and_then(|_| run(&["test", "--workspace", "--locked"]))
-				.and_then(|_| run(&["check", "-p", "serein", "--no-default-features", "--locked"]))
+				.and_then(|_| {
+					run(&[
+						"check",
+						"-p",
+						"harmony",
+						"--no-default-features",
+						"--locked",
+					])
+				})
 				.and_then(|_| policy()),
 			"policy" => policy(),
 			"licenses" => licenses(),

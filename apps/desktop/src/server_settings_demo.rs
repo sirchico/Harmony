@@ -96,7 +96,7 @@ pub fn execute_admin(
 				items: vec![Emoji {
 					emoji: model::CustomEmoji {
 						id: Id(9001),
-						name: "serein".into(),
+						name: "harmony".into(),
 						animated: false,
 						available: true,
 						managed: false,
@@ -792,7 +792,7 @@ fn execute_integrations(
 					user: state.user.clone(),
 					source_guild: (index == 2).then(|| Source {
 						id: Id(9990),
-						name: Some("Serein Community".into()),
+						name: Some("Harmony Community".into()),
 					}),
 					source_channel: (index == 2).then(|| Source {
 						id: Id(9991),
@@ -920,7 +920,7 @@ fn execute_audit_log(
 			let action_type = [30, 61, 60, 1, 40, 40, 50, 31, 72][index % 9];
 			let (key, name) = match action_type {
 				30 | 31 => ("name", "Community".to_owned()),
-				60 | 61 => ("name", "serein".to_owned()),
+				60 | 61 => ("name", "harmony".to_owned()),
 				1 => ("name", "Synthetic Workspace".to_owned()),
 				40 => ("code", format!("demoInvite{index}")),
 				50 => ("name", "Build updates".to_owned()),

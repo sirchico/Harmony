@@ -1,12 +1,12 @@
 #!/bin/sh
-# Serein Package Repository Setup Script
+# Harmony Package Repository Setup Script
 # Detects distribution (Ubuntu/Debian, Fedora, openSUSE, Arch Linux),
 # imports and verifies the GPG signing key, and configures the package repository.
 set -eu
 
-BASE_URL="${SEREIN_REPO_BASE_URL:-https://viceverse-cz.github.io/Serein}"
-CHANNEL="${SEREIN_CHANNEL:-nightly}"
-EXPECTED_FINGERPRINT="${SEREIN_FINGERPRINT:-CA19DA939E9BCAB500751CE480FE95CAD86141A5}"
+BASE_URL="${HARMONY_REPO_BASE_URL:-https://sirchico.github.io/Harmony}"
+CHANNEL="${HARMONY_CHANNEL:-nightly}"
+EXPECTED_FINGERPRINT="${HARMONY_FINGERPRINT:-CA19DA939E9BCAB500751CE480FE95CAD86141A5}"
 
 if [ "$(id -u)" -ne 0 ]; then
     SUDO="sudo"
@@ -120,7 +120,7 @@ case "$ARCH" in
         DEB_ARCH=arm64
         ;;
     *)
-        error "Architecture $ARCH is not currently supported by Serein package repositories."
+        error "Architecture $ARCH is not currently supported by Harmony package repositories."
         ;;
 esac
 
@@ -135,10 +135,10 @@ esac
 REPO_URL="$BASE_URL/$CHANNEL/$REPO_PATH"
 TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
-KEY_URL="$REPO_URL/serein.asc"
-KEY_FILE="$TEMP_DIR/serein.asc"
+KEY_URL="$REPO_URL/harmony.asc"
+KEY_FILE="$TEMP_DIR/harmony.asc"
 
-log "Configuring Serein ${BOLD}${CHANNEL}${NC} repository for ${BOLD}${PRETTY_NAME:-$ID}${NC} (${ARCH})..."
+log "Configuring Harmony ${BOLD}${CHANNEL}${NC} repository for ${BOLD}${PRETTY_NAME:-$ID}${NC} (${ARCH})..."
 log "Fetching official signing key..."
 download "$KEY_URL" "$KEY_FILE" || error "Signing key unavailable for this distribution; its signed repository must be published before setup."
 verify_key "$KEY_FILE"
@@ -148,38 +148,38 @@ INSTALL_CMD=""
 case "$DISTRO_ID" in
     ubuntu)
         log "Installing APT keyring and source list..."
-        $SUDO install -Dm644 "$KEY_FILE" /etc/apt/keyrings/serein.asc
+        $SUDO install -Dm644 "$KEY_FILE" /etc/apt/keyrings/harmony.asc
 
-        printf 'deb [arch=%s signed-by=/etc/apt/keyrings/serein.asc] %s ./\n' "$DEB_ARCH" "$REPO_URL" | \
-            $SUDO tee /etc/apt/sources.list.d/serein.list >/dev/null
+        printf 'deb [arch=%s signed-by=/etc/apt/keyrings/harmony.asc] %s ./\n' "$DEB_ARCH" "$REPO_URL" | \
+            $SUDO tee /etc/apt/sources.list.d/harmony.list >/dev/null
 
         log "Updating APT package lists..."
-        $SUDO apt-get update -o Dir::Etc::sourcelist="sources.list.d/serein.list" -o Dir::Etc::sourceparts="-" >/dev/null 2>&1 || $SUDO apt-get update >/dev/null 2>&1
+        $SUDO apt-get update -o Dir::Etc::sourcelist="sources.list.d/harmony.list" -o Dir::Etc::sourceparts="-" >/dev/null 2>&1 || $SUDO apt-get update >/dev/null 2>&1
 
-        INSTALL_CMD="$SUDO apt install serein"
+        INSTALL_CMD="$SUDO apt install harmony"
         ;;
 
     fedora)
         log "Importing RPM key and configuring DNF repository..."
 
-        REPO_FILE="$TEMP_DIR/serein.repo"
-        download "$REPO_URL/serein.repo" "$REPO_FILE"
+        REPO_FILE="$TEMP_DIR/harmony.repo"
+        download "$REPO_URL/harmony.repo" "$REPO_FILE"
         $SUDO rpm --import "$KEY_FILE"
-        $SUDO install -m644 "$REPO_FILE" /etc/yum.repos.d/serein.repo
+        $SUDO install -m644 "$REPO_FILE" /etc/yum.repos.d/harmony.repo
 
-        INSTALL_CMD="$SUDO dnf install serein"
+        INSTALL_CMD="$SUDO dnf install harmony"
         ;;
 
     opensuse-tumbleweed)
         log "Importing RPM key and configuring Zypper repository..."
         $SUDO rpm --import "$KEY_FILE"
 
-        REPO_FILE="$TEMP_DIR/serein.repo"
-        download "$REPO_URL/serein.repo" "$REPO_FILE"
-        $SUDO install -m644 "$REPO_FILE" /etc/zypp/repos.d/serein.repo
-        $SUDO zypper --non-interactive refresh serein-$CHANNEL >/dev/null 2>&1 || true
+        REPO_FILE="$TEMP_DIR/harmony.repo"
+        download "$REPO_URL/harmony.repo" "$REPO_FILE"
+        $SUDO install -m644 "$REPO_FILE" /etc/zypp/repos.d/harmony.repo
+        $SUDO zypper --non-interactive refresh harmony-$CHANNEL >/dev/null 2>&1 || true
 
-        INSTALL_CMD="$SUDO zypper install serein"
+        INSTALL_CMD="$SUDO zypper install harmony"
         ;;
 
     arch)
@@ -189,14 +189,14 @@ case "$DISTRO_ID" in
 
         PACMAN_CONF="/etc/pacman.conf"
 
-        if grep -q "\[serein\]" "$PACMAN_CONF"; then
-            log "Repository [serein] already present in $PACMAN_CONF."
+        if grep -q "\[harmony\]" "$PACMAN_CONF"; then
+            log "Repository [harmony] already present in $PACMAN_CONF."
         else
-            printf '\n[serein]\nSigLevel = Required\nServer = %s\n' "$REPO_URL" | \
+            printf '\n[harmony]\nSigLevel = Required\nServer = %s\n' "$REPO_URL" | \
                 $SUDO tee -a "$PACMAN_CONF" >/dev/null
         fi
 
-        INSTALL_CMD="$SUDO pacman -Syu serein"
+        INSTALL_CMD="$SUDO pacman -Syu harmony"
         ;;
 
     *)
@@ -220,7 +220,7 @@ else
 fi
 
 if [ "$TTY_INPUT" -eq 1 ]; then
-    printf "%b?%b Would you like to install %bSerein%b now? [Y/n]: " "${PURPLE}" "${NC}" "${BOLD}" "${NC}"
+    printf "%b?%b Would you like to install %bHarmony%b now? [Y/n]: " "${PURPLE}" "${NC}" "${BOLD}" "${NC}"
     if [ -t 0 ]; then
         read -r answer || answer=n
     else
@@ -237,7 +237,7 @@ if [ "$TTY_INPUT" -eq 1 ]; then
 fi
 
 if [ "$DO_INSTALL" = "true" ]; then
-    log "Installing Serein (${INSTALL_CMD})..."
+    log "Installing Harmony (${INSTALL_CMD})..."
     # Package managers also prompt for keys/transactions when the script is piped.
     if [ -t 0 ]; then
         $INSTALL_CMD
@@ -245,9 +245,9 @@ if [ "$DO_INSTALL" = "true" ]; then
         $INSTALL_CMD </dev/tty
     fi
     printf '\n'
-    success "${BOLD}Serein installed successfully!${NC}"
-    log "Launch it from your desktop application launcher or run ${BOLD}serein${NC}."
+    success "${BOLD}Harmony installed successfully!${NC}"
+    log "Launch it from your desktop application launcher or run ${BOLD}harmony${NC}."
 else
-    log "To install Serein later, run:"
+    log "To install Harmony later, run:"
     printf '\n    %b%s%b\n\n' "${CYAN}" "$INSTALL_CMD" "${NC}"
 fi

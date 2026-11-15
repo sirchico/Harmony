@@ -18,9 +18,9 @@ use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
 // A nonzero scalar, not a pointer: WS_SYSMENU plus a presence bit, even in fullscreen.
-const REQUESTED_MENU: PCWSTR = w!("Serein.CustomCaption.RequestedMenu");
+const REQUESTED_MENU: PCWSTR = w!("Harmony.CustomCaption.RequestedMenu");
 // Modal move loops dispatch other windows' messages on this same thread.
-const TEMPORARY_DRAG: PCWSTR = w!("Serein.CustomCaption.TemporaryDragDepth");
+const TEMPORARY_DRAG: PCWSTR = w!("Harmony.CustomCaption.TemporaryDragDepth");
 
 pub(super) fn visual_styles() -> bool {
 	// SAFETY: IsAppThemed takes no arguments and only reads the process's theme state.

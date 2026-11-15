@@ -3,9 +3,9 @@
   "id": "app-toolbox",
   "name": "App Toolbox",
   "version": "1.0.0",
-  "author": "Serein contributors",
+  "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
-  "source": "https://github.com/ViceVerse-cz/Serein/tree/main/examples/extensions/app-toolbox",
+  "source": "https://github.com/sirchico/Harmony/tree/main/examples/extensions/app-toolbox",
   "kind": "plugin",
   "capabilities": [
     "app_context", "channel_directory", "timeline", "members", "presence",

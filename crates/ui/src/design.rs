@@ -1,4 +1,4 @@
-//! Serein theme tokens, presets and typography shared by every native view.
+//! Harmony theme tokens, presets and typography shared by every native view.
 //!
 //! The palette is resolved from egui's light/dark mode plus a process-wide [`Variant`]
 //! (Discord's Dark/Light, Onyx and Ash surface ladders, or a gradient recolour). Gradient
@@ -104,7 +104,7 @@ impl Variant {
 	];
 	pub fn label(self) -> &'static str {
 		match self {
-			Variant::Standard => "Serein",
+			Variant::Standard => "Harmony",
 			Variant::Eclipse => "Eclipse",
 			Variant::Slate => "Slate",
 			Variant::Nightfall => "Nightfall",
@@ -1054,7 +1054,7 @@ pub fn paint_backdrop(ctx: &egui::Context) {
 
 pub const SEMIBOLD: &str = "semibold";
 pub const MEDIUM: &str = "medium";
-const WEIGHTS_KEY: &str = "serein-font-weights";
+const WEIGHTS_KEY: &str = "harmony-font-weights";
 // Called by `fonts::install` for one context; until then the weight families resolve to
 // the default face so headless contexts (tests) never reference an unknown family.
 thread_local! {
@@ -2201,7 +2201,7 @@ pub fn build_badge(ui: &mut egui::Ui, build: Build) -> Option<egui::Response> {
 
 /// Discord-style settings row with a pill switch on the right. Clicking anywhere on the row
 /// toggles `enabled`; the accessible label is `label`.
-/// Blur control. Every compositor Serein targets (macOS, DWM acrylic, KDE and Wayland blur)
+/// Blur control. Every compositor Harmony targets (macOS, DWM acrylic, KDE and Wayland blur)
 /// only turns its own fixed blur on or off, so a strength slider would promise control that
 /// does not exist. The stored percentage stays for themes: zero is off, anything else on.
 pub fn blur_control(ui: &mut egui::Ui, label: &str, hint: &str, blur: &mut u8) -> egui::Response {

@@ -216,20 +216,20 @@ opt-level = 3
 opt-level = 3
 
 [patch.crates-io]
-# Align Direct3D interfaces with wgpu-hal; see vendor/gpu-allocator/SEREIN-PATCH.md.
+# Align Direct3D interfaces with wgpu-hal; see vendor/gpu-allocator/HARMONY-PATCH.md.
 gpu-allocator = { path = "vendor/gpu-allocator" }
 # Replace an affected SHAKE dependency while retaining the compatible HPKE API.
 hpke-rs = { path = "vendor/hpke-rs" }
-# Native DAVE does not need OpenMLS browser timers; see vendor/davey/SEREIN-PATCH.md.
+# Native DAVE does not need OpenMLS browser timers; see vendor/davey/HARMONY-PATCH.md.
 davey = { path = "vendor/davey" }
 
 # Linux login uses GTK4/WebKit6; exclude obsolete GTK3 declarations from the lockfile.
 wry = { path = "vendor/wry" }
-# Wayland image paste reads `image/png` through the focused surface; see vendor/smithay-clipboard/SEREIN-PATCH.md.
+# Wayland image paste reads `image/png` through the focused surface; see vendor/smithay-clipboard/HARMONY-PATCH.md.
 smithay-clipboard = { path = "vendor/smithay-clipboard" }
 
 [patch."https://github.com/emilk/egui"]
-# Serein's egui fork: upstream PRs and local patches on the pinned rev; see vendor/egui/SEREIN-PATCH.md.
+# Harmony's egui fork: upstream PRs and local patches on the pinned rev; see vendor/egui/HARMONY-PATCH.md.
 eframe = { path = "vendor/egui/eframe" }
 egui = { path = "vendor/egui/egui" }
 egui-wgpu = { path = "vendor/egui/egui-wgpu" }

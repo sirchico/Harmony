@@ -40,11 +40,11 @@ jobs:
           cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Check production build without development fixtures
-        run: cargo check --locked -p serein --bin serein --no-default-features
+        run: cargo check --locked -p harmony --bin harmony --no-default-features
       - name: Check offline demo targets
-        run: cargo check --locked -p serein -p ui --all-targets --features serein/demo
+        run: cargo check --locked -p harmony -p ui --all-targets --features harmony/demo
       - name: Test offline typing with demo support
-        run: cargo test --locked -p serein -p ui -p client-core -p discord-api --features serein/demo --lib --bins typing
+        run: cargo test --locked -p harmony -p ui -p client-core -p discord-api --features harmony/demo --lib --bins typing
       - run: cargo xtask check
       - parallel:
           - name: Flatpak encoding after GTK initialization (synthetic)
@@ -66,7 +66,7 @@ jobs:
       - if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: serein-${{ runner.os }}-${{ runner.arch }}-unsigned
+          name: harmony-${{ runner.os }}-${{ runner.arch }}-unsigned
           path: dist/
   extension-sdk:
     runs-on: ubuntu-latest

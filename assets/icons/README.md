@@ -30,11 +30,11 @@ grid), marks threads; it is rasterized with the Phosphor set and carries no upst
 (MIT, same pinned 2.1.1 package, fetched November 10, 2026) with a 16-unit round-capped X masked
 out of the screen where `monitor-arrow-up` draws its arrow, so it pairs with the share glyph.
 
-- `atlas.png`: 512×1024 RGBA, 139,260 bytes as written by `resvg` (not yet passed through
+- `atlas.png`: 512×1024 RGBA, 139,440 bytes as written by `resvg` (not yet passed through
   `oxipng`; the last regeneration ran without it). SHA-256
-  `2e55b5806ec65425eacae776e7dc494bc7f5e41ab670dc807fde50825c2760dd`.
+  `e802c0eb66ba6f6c2e2f26ca74216cb8a4fea3d257c3983fe8c5bdaadfd29407`.
 - `index.tsv`: icon name, tab, zero-based cell; SHA-256
-  `e4031b3a7d37718639a7d563149e3f68fd4da508087d234dbca14c4b0002f7c8`.
+  `93d6efdc6343e59fec7752dfe72cbdb80b2ba9df27c884fd3c99528d30fb7178`.
 
 Every upstream SVG's SHA-256 is pinned in `tools/generate-icons.py`, which refuses to build
 from mismatching files. Regenerate from the repository root:
@@ -66,9 +66,9 @@ The menu-row glyphs are unmodified Phosphor `at-bold.svg`, `bell-slash-fill.svg`
 `eye-fill.svg`, `gavel-fill.svg`, `clock-fill.svg`, `speaker-slash-fill.svg` and
 `palette-fill.svg`, fetched from the same pinned 2.1.1 package on November 14, 2026.
 
-The `serein-mark` cell is our own artwork, not an upstream icon: it is the solid silhouette of
-the Serein chat-wave from `assets/brand/serein-mark.svg`, trimmed to its bounding box so it
-matches Phosphor's glyph weight in the cell. It replaced the Discord brand mark that previously
+The `harmony-mark` cell is our own artwork, not an upstream icon: it is the solid silhouette of
+Ferris from `assets/brand/harmony-mark.svg`, drawn on a square 256-unit grid so it sits in
+the cell like a Phosphor glyph. It replaced the Discord brand mark that previously
 occupied cell 58; no third-party application logo is bundled any more. `tools/generate-icons.py`
 pins its SHA-256 like every upstream source and rasterizes it from the repository rather than a
 package mirror.
