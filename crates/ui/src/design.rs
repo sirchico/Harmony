@@ -1200,13 +1200,12 @@ pub fn apply(ctx: &egui::Context) {
 		style.spacing.interact_size.y = f32::from(metrics.control_height.unwrap_or(32));
 		style.spacing.menu_margin = egui::Margin::same(8);
 		style.visuals.panel_fill = p.chat;
-		// Hinting snaps stems to the pixel grid, so body text stays crisp at 100% scaling
-		// instead of smearing across two pixels. Dark mode uses egui's sharper coverage curve;
-		// gamma 0.5 made edge pixels nearly solid and the glyphs look jagged.
+		// Fonts use light (vertical-only) hinting, see `fonts::smooth`. Light text on a dark
+		// background gets a mild gamma: 0.5 filled edge pixels in and looked jagged, 1.0 is faint.
 		style.visuals.text_options.font_hinting = true;
 		style.visuals.text_options.subpixel_binning = true;
 		style.visuals.text_options.color_transfer_function = if theme == egui::Theme::Dark {
-			FontColorTransferFunction::TwoCoverageMinusCoverageSq
+			FontColorTransferFunction::Gamma(0.8)
 		} else {
 			FontColorTransferFunction::Off
 		};

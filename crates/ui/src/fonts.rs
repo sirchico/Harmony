@@ -52,8 +52,7 @@ fn face(mut bytes: Vec<u8>) -> Result<(Face, bool), &'static str> {
 	let upright = attributes.style == Style::Normal;
 	bytes.shrink_to_fit();
 	let mut data = FontData::from_owned(bytes);
-	data.tweak.hinting = None;
-	data.tweak.subpixel_binning = Some(true);
+	smooth(&mut data);
 	Ok((Face { weight, data }, upright))
 }
 
@@ -826,7 +825,8 @@ fn update_cjk(ctx: &Context, shared: &Mutex<FontDefinitions>, index: u32) {
 	}
 }
 
-fn add_fallback(definitions: &mut FontDefinitions, name: &str, data: FontData) {
+fn add_fallback(definitions: &mut FontDefinitions, name: &str, mut data: FontData) {
+	smooth(&mut data);
 	definitions.font_data.insert(name.into(), data.into());
 	for family in [
 		FontFamily::Proportional,
@@ -849,9 +849,22 @@ fn add_fallback(definitions: &mut FontDefinitions, name: &str, data: FontData) {
 
 fn latin(data: &'static [u8]) -> FontData {
 	let mut font = FontData::from_static(data);
+	smooth(&mut font);
+	font
+}
+
+/// Light hinting: glyphs snap to the pixel grid vertically only, so baselines and x-heights
+/// stay crisp while horizontal edges keep the outline's own anti-aliasing. Full hinting also
+/// snapped stems sideways into hard one-pixel columns, which read as jagged text.
+pub(crate) fn smooth(font: &mut FontData) {
 	font.tweak.hinting = None;
 	font.tweak.subpixel_binning = Some(true);
-	font
+	font.tweak.hinting_target =
+		egui::epaint::text::HintingTarget::Smooth(egui::epaint::text::SmoothHinting {
+			light: true,
+			symmetric_rendering: true,
+			preserve_linear_metrics: true,
+		});
 }
 
 #[cfg(test)]
