@@ -1286,4 +1286,16 @@ mod tests {
 		let only_v1 = crate::merge_catalogs(Some(v1), None).unwrap();
 		assert_eq!(only_v1.entries[0].manifest.api_version, 1);
 	}
+
+	#[test]
+	fn published_v2_catalog_parses_with_host_rules() {
+		let catalog =
+			crate::parse_catalog_v2(include_bytes!("../../../extensions/catalog-v2.json")).unwrap();
+		assert!(
+			catalog
+				.entries
+				.iter()
+				.all(|entry| entry.manifest.api_version == API_V2)
+		);
+	}
 }

@@ -1,0 +1,228 @@
+{
+  "api_version": 2,
+  "entries": [
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "base-decoder",
+        "name": "Base64 Decoder",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/base-decoder",
+        "kind": "plugin",
+        "capabilities": [
+          "selected_message",
+          "composer",
+          "clipboard_write"
+        ],
+        "actions": [
+          {
+            "id": "decode",
+            "label": "Decode Base64",
+            "surface": "message"
+          },
+          {
+            "id": "encode",
+            "label": "Encode draft as Base64",
+            "surface": "composer"
+          }
+        ],
+        "requires": {
+          "features": {
+            "settings": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "min-length",
+            "label": "Shortest text to decode",
+            "description": "Runs of Base64 characters shorter than this are ignored.",
+            "type": "number",
+            "min": 4,
+            "max": 256,
+            "default": 8
+          },
+          {
+            "id": "url-safe",
+            "label": "Also decode URL-safe Base64",
+            "description": "Accept - and _ in place of + and /.",
+            "type": "toggle",
+            "default": true
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/base-decoder.harmony-extension",
+      "sha256": "cd1322ee23f3dc3feedd278509643e9f4c42f156a1719f25f152ae9fced49e79",
+      "download_bytes": 1645266,
+      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "copy-file-contents",
+        "name": "Copy File Contents",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/copy-file-contents",
+        "kind": "plugin",
+        "capabilities": [
+          "selected_message",
+          "media_links",
+          "attachment_contents",
+          "clipboard_write"
+        ],
+        "actions": [
+          {
+            "id": "copy",
+            "label": "Copy file contents",
+            "surface": "message"
+          }
+        ],
+        "requires": {
+          "features": {
+            "settings": "^1.0",
+            "host_requests": "^1.0",
+            "media.links": "^1.0",
+            "attachments.read": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "max-kib",
+            "label": "Largest amount to read (KiB)",
+            "description": "Longer files are read and copied up to this size.",
+            "type": "number",
+            "min": 1,
+            "max": 64,
+            "default": 64
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/copy-file-contents.harmony-extension",
+      "sha256": "512957c5032eb9b1c35e6b2078e84e353ac1f4f6c72f0839a6eabfee5fbd7986",
+      "download_bytes": 1709272,
+      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "reverse-image-search",
+        "name": "Reverse Image Search",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/reverse-image-search",
+        "kind": "plugin",
+        "capabilities": [
+          "selected_message",
+          "media_links",
+          "external_navigation"
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "label": "Reverse image search",
+            "surface": "message"
+          }
+        ],
+        "requires": {
+          "features": {
+            "settings": "^1.0",
+            "media.links": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "engine",
+            "label": "Search engine",
+            "description": "Used first; you can pick another one for each search.",
+            "type": "choice",
+            "options": [
+              {
+                "value": "google",
+                "label": "Google Lens"
+              },
+              {
+                "value": "bing",
+                "label": "Bing"
+              },
+              {
+                "value": "yandex",
+                "label": "Yandex"
+              },
+              {
+                "value": "tineye",
+                "label": "TinEye"
+              },
+              {
+                "value": "saucenao",
+                "label": "SauceNAO"
+              },
+              {
+                "value": "iqdb",
+                "label": "IQDB"
+              }
+            ],
+            "default": "google"
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/reverse-image-search.harmony-extension",
+      "sha256": "f80e0d899feba8b616fc9e7921e09d77020160bc4c668d918490f1b04086c88e",
+      "download_bytes": 1647596,
+      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "server-info",
+        "name": "Server Info",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/server-info",
+        "kind": "plugin",
+        "capabilities": [
+          "context_menus",
+          "server_profiles",
+          "clipboard_write"
+        ],
+        "actions": [
+          {
+            "id": "info",
+            "label": "Server info",
+            "surface": "server"
+          }
+        ],
+        "requires": {
+          "features": {
+            "settings": "^1.0",
+            "host_requests": "^1.0",
+            "lookups.server_profile": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "show-features",
+            "label": "Show server features",
+            "description": "List the feature flags Discord reports for the server.",
+            "type": "toggle",
+            "default": true
+          },
+          {
+            "id": "copy-id",
+            "label": "Offer to copy the server ID",
+            "type": "toggle",
+            "default": false
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/server-info.harmony-extension",
+      "sha256": "7f305d2f87f32338da9f9a6046ffcce3fc8cae7dff9b0a53b169f9ae855b1a9e",
+      "download_bytes": 1651566,
+      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+    }
+  ]
+}
