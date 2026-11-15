@@ -1,2 +1,4 @@
 # Release packages are hash-addressed artifacts; never rewrite their line endings.
 *.harmony-extension -text
+# Licenses are embedded byte-for-byte in packages; keep one line ending everywhere.
+extensions/licenses/*.txt text eol=lf

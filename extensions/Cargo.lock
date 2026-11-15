@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "api-proxy"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "harmony-extension-sdk",
 ]
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "custom-rpc"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "harmony-extension-sdk",
  "serde",
@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "external-search-tools"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "harmony-extension-sdk",
  "serde",
@@ -195,14 +195,14 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "message-delete-protector"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "harmony-extension-sdk",
 ]
 
 [[package]]
 name = "offline-composer-tools"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "harmony-extension-sdk",
  "url",
@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "text-commands"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "harmony-extension-sdk",
  "serde",
@@ -377,7 +377,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "view-raw-message"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "harmony-extension-sdk",
 ]

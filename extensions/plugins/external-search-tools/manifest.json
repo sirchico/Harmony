@@ -2,7 +2,7 @@
   "api_version": 1,
   "id": "external-search-tools",
   "name": "External Search Tools",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": "Equicord/Vencord contributors; Harmony port contributors",
   "license": "GPL-3.0-or-later",
   "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/external-search-tools",
