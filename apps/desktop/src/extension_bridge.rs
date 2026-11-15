@@ -199,6 +199,8 @@ pub struct Bridge {
 	ticks: BTreeMap<String, TickSchedule>,
 	transitions: BTreeMap<String, Transition>,
 	lookups: crate::extension_lookups::Lookups,
+	/// API v2 interface contributions, owned per extension.
+	contributions: ui::ContributionStore,
 }
 impl Bridge {
 	fn tick_pending(&self, generation: u64, id: &str) -> bool {
@@ -600,6 +602,7 @@ impl Bridge {
 			self.ticks.clear();
 			self.transitions.clear();
 			self.lookups.clear();
+			self.contributions.clear();
 			self.imported = None;
 			self.api_proxy_loaded = false;
 			self.installed.clear();
@@ -643,6 +646,11 @@ impl Bridge {
 			messaging.extensions.status =
 				"Result discarded because the conversation or draft changed.".into();
 		}
+		let now = Instant::now();
+		if let Some(next) = self.contributions.expire(now) {
+			ctx.request_repaint_after(next.saturating_duration_since(now));
+		}
+		messaging.set_contributions(self.contributions.view());
 		for lookup in self.lookups.poll(state, Instant::now()) {
 			self.continue_lookup(lookup, state, ctx, messaging);
 		}
@@ -697,6 +705,7 @@ impl Bridge {
 						{
 							entry.interface_tweaks.clear();
 						}
+						self.contributions.remove_extension(id);
 						messaging.extensions.status = format!(
 							"{id} animation paused after a failed tick; disable and re-enable it to retry. {error}"
 						);
@@ -711,6 +720,7 @@ impl Bridge {
 							self.api_proxy_loaded = false;
 						}
 						self.disabled.insert(id.clone());
+						self.contributions.remove_extension(id);
 						self.refresh_api_proxy();
 						self.apply_theme(ctx);
 						self.entries(messaging);
@@ -757,6 +767,16 @@ impl Bridge {
 						.collect();
 					if let Some(error) = installed.iter().find_map(|e| e.error.as_ref()) {
 						messaging.extensions.status = error.clone();
+					}
+					self.contributions.clear();
+					for entry in installed.iter().filter(|entry| entry.error.is_none()) {
+						if let Err(error) = self.contributions.apply(
+							&entry.manifest.id,
+							&entry.contributions,
+							Instant::now(),
+						) {
+							messaging.extensions.status = error;
+						}
 					}
 					self.installed = installed;
 					self.refresh_api_proxy();
@@ -835,6 +855,15 @@ impl Bridge {
 							old.background_image = None;
 						}
 					}
+					self.contributions.remove_extension(&installed.manifest.id);
+					if installed.error.is_none()
+						&& let Err(error) = self.contributions.apply(
+							&installed.manifest.id,
+							&installed.contributions,
+							Instant::now(),
+						) {
+						messaging.extensions.status = error;
+					}
 					self.installed
 						.retain(|old| old.manifest.id != installed.manifest.id);
 					self.disabled.remove(&installed.manifest.id);
@@ -846,6 +875,7 @@ impl Bridge {
 					messaging.extensions.status = "Extension enabled.".into();
 				}
 				Ok(Event::Disabled(id)) => {
+					self.contributions.remove_extension(&id);
 					self.ticks.remove(&id);
 					self.transitions.remove(&id);
 					let theme = self.installed.iter().any(|entry| {
@@ -875,6 +905,12 @@ impl Bridge {
 					if let Some(schedule) = self.ticks.get_mut(&id) {
 						schedule.next_due =
 							now + Duration::from_millis(extensions::TICK_MIN_INTERVAL_MS);
+					}
+					if !self.disabled.contains(&id)
+						&& let Err(error) =
+							self.contributions.apply(&id, &output.contributions, now)
+					{
+						messaging.extensions.status = error;
 					}
 					if !self.disabled.contains(&id)
 						&& let Some(appearance) = &output.appearance
@@ -910,6 +946,12 @@ impl Bridge {
 						&& requested == id && !self.disabled.contains(&id)
 						&& self.installed.iter().any(|e| e.manifest.id == id)
 					{
+						if let Err(error) =
+							self.contributions
+								.apply(&id, &output.contributions, Instant::now())
+						{
+							messaging.extensions.status = error;
+						}
 						if context.is_current(state)
 							&& let Some(appearance) = &output.appearance
 						{
@@ -1997,6 +2039,7 @@ mod tests {
 			rich_presence: None,
 			api_proxy: None,
 			interface_tweaks: Vec::new(),
+			contributions: Vec::new(),
 			settings: Default::default(),
 			secrets: Default::default(),
 			quotas: Default::default(),

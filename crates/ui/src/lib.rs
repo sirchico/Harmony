@@ -35,6 +35,7 @@ mod composer_text;
 mod recovery_demo;
 #[cfg(all(debug_assertions, feature = "demo"))]
 pub use recovery_demo::check as debug_resume_send_check;
+pub mod contributions;
 pub mod design;
 mod embeds;
 mod extension_account_actions;
@@ -44,6 +45,7 @@ mod extension_app;
 mod extension_server_actions;
 mod extensions_ui;
 mod interface_tweaks;
+pub use contributions::{ContributionStore, ContributionView};
 mod new_message;
 pub mod proxy_auth;
 mod rich_presence;
@@ -270,6 +272,8 @@ pub const DEFAULT_IDLE_TIMEOUT_SECS: u32 = 10 * 60;
 pub struct MessagingUi {
 	/// Interface tweaks switched on by enabled plugins.
 	interface_tweaks: std::sync::Arc<std::collections::BTreeSet<extensions::InterfaceTweak>>,
+	/// Extension interface contributions, published to widgets each frame.
+	contributions: std::sync::Arc<contributions::ContributionView>,
 	poll_creator: polls::Creator,
 	pub language: i18n::Language,
 	forwarding: forwarding::ForwardDialog,
@@ -1906,9 +1910,19 @@ impl MessagingUi {
 												.primary_guild
 												.as_deref()
 												.filter(|_| !self.cosmetics.hide_clan_tags);
+											let extension_badges =
+												self.contributions.user(member.user.id).cloned();
 											let trailing =
 												profiles::server_tag_width(ui, server_tag)
-													+ if server_tag.is_some() { 5.0 } else { 0.0 };
+													+ if server_tag.is_some() { 5.0 } else { 0.0 }
+													+ extension_badges.as_ref().map_or(
+														0.0,
+														|shelf| {
+															crate::contributions::badges_width(
+																ui, shelf,
+															)
+														},
+													);
 											crate::name_styles::in_row(
 												response.contains_pointer() || response.has_focus(),
 												|| {
@@ -1939,6 +1953,13 @@ impl MessagingUi {
 													tag,
 													&mut self.avatars,
 													state.demo,
+												);
+											}
+											if let Some(shelf) = &extension_badges {
+												crate::contributions::badges(
+													ui,
+													&self.contributions,
+													shelf,
 												);
 											}
 										},
@@ -3813,6 +3834,30 @@ impl MessagingUi {
                                     .show(ui, state, channel, &mut self.avatars, commands)
                             })
                             .inner;
+                        // Extension buttons (API v2 `composer.button`), drawn by Harmony.
+                        let extension_buttons = self.contributions.composer().clone();
+                        for shown in extension_buttons.items.iter().rev() {
+                            let icon = shown
+                                .item
+                                .icon
+                                .map_or(crate::icons::Icon::Sparkle, crate::contributions::icon);
+                            let label = shown.item.tooltip.clone().unwrap_or_else(|| shown.item.text.clone());
+                            if crate::icons::toggle(ui, icon, 28.0, false, &label).clicked()
+                                && let Some(action) = &shown.item.action
+                            {
+                                self.extensions.queue(
+                                    ui.ctx(),
+                                    ExtensionRequest::Invoke {
+                                        id: shown.extension.clone(),
+                                        invocation: extensions::Invocation {
+                                            action: action.clone(),
+                                            ..Default::default()
+                                        },
+                                        context: ExtensionContext::panel(state),
+                                    },
+                                );
+                            }
+                        }
                         let picked = pick.is_some() && !self.emoji_picker.is_open();
                         // A chosen GIF is its own message; the typed draft stays untouched.
                         if self.emoji_picker.is_open() {
@@ -4657,6 +4702,10 @@ impl MessagingUi {
 		self.interface_tweaks.contains(&tweak)
 	}
 	/// Replaces the interface tweaks that enabled plugins switched on.
+	/// Replaces the extension contributions widgets draw; cheap when nothing changed.
+	pub fn set_contributions(&mut self, view: std::sync::Arc<contributions::ContributionView>) {
+		self.contributions = view;
+	}
 	pub fn set_interface_tweaks(
 		&mut self,
 		tweaks: std::collections::BTreeSet<extensions::InterfaceTweak>,
@@ -4669,6 +4718,7 @@ impl MessagingUi {
 	/// service layer.
 	pub fn show(&mut self, ui: &mut egui::Ui, state: &mut State) -> Vec<Command> {
 		interface_tweaks::publish(ui.ctx(), &self.interface_tweaks);
+		contributions::publish(ui.ctx(), &self.contributions);
 		rtl::scope(
 			ui.ctx(),
 			state.generation,

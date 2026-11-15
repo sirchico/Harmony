@@ -14,6 +14,7 @@ members = [
 	"plugins/reverse-image-search",
 	"plugins/server-info",
 	"plugins/copy-file-contents",
+	"plugins/user-tags",
 ]
 resolver = "3"
 

@@ -33,6 +33,9 @@ pub struct Manifest {
 	/// API v2: resource budgets beyond the host defaults.
 	#[serde(default, skip_serializing_if = "Quotas::is_empty")]
 	pub quotas: Quotas,
+	/// API v2: interface slots this extension adds items to; needs `ui_contributions`.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub slots: Vec<crate::Slot>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -204,6 +207,8 @@ pub enum Capability {
 	AttachmentContents,
 	/// API v2: look up public details of servers the account is in.
 	ServerProfiles,
+	/// API v2: add items Harmony draws in the declared `slots`.
+	UiContributions,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

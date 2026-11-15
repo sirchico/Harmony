@@ -3440,6 +3440,7 @@ fn capability_label(capability: Capability) -> &'static str {
 			"Read the start of an attachment on a message I choose for an action"
 		}
 		Capability::ServerProfiles => "Look up public details of servers I am in",
+		Capability::UiContributions => "Add badges, notes and buttons to the slots it lists",
 		Capability::Composer => "Read my draft and propose text changes",
 		Capability::Storage => "Store local data for this account, within its storage quota",
 		Capability::AppContext => "Read my account and current conversation details",
@@ -3719,6 +3720,7 @@ mod tests {
 			theme_preview: None,
 			preview: None,
 			manifest: Manifest {
+				slots: Vec::new(),
 				api_version: 1,
 				id: "synthetic.words".into(),
 				name: "Synthetic word tools".into(),

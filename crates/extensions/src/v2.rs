@@ -23,6 +23,7 @@ pub const FEATURES: &[(&str, &str)] = &[
 	("media.links", "1.0.0"),
 	("attachments.read", "1.0.0"),
 	("lookups.server_profile", "1.0.0"),
+	("ui.contributions", "1.0.0"),
 ];
 
 /// Capabilities that only an `api_version: 2` manifest may request.
@@ -30,6 +31,7 @@ pub const V2_CAPABILITIES: &[Capability] = &[
 	Capability::MediaLinks,
 	Capability::AttachmentContents,
 	Capability::ServerProfiles,
+	Capability::UiContributions,
 ];
 
 pub const MAX_SETTINGS: usize = 32;
@@ -443,6 +445,7 @@ pub(crate) fn validate_manifest(manifest: &Manifest) -> Result<(), Error> {
 		|| !manifest.conflicts.is_empty()
 		|| !manifest.settings.is_empty()
 		|| !manifest.quotas.is_empty()
+		|| !manifest.slots.is_empty()
 		|| manifest
 			.capabilities
 			.iter()
@@ -517,6 +520,7 @@ pub(crate) fn validate_manifest(manifest: &Manifest) -> Result<(), Error> {
 		}
 	}
 	manifest.quotas.validate(&ResourceLimits::DEFAULT)?;
+	crate::contributions::validate_manifest(manifest)?;
 	if manifest.kind == crate::ExtensionKind::Theme
 		&& (!manifest.settings.is_empty()
 			|| !manifest.dependencies.is_empty()
@@ -1029,7 +1033,10 @@ pub(crate) fn validate_invocation(
 pub(crate) fn validate_output(output: &crate::Output, manifest: &Manifest) -> Result<(), Error> {
 	let v2 = manifest.api_version >= API_V2;
 	if !v2
-		&& (!output.kv.is_empty() || !output.requests.is_empty() || output.continuation.is_some())
+		&& (!output.kv.is_empty()
+			|| !output.requests.is_empty()
+			|| output.continuation.is_some()
+			|| !output.contributions.is_empty())
 	{
 		return Err(Error::Invalid);
 	}
@@ -1078,6 +1085,7 @@ pub(crate) fn validate_output(output: &crate::Output, manifest: &Manifest) -> Re
 			|| output.rich_presence.is_some()
 			|| output.api_proxy.is_some()
 			|| output.interface_tweaks.is_some()
+			|| !output.contributions.is_empty()
 		{
 			return Err(Error::Invalid);
 		}

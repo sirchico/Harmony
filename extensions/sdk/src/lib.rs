@@ -40,6 +40,8 @@ mod interface_tweaks;
 pub use interface_tweaks::*;
 mod v2;
 pub use v2::*;
+mod contributions;
+pub use contributions::*;
 
 /// Maximum serialized size of either ABI buffer, in UTF-8 bytes.
 pub const MAX_IO_BYTES: usize = 256 * 1024;

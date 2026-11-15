@@ -19,7 +19,7 @@ pub struct HostInfo {
 	pub features: BTreeMap<&'static str, &'static str>,
 	/// Surfaces an action may declare.
 	pub surfaces: &'static [Surface],
-	/// UI contribution slots. Empty until the contribution API is available.
+	/// UI contribution slots the host renders; see `Slot`.
 	pub slots: &'static [&'static str],
 	/// `HostRequest` kinds this host answers.
 	pub request_kinds: &'static [&'static str],
@@ -91,6 +91,7 @@ impl HostInfo {
 				Capability::MediaLinks,
 				Capability::AttachmentContents,
 				Capability::ServerProfiles,
+				Capability::UiContributions,
 			],
 			app_events: &[
 				AppEventKind::Ready,
@@ -119,7 +120,12 @@ impl HostInfo {
 			api_versions: crate::SUPPORTED_API_VERSIONS,
 			features: crate::FEATURES.iter().copied().collect(),
 			surfaces: crate::SURFACES,
-			slots: &[],
+			slots: &[
+				"message.badge",
+				"message.accessory",
+				"user.badge",
+				"composer.button",
+			],
 			request_kinds: crate::REQUEST_KINDS,
 			limits: ResourceLimits::DEFAULT,
 		}

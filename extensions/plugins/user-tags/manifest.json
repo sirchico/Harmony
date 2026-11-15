@@ -1,0 +1,18 @@
+{
+  "api_version": 2,
+  "id": "user-tags",
+  "name": "User Tags",
+  "version": "1.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/user-tags",
+  "kind": "plugin",
+  "capabilities": ["context_menus", "storage", "ui_contributions"],
+  "slots": ["user.badge", "composer.button"],
+  "actions": [
+    { "id": "restore", "label": "Show saved tags", "surface": "activation" },
+    { "id": "tag-user", "label": "Tag this person", "surface": "user" },
+    { "id": "list", "label": "User tags", "surface": "panel" }
+  ],
+  "requires": { "features": { "ui.contributions": "^1.0" } }
+}

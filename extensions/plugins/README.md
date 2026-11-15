@@ -68,15 +68,17 @@ Each is off until enabled in Settings > Extensions and asks for its permissions 
 | **Reverse Image Search** | `selected_message`, `media_links`, `external_navigation` | Opens an image from a chosen message in Google Lens, Bing, Yandex, TinEye, SauceNAO or IQDB (default engine is a setting); the browser fetches the image, the extension fetches nothing. |
 | **Server Info** | `context_menus`, `server_profiles`, `clipboard_write` | Shows a joined server's public details from its menu: owner, creation date, members, boosts, verification and filters, features. Can offer to copy the server ID. |
 | **Copy File Contents** | `selected_message`, `media_links`, `attachment_contents`, `clipboard_write` | Reads up to 64 KiB of a text attachment on a chosen message, shows a preview and offers to copy it; other text files on the message get their own buttons. |
+| **User Tags** | `context_menus`, `storage`, `ui_contributions` | Put your own colored label on people from their menu; it appears after their name in chat and the member list. A composer button lists and removes tags. Tags stay in local storage. |
 
 Build and package them like any plugin:
 
 ```sh
-cargo build --locked --release --target wasm32-unknown-unknown -p base-decoder -p reverse-image-search -p server-info -p copy-file-contents
+cargo build --locked --release --target wasm32-unknown-unknown -p base-decoder -p reverse-image-search -p server-info -p copy-file-contents -p user-tags
 python pack.py plugins/base-decoder/manifest.json target/wasm32-unknown-unknown/release/base_decoder.wasm plugins/packages/base-decoder.harmony-extension
 python pack.py plugins/reverse-image-search/manifest.json target/wasm32-unknown-unknown/release/reverse_image_search.wasm plugins/packages/reverse-image-search.harmony-extension
 python pack.py plugins/server-info/manifest.json target/wasm32-unknown-unknown/release/server_info.wasm plugins/packages/server-info.harmony-extension
 python pack.py plugins/copy-file-contents/manifest.json target/wasm32-unknown-unknown/release/copy_file_contents.wasm plugins/packages/copy-file-contents.harmony-extension
+python pack.py plugins/user-tags/manifest.json target/wasm32-unknown-unknown/release/user_tags.wasm plugins/packages/user-tags.harmony-extension
 ```
 
 ## ABI and limits

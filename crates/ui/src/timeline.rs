@@ -122,6 +122,8 @@ pub struct TimelineView {
 	name_hover: Option<Id>,
 	copy_feedback: Option<(egui::Id, f64)>,
 	heights: BTreeMap<Id, (u64, f32)>,
+	/// Extension contributions the cached heights were measured with.
+	contributed: std::sync::Arc<crate::contributions::ContributionView>,
 	// Heights can remain resize estimates; only these bounded active-row IDs were
 	// measured with the current dimensions and state revision.
 	measured_rows: BTreeSet<Id>,
@@ -2689,7 +2691,25 @@ impl TimelineView {
 			layout_changed = self.layout_fingerprint != fingerprint;
 			self.layout_fingerprint = fingerprint;
 		}
+		// An extension adding or removing a line under a message changes only that row.
+		let contributed = crate::contributions::current(ui.ctx());
+		let mut contributions_changed = false;
+		if contributed.revision != self.contributed.revision {
+			let ids: BTreeSet<u64> = contributed
+				.accessory_ids()
+				.chain(self.contributed.accessory_ids())
+				.collect();
+			for id in ids {
+				if contributed.accessory_print(Id(id)) != self.contributed.accessory_print(Id(id)) {
+					self.heights.remove(&Id(id));
+					self.measured_rows.remove(&Id(id));
+					contributions_changed = true;
+				}
+			}
+			self.contributed = contributed;
+		}
 		let changed = self.revision == u64::MAX
+			|| contributions_changed
 			|| layout_changed
 			|| self.hidden_blocked != hide_blocked
 			|| hide_blocked && self.relationship_view != state.relationship_view()
@@ -3706,6 +3726,25 @@ impl TimelineView {
 												&message.author,
 											);
 											surface.keep(&author);
+											// Extension badges (API v2 `user.badge` and `message.badge`).
+											let contributed =
+												crate::contributions::current(ui.ctx());
+											for shelf in [
+												contributed.user(message.author.id),
+												contributed.message(
+													extensions::Slot::MessageBadge,
+													message.id,
+												),
+											]
+											.into_iter()
+											.flatten()
+											{
+												crate::contributions::badges(
+													ui,
+													&contributed,
+													shelf,
+												);
+											}
 										},
 									);
 									ui.spacing_mut().item_spacing.x = body_spacing;
@@ -3805,6 +3844,25 @@ impl TimelineView {
 														crate::local_time::full(time)
 													});
 												surface.exclude(time.rect);
+												// Extension badges (API v2 `user.badge` and `message.badge`).
+												let contributed =
+													crate::contributions::current(ui.ctx());
+												for shelf in [
+													contributed.user(message.author.id),
+													contributed.message(
+														extensions::Slot::MessageBadge,
+														message.id,
+													),
+												]
+												.into_iter()
+												.flatten()
+												{
+													crate::contributions::badges(
+														ui,
+														&contributed,
+														shelf,
+													);
+												}
 											},
 										);
 										close_header_gap(ui);
@@ -4249,6 +4307,22 @@ impl TimelineView {
 											),
 										);
 										ui.painter().rect_filled(rail, 2.0, colors.selected);
+									}
+									// Extension lines under the content (API v2 `message.accessory`).
+									let contributed = crate::contributions::current(ui.ctx());
+									// Rows without a header line show their message badges here instead.
+									if compact
+										&& !self.compact_messages && let Some(shelf) = contributed
+										.message(extensions::Slot::MessageBadge, message.id)
+									{
+										ui.horizontal(|ui| {
+											crate::contributions::badges(ui, &contributed, shelf)
+										});
+									}
+									if let Some(shelf) = contributed
+										.message(extensions::Slot::MessageAccessory, message.id)
+									{
+										crate::contributions::accessories(ui, &contributed, shelf);
 									}
 									// A "started a thread" row already links the thread inline.
 									if system.is_none()

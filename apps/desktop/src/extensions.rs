@@ -362,6 +362,8 @@ pub struct InstalledExtension {
 	pub storage_used: u64,
 	/// API v2: optional host features this Harmony lacks.
 	pub unavailable_features: Vec<String>,
+	/// API v2: interface contributions the activation action returned.
+	pub contributions: Vec<extensions::ContributionOp>,
 }
 
 pub enum Event {
@@ -664,6 +666,10 @@ impl Stored {
 				.as_ref()
 				.ok()
 				.and_then(|output| output.interface_tweaks.clone())
+				.unwrap_or_default(),
+			contributions: result
+				.as_ref()
+				.map(|output| output.contributions.clone())
 				.unwrap_or_default(),
 			// Current protector packages have a no-op activation; consent still opts in.
 			preserve_deleted_messages: activation.is_some()
@@ -1464,11 +1470,13 @@ fn load(
 						}
 					},
 					Err(error) => InstalledExtension {
+						contributions: Vec::new(),
 						background_image: None,
 						cover_image: None,
 						local_theme: false,
 						active_theme: false,
 						manifest: Manifest {
+							slots: Vec::new(),
 							api_version: extensions::API_VERSION,
 							id: id.clone(),
 							name: id,
@@ -1502,6 +1510,7 @@ fn load(
 						settings: BTreeMap::new(),
 						secrets: BTreeMap::new(),
 						quotas: v2::quotas(&Manifest {
+							slots: Vec::new(),
 							api_version: extensions::API_VERSION,
 							id: String::new(),
 							name: String::new(),
@@ -2123,6 +2132,7 @@ mod tests {
 	fn theme(id: &str) -> Package {
 		Package {
 			manifest: Manifest {
+				slots: Vec::new(),
 				api_version: 1,
 				id: id.into(),
 				name: id.into(),
@@ -3085,5 +3095,82 @@ mod tests {
 			.join("quick-notes");
 		let used = v2::kv_bytes(&directory);
 		assert!(used > 0 && used <= 65536);
+	}
+
+	/// Phase 2 acceptance: a packaged extension sets interface contributions from a menu
+	/// action through the real Wasm worker, and its activation redraws them after a reload.
+	#[test]
+	fn contributions_flow_from_actions_and_return_with_activation_after_reload() {
+		use extensions::{ContributionOp, ContributionTarget, Slot};
+		let profile = Profile::new();
+		let root = profile.0.join("extensions");
+		let package = extensions::parse_package(include_bytes!(
+			"../../../extensions/plugins/packages/user-tags.harmony-extension"
+		))
+		.unwrap();
+		let installed = enable(
+			&root,
+			source(&profile, &package),
+			package.manifest.capabilities.clone(),
+			Some("account"),
+			&gate(),
+		)
+		.unwrap();
+		assert!(installed.error.is_none(), "{:?}", installed.error);
+		// No tags yet: activation only clears and adds the composer button.
+		assert!(installed.contributions.iter().any(|op| matches!(
+			op,
+			ContributionOp::Set {
+				slot: Slot::ComposerButton,
+				..
+			}
+		)));
+		let Event::Invoked { output, .. } = run(
+			&root,
+			Job::Invoke {
+				id: "user-tags".into(),
+				account: "account".into(),
+				invocation: Invocation {
+					action: "tag-user".into(),
+					button: Some("save".into()),
+					values: BTreeMap::from([
+						("text".into(), "Friend".into()),
+						("color".into(), "Green".into()),
+					]),
+					menu_target: Some(Box::new(extensions::MenuTarget::User {
+						user_id: "42".into(),
+						guild_id: None,
+						channel_id: None,
+					})),
+					..Default::default()
+				},
+			},
+			&gate(),
+		)
+		.unwrap() else {
+			panic!("saving a tag finishes in one round");
+		};
+		let badge = |ops: &[ContributionOp]| {
+			ops.iter().any(|op| {
+				matches!(op, ContributionOp::Set { slot: Slot::UserBadge, target: ContributionTarget::User { user_id }, item, .. }
+					if user_id == "42" && item.text == "Friend")
+			})
+		};
+		assert!(badge(&output.contributions));
+		let reloaded = load(&root, Some("account"), &gate()).unwrap();
+		let entry = reloaded
+			.iter()
+			.find(|entry| entry.manifest.id == "user-tags")
+			.unwrap();
+		assert!(badge(&entry.contributions), "{:?}", entry.contributions);
+
+		// The bridge's store keeps them per owner and drops them with the extension.
+		let mut store = ui::ContributionStore::default();
+		store
+			.apply("user-tags", &entry.contributions, std::time::Instant::now())
+			.unwrap();
+		assert!(store.view().user(model::Id(42)).is_some());
+		store.remove_extension("user-tags");
+		assert!(store.is_empty());
 	}
 }

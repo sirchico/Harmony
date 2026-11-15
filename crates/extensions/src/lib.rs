@@ -3,7 +3,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+mod contributions;
 mod runtime;
+pub use contributions::*;
 pub use runtime::invoke;
 mod rich_presence;
 pub use rich_presence::*;
@@ -158,6 +160,8 @@ pub enum Capability {
 	AttachmentContents,
 	/// API v2: look up public details of servers the account is in.
 	ServerProfiles,
+	/// API v2: add declarative items to the interface slots the manifest lists.
+	UiContributions,
 }
 
 /// Host-defined interface behavior that a plugin may switch on for the whole client from
@@ -270,6 +274,9 @@ pub struct Manifest {
 	/// API v2: resource budgets requested beyond the host defaults.
 	#[serde(default, skip_serializing_if = "Quotas::is_empty")]
 	pub quotas: Quotas,
+	/// API v2: interface slots this extension adds items to; needs `ui_contributions`.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub slots: Vec<Slot>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -803,6 +810,9 @@ pub struct Output {
 	/// API v2: opaque text handed back in the next round's `continuation`.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub continuation: Option<String>,
+	/// API v2: changes to this extension's interface contributions.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub contributions: Vec<ContributionOp>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1414,6 +1424,7 @@ impl Output {
 	/// fields that surface may return, each field's limits and that host effects are allowed.
 	pub fn validate(&self, manifest: &Manifest, input: &Invocation) -> Result<(), Error> {
 		v2::validate_output(self, manifest)?;
+		contributions::validate_output(&self.contributions, manifest)?;
 		let surface = manifest
 			.actions
 			.iter()

@@ -1053,6 +1053,7 @@ mod tests {
 			cover_image: None,
 			local_theme: false,
 			manifest: Manifest {
+				slots: Vec::new(),
 				api_version: 1,
 				id: "synthetic.app".into(),
 				name: "Synthetic app tools".into(),

@@ -663,6 +663,9 @@ folder and its credential-store entries. One account may install at most 128 plu
 512 MiB of packages. Attachment reads for `attachment_contents` are streamed into memory up
 to 160 KiB per request and never written to disk; server lookups are kept in memory only
 until the requesting action continues (at most eight results). See `extension-sdk-v2.md`.
+Interface contributions (badges, lines and composer buttons) live in memory only, bounded to
+256 items per slot and 512 per extension, and are dropped on disable, failure, expiry or an
+account change; extensions that want them back keep their own data and redraw on activation.
 
 The optional `message_events` grant delivers accepted live events from the active,
 accessible conversation. It excludes history replay, search, cached pages and

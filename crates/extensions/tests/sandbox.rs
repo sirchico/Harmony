@@ -3,6 +3,7 @@ use extensions::*;
 fn plugin(wasm: &str) -> Package {
 	Package {
 		manifest: Manifest {
+			slots: Vec::new(),
 			api_version: API_VERSION,
 			id: "test-plugin".into(),
 			name: "Test plugin".into(),

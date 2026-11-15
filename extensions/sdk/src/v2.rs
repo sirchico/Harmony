@@ -152,9 +152,16 @@ pub struct ExtensionOutput {
 	pub requests: Vec<HostRequest>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub continuation: Option<String>,
+	/// Changes to the items Harmony draws for you; see [`crate::ContributionOp`].
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub contributions: Vec<crate::ContributionOp>,
 }
 
 impl ExtensionOutput {
+	/// Adds, replaces or removes one interface item.
+	pub fn contribute(&mut self, op: crate::ContributionOp) {
+		self.contributions.push(op);
+	}
 	/// A response that only shows a panel.
 	pub fn panel(elements: Vec<Element>) -> Self {
 		let mut output = Self::default();
@@ -389,6 +396,9 @@ pub mod testing {
 		pub kv: BTreeMap<String, String>,
 		pub attachments: BTreeMap<String, (String, Option<String>, Vec<u8>)>,
 		pub servers: BTreeMap<String, ServerProfile>,
+		/// Interface items the handler has set, by (slot, key), as Harmony would keep them.
+		pub contributions:
+			BTreeMap<(crate::Slot, String), (crate::ContributionTarget, crate::ContributionItem)>,
 		/// Every input the handler received, in order.
 		pub inputs: Vec<ExtensionInvocation>,
 	}
@@ -430,6 +440,7 @@ pub mod testing {
 				let output: ExtensionOutput =
 					serde_json::from_slice(&output).map_err(|error| error.to_string())?;
 				self.apply_kv(&output.kv);
+				self.apply_contributions(&output.contributions);
 				if output.requests.is_empty() {
 					return Ok(output);
 				}
@@ -442,6 +453,7 @@ pub mod testing {
 				if !output.output.output.panel.is_empty()
 					|| !output.output.effects.is_empty()
 					|| output.output.output.replacement.is_some()
+					|| !output.contributions.is_empty()
 				{
 					return Err("a round with requests may only return kv and continuation".into());
 				}
@@ -452,6 +464,29 @@ pub mod testing {
 					.collect();
 				input.continuation = output.continuation;
 				input.round += 1;
+			}
+		}
+
+		fn apply_contributions(&mut self, ops: &[crate::ContributionOp]) {
+			for op in ops {
+				match op {
+					crate::ContributionOp::Set {
+						slot,
+						key,
+						target,
+						item,
+						..
+					} => {
+						self.contributions
+							.insert((*slot, key.clone()), (target.clone(), item.clone()));
+					}
+					crate::ContributionOp::Remove { slot, key } => {
+						self.contributions.remove(&(*slot, key.clone()));
+					}
+					crate::ContributionOp::Clear { slot } => self
+						.contributions
+						.retain(|(item_slot, _), _| slot.is_some_and(|slot| slot != *item_slot)),
+				}
 			}
 		}
 

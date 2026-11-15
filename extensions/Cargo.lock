@@ -370,6 +370,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "user-tags"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+ "serde",
+]
+
+[[package]]
 name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

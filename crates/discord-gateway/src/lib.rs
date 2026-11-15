@@ -287,6 +287,7 @@ fn jitter_ms(max: u64) -> u64 {
 
 // Explicit troubleshooting only. Each scope shares its budgets across reconnects.
 // Static labels never contain received event names, credentials, IDs or payloads.
+const DIAGNOSTIC_PREFIX: &str = "Harmony";
 struct Diagnostics {
 	scope: &'static str,
 	remaining: u8,
@@ -304,18 +305,19 @@ impl Diagnostics {
 		self.record_to(label, &mut std::io::stderr());
 	}
 	fn record_to(&mut self, label: &'static str, writer: &mut impl std::io::Write) {
+		// Brackets, two spaces and the newline around the prefix, scope and label: five bytes.
 		let bytes = self
 			.scope
 			.len()
 			.saturating_add(label.len())
-			.saturating_add(11);
+			.saturating_add(DIAGNOSTIC_PREFIX.len() + 5);
 		if self.remaining == 0 || bytes > self.bytes {
 			return;
 		}
 		// Charge attempted output even if stderr is closed or accepts only part of a line.
 		self.remaining -= 1;
 		self.bytes -= bytes;
-		let _ = writeln!(writer, "[Harmony {}] {label}", self.scope);
+		let _ = writeln!(writer, "[{DIAGNOSTIC_PREFIX} {}] {label}", self.scope);
 	}
 }
 fn ignored_dispatch_label(name: Option<&str>) -> &'static str {
@@ -3464,7 +3466,7 @@ mod member_tests {
 		// Byte accounting includes UTF-8 and formatting, independently of the line cap.
 		output.clear();
 		let mut short = Diagnostics::new("members", true);
-		short.bytes = 20;
+		short.bytes = "[Harmony members] \u{e9}\n".len();
 		short.record_to("\u{e9}", &mut output);
 		short.record_to("another line", &mut output);
 		assert_eq!(output, "[Harmony members] \u{e9}\n".as_bytes());
@@ -3473,7 +3475,8 @@ mod member_tests {
 		let mut oversized = Diagnostics::new("gateway", true);
 		oversized.record_to(std::str::from_utf8(&OVERSIZED).unwrap(), &mut output);
 		assert_eq!(oversized.remaining, 64);
-		assert_eq!(output.len(), 20);
+		// The oversized line was refused: only the earlier line remains.
+		assert_eq!(output, "[Harmony members] \u{e9}\n".as_bytes());
 
 		struct Closed;
 		impl std::io::Write for Closed {

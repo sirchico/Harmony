@@ -28,6 +28,7 @@ through the same permission review, and run in the same Wasm sandbox.
 | Read what the user clicked on | `media_links` | `input.media` |
 | Read a text attachment | `attachment_contents` | `attachment_read` request |
 | Look up a server | `server_profiles` | `server_profile` request |
+| Add badges, notes or buttons to the interface | `ui_contributions` and `slots` | `output.contribute(...)` |
 | Need a host feature at a version | `requires.features` | refuses to enable otherwise |
 | Use a feature only when present | `requires.optional_features` | `host.supports_feature(name, major, minor)` |
 | Build on another extension | `dependencies` | enable order is checked by the host |
@@ -84,7 +85,8 @@ if input.host().is_some_and(|host| host.supports_feature("sync", 1, 0)) { /* …
 ```
 
 Features offered by this build, all at `1.0.0`: `settings`, `secrets`, `storage.kv`,
-`host_requests`, `dependencies`, `media.links`, `attachments.read`, `lookups.server_profile`.
+`host_requests`, `dependencies`, `media.links`, `attachments.read`, `lookups.server_profile`,
+`ui.contributions`.
 
 A feature's major version changes only when its behavior changes incompatibly; new fields and
 request kinds are additive within a major version. The host keeps supporting API version 1.
@@ -226,6 +228,7 @@ every listed capability:
 | `media_links` | Read links to images, videos and files on messages you choose an action on |
 | `attachment_contents` | Read the files attached to messages you choose an action on |
 | `server_profiles` | Look up public details of servers you have joined |
+| `ui_contributions` | Add badges, notes and buttons to the slots it lists |
 
 ## Testing without the app
 
@@ -270,12 +273,58 @@ Published v2 packages are listed in `extensions/catalog-v2.json`, separate from 
   notes.
 * Nothing in this document is available only to Harmony's own extensions.
 
+## Interface contributions
+
+An extension can add small pieces of interface that Harmony draws for it. Declare the
+`ui_contributions` capability and every slot you use:
+
+```json
+"capabilities": ["ui_contributions", "storage"],
+"slots": ["user.badge", "composer.button"]
+```
+
+Then return changes in `contributions` from any action, panel button, message or app event,
+activation or tick:
+
+```rust
+output.contribute(ContributionOp::set(
+    Slot::UserBadge,
+    "friend-42",                       // your key; other extensions' keys never clash with it
+    ContributionTarget::user("42"),
+    ContributionItem::text("Friend").color("#3BA55C").icon(ContributionIcon::Tag),
+));
+output.contribute(ContributionOp::remove(Slot::MessageBadge, "old"));
+```
+
+| Slot | Target | Drawn | Text |
+| --- | --- | --- | --- |
+| `message.badge` | `message` | after the timestamp; under the content on rows that continue the previous message | 32 characters |
+| `message.accessory` | `message` | a line under the message content | 300 characters |
+| `user.badge` | `user` | after the name in messages and the member list | 32 characters |
+| `composer.button` | `app` | an icon button beside the emoji and GIF buttons; runs the declared `panel` action in `action` | 24 characters (accessible name) |
+
+An item has `text`, an optional `tooltip`, a `#RRGGBB` `color`, an `icon` from Harmony's set
+(`tag`, `star`, `info`, `warning`, `check`, `sparkle`, `link`, `pin`, `bell`, `shield`) and an
+optional `animation` (`pulse`, `shimmer` or `rainbow`, 500–10,000 ms per cycle). Harmony runs
+the animation itself and repaints only while animated items exist; your code is never run per
+frame. Every item's tooltip names the extension that added it.
+
+**Lifecycle.** Items belong to the extension that set them and are keyed by (slot, key)
+within it. `set` replaces an item with the same key, `remove` deletes one, `clear` removes
+yours from one slot or all. An optional `ttl_ms` (at most seven days) makes an item expire.
+Harmony removes all of an extension's items when it is disabled or fails, and every item when
+the account or connection changes. Items are not saved: return them from your `activation`
+action to show them again when Harmony loads (see [User Tags](../extensions/plugins/user-tags)).
+
+**Limits and collisions.** At most 64 changes per output, 256 items per slot and 512 per
+extension; a batch that would exceed them is refused whole. When several extensions add to the
+same message or person, items are ordered by extension ID and then key, so the order never
+depends on timing. At most three badges, two lines or four composer buttons are drawn per
+target; the rest are summarized ("+2"). A round that returns `requests` cannot also change
+contributions.
+
 ## Planned (not in this release)
 
-Phase 2 adds a generic contribution system: extensions declare **contributions** to named
-**slots** (message decorations, member list badges, toolbar buttons, settings sections and
-similar) as data the host renders and animates, never by running extension code per frame.
-Each contribution is owned by one extension, bounded per slot, keyed so collisions resolve
-deterministically, expires when stale, and is removed when the extension is disabled. Later
-phases add hooks, notifications and commands (Phase 3), host-made network requests that can
-use secrets (Phase 4), and media services (Phase 5). `HostInfo.slots` is empty until then.
+More slots (channel and server list decorations, settings sections) and declarative content
+matchers follow the same model. Later phases add hooks, notifications and commands (Phase 3),
+host-made network requests that can use secrets (Phase 4), and media services (Phase 5).
