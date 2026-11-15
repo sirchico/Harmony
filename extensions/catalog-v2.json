@@ -52,10 +52,10 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/base-decoder.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/base-decoder.harmony-extension",
       "sha256": "cd1322ee23f3dc3feedd278509643e9f4c42f156a1719f25f152ae9fced49e79",
       "download_bytes": 1645266,
-      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
     },
     {
       "manifest": {
@@ -100,10 +100,10 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/copy-file-contents.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/copy-file-contents.harmony-extension",
       "sha256": "512957c5032eb9b1c35e6b2078e84e353ac1f4f6c72f0839a6eabfee5fbd7986",
       "download_bytes": 1709272,
-      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
     },
     {
       "manifest": {
@@ -169,10 +169,10 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/reverse-image-search.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/reverse-image-search.harmony-extension",
       "sha256": "f80e0d899feba8b616fc9e7921e09d77020160bc4c668d918490f1b04086c88e",
       "download_bytes": 1647596,
-      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
     },
     {
       "manifest": {
@@ -219,10 +219,57 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/7bc47baa039a59addaeda32eeae3c0c7583e2cc6/extensions/plugins/packages/server-info.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/server-info.harmony-extension",
       "sha256": "7f305d2f87f32338da9f9a6046ffcce3fc8cae7dff9b0a53b169f9ae855b1a9e",
       "download_bytes": 1651566,
-      "source_commit": "7bc47baa039a59addaeda32eeae3c0c7583e2cc6"
+      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "user-tags",
+        "name": "User Tags",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/user-tags",
+        "kind": "plugin",
+        "capabilities": [
+          "context_menus",
+          "storage",
+          "ui_contributions"
+        ],
+        "slots": [
+          "user.badge",
+          "composer.button"
+        ],
+        "actions": [
+          {
+            "id": "restore",
+            "label": "Show saved tags",
+            "surface": "activation"
+          },
+          {
+            "id": "tag-user",
+            "label": "Tag this person",
+            "surface": "user"
+          },
+          {
+            "id": "list",
+            "label": "User tags",
+            "surface": "panel"
+          }
+        ],
+        "requires": {
+          "features": {
+            "ui.contributions": "^1.0"
+          }
+        }
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/732e2487d3c4c6941ca19adbbf95965e56866aca/extensions/plugins/packages/user-tags.harmony-extension",
+      "sha256": "1b6e2349042c30f2e611ddbf3235be0d3b0c89cf11e121bf24a0950d7a3055d1",
+      "download_bytes": 1756886,
+      "source_commit": "732e2487d3c4c6941ca19adbbf95965e56866aca"
     }
   ]
 }
