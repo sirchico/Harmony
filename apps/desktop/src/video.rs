@@ -174,16 +174,30 @@ impl Video {
 		ctx: &eframe::egui::Context,
 		demo: bool,
 	) -> Result<(), &'static str> {
-		if !attachment.is_video() || attachment.size == 0 || attachment.size > 100 * 1024 * 1024 {
+		// A linked video has no size and plays only from Discord's media proxy copy; its
+		// length comes from the first range response.
+		let linked = ui::is_embed_video(&attachment);
+		if !attachment.is_video()
+			|| (!linked && attachment.size == 0)
+			|| attachment.size > 100 * 1024 * 1024
+		{
 			return Err("Video preview limit: 100 MiB");
 		}
 		let url = if demo {
 			None
+		} else if linked {
+			Some(linked_video_url(&attachment).ok_or("Video link unavailable")?)
 		} else {
 			Some(
 				crate::downloads::original_url(&attachment)
 					.ok_or("Video attachment unavailable")?,
 			)
+		};
+		// The demo plays its bundled fixture, whose length is known.
+		let size = if linked && demo {
+			1
+		} else {
+			attachment.size as usize
 		};
 		if self.requests.is_none() {
 			let (sender, mut receiver) = tokio::sync::watch::channel::<Option<Request>>(None);
@@ -219,7 +233,7 @@ impl Video {
 		requests.send_replace(Some(Request {
 			session: session.clone(),
 			url,
-			size: attachment.size as usize,
+			size,
 		}));
 		self.session = Some(session);
 		Ok(())
@@ -334,6 +348,26 @@ impl Video {
 
 /// Opens the attachment and returns its first decoded video frame, downscaled for
 /// a light poster; bounded reads only.
+/// The only address a linked video plays from: Discord's media proxy copy, over HTTPS on the
+/// default port, without credentials or a fragment. The origin host is never contacted.
+fn linked_video_url(attachment: &model::Attachment) -> Option<url::Url> {
+	let source = attachment.media.proxy_url.as_deref()?;
+	if !model::valid_proxied_media_url(source) {
+		return None;
+	}
+	let url = url::Url::parse(source).ok()?;
+	(url.scheme() == "https"
+		&& matches!(
+			url.host_str(),
+			Some("images-ext-1.discordapp.net" | "images-ext-2.discordapp.net")
+		) && url.port().is_none()
+		&& url.username().is_empty()
+		&& url.password().is_none()
+		&& url.fragment().is_none()
+		&& url.path().starts_with("/external/"))
+	.then_some(url)
+}
+
 fn decode_poster(job: &PosterJob, runtime: &tokio::runtime::Handle) -> Option<(u32, u32, Vec<u8>)> {
 	use platform::video::Sample;
 	use std::{
@@ -701,6 +735,53 @@ fn play_decoded(
 #[cfg(test)]
 mod poster_tests {
 	use super::*;
+	/// Linked videos play only from Discord's proxy copy, never their origin or another path.
+	#[test]
+	fn linked_videos_play_only_from_the_media_proxy() {
+		let linked = |url: Option<&str>, proxy: &str| model::Attachment {
+			id: model::Id(u64::MAX),
+			filename: "clip.mp4".into(),
+			content_type: Some("video/mp4".into()),
+			media: model::EmbedMedia {
+				url: url.map(Into::into),
+				proxy_url: Some(proxy.into()),
+				..Default::default()
+			},
+			description: None,
+			size: 0,
+			spoiler: false,
+			duration_ms: None,
+			waveform: Vec::new(),
+		};
+		let proxied = "https://images-ext-1.discordapp.net/external/AbC_1/%3Ftag%3D29/https/video.twimg.com/amplify_video/1/vid/a.mp4";
+		let file = linked(
+			Some("https://video.twimg.com/amplify_video/1/vid/a.mp4"),
+			proxied,
+		);
+		assert!(ui::is_embed_video(&file));
+		assert_eq!(linked_video_url(&file).unwrap().as_str(), proxied);
+		for refused in [
+			"https://video.twimg.com/amplify_video/1/vid/a.mp4",
+			"https://cdn.discordapp.com/attachments/1/2/a.mp4",
+			"https://images-ext-1.discordapp.net/attachments/1/2/a.mp4",
+			"http://images-ext-1.discordapp.net/external/AbC/https/x.com/a.mp4",
+			"https://user@images-ext-1.discordapp.net/external/AbC/https/x.com/a.mp4",
+			"https://images-ext-1.discordapp.net:8443/external/AbC/https/x.com/a.mp4",
+			"https://images-ext-1.discordapp.net/external/AbC/https/x.com/a.mp4#t",
+		] {
+			assert!(
+				linked_video_url(&linked(None, refused)).is_none(),
+				"{refused}"
+			);
+		}
+		// An uploaded file is never mistaken for a linked video.
+		let upload = model::Attachment {
+			id: model::Id(42),
+			size: 10,
+			..file
+		};
+		assert!(!ui::is_embed_video(&upload));
+	}
 	/// Small frames pass through untouched; large ones shrink to the poster edge averaged.
 	#[test]
 	fn downscale_shrinks_and_averages() {

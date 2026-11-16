@@ -142,22 +142,28 @@ pub fn valid_discord_media_url(url: &str) -> bool {
 		})
 }
 
+/// Discord's media proxy copy of an outside file
+/// (`https://images-ext-N.discordapp.net/external/<signature>/.../https/<origin>/...`). Media
+/// from links is fetched only through this copy, never from the origin host.
+pub fn valid_proxied_media_url(url: &str) -> bool {
+	valid_discord_media_url(url)
+		&& [
+			"https://images-ext-1.discordapp.net/external/",
+			"https://images-ext-2.discordapp.net/external/",
+		]
+		.iter()
+		.any(|prefix| url.starts_with(prefix))
+}
+
 /// Category artwork on the GIF picker home: a provider preview, or the animated GIF or WebP
 /// Discord's image proxy serves for KLIPY categories
 /// (`https://images-ext-1.discordapp.net/external/.../https/static.klipy.com/....gif?...`).
 pub fn valid_gif_category_preview(url: &str) -> bool {
 	valid_gif_preview(url)
-		|| (valid_discord_media_url(url)
-			&& [
-				"https://images-ext-1.discordapp.net/external/",
-				"https://images-ext-2.discordapp.net/external/",
-			]
-			.iter()
-			.any(|prefix| url.starts_with(prefix))
-			&& {
-				let path = url.split('?').next().unwrap_or(url);
-				path.ends_with(".gif") || path.ends_with(".webp")
-			})
+		|| (valid_proxied_media_url(url) && {
+			let path = url.split('?').next().unwrap_or(url);
+			path.ends_with(".gif") || path.ends_with(".webp")
+		})
 }
 
 /// A favorite may share any bounded HTTPS page. This does not authorize fetching it;

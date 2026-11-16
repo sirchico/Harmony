@@ -1255,7 +1255,7 @@ Server identity tags (September 19): Discord's documented [User object](https://
 | Channels / existing DMs | Normal session; READY navigation and guild channel resource; Abaddon | Unofficial session snapshot | Fail visibly on oversized/incompatible metadata; no member scraping |
 | Server categories | [Channel resource](https://docs.discord.com/developers/resources/channel), existing session snapshot and channel events | Documented metadata; normal-user delivery unofficial | Ordered collapsible headings, orphan fallback, partial create/update/delete; offline and keyboard tests; details |
 | Server icons | [Image reference](https://docs.discord.com/developers/reference#image-formatting), guild metadata and GUILD_UPDATE | Documented CDN path; nested READY properties unofficial | Cached static icons and hash updates, initials fallback, offline tests; details |
-| Message embeds | [Message resource](https://docs.discord.com/developers/resources/message#embed-object) | Documented attributes; normal-user delivery/proxy conversion unverified | Native cards, partial embed-only updates, suppression/spoilers, cached static service-proxy previews; video opens externally, limits |
+| Message embeds | [Message resource](https://docs.discord.com/developers/resources/message#embed-object) | Documented attributes; normal-user delivery/proxy conversion unverified | Native cards, partial embed-only updates, suppression/spoilers, cached static service-proxy previews; linked video files play inline from the media proxy, other video opens externally, limits |
 | People / member pane | Normal session; [discord.py-self Gateway](https://github.com/dolfies/discord.py-self/blob/master/discord/gateway.py), [member-list identity](https://github.com/dolfies/discord.py-self/blob/master/discord/abc.py), [wire types](https://github.com/dolfies/discord.py-self/blob/master/discord/types/gateway.py) | Unofficial and unstable | On-demand opcode 37 with the required guild typing subscription, first 100 list positions, typed incremental operations, identity/request filtering and 15-second timeout; list identity resolves from current bounded permission metadata rather than the initial channel snapshot; DM recipients from READY. Missing metadata or unsupported replies show unavailable; live-unverified |
 | Profile pictures | [Discord image formatting](https://docs.discord.com/developers/reference#image-formatting), [User resource](https://docs.discord.com/developers/resources/user#user-object) | Documented CDN paths and user metadata; normal-session acquisition unofficial | Static PNGs, credential-free requests, account-isolated disk cache, bounded decode/textures, fallback initials; offline transport/cache tests only |
 | User mentions | [Message formatting](https://docs.discord.com/developers/reference#message-formatting) | Documented syntax; normal-user notification behavior unverified | Local @ autocomplete, clickable names/profile cards, exact user allowlists, bounded SQLite metadata; tests and limits |
@@ -3355,3 +3355,15 @@ Speculative reads do not wait for occupied admission. Cancellation releases a
 reservation, and security stops wake admission/cooldown waiters before dispatch.
 A solved verification is rechecked for expiry after both waits, before submission.
 There are no new writes, retries, persistence, telemetry or proxy-routing changes.
+
+## Inline playback of linked video files — November 17, 2026
+
+A video embed whose `video.proxy_url` is Discord's media proxy copy
+(`images-ext-1/2.discordapp.net/external/...`) now plays in the inline player, as Discord does,
+instead of a card that sends playback to the browser. A bare link is just the player; a card keeps
+its text with the player in place of the preview. Only the proxied copy is fetched: the origin host
+never receives a request. Embeds carry no file size, so the length comes from the first range's
+`Content-Range` total, capped at 100 MiB, and later ranges must report the same total; a server that
+ignores ranges fails with the existing buffering message. Iframe players without a proxied file and
+gifv clips keep their previous rendering. Unverified live: whether the media proxy answers byte
+ranges for every linked video; the tests use a local range server.

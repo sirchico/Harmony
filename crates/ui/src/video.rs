@@ -43,6 +43,8 @@ pub enum VideoCommand {
 	Volume(f32),
 	Stop,
 }
+/// Paints a poster into the idle player stage.
+type PosterPaint<'a> = &'a mut dyn FnMut(&mut egui::Ui, egui::Rect);
 pub struct VideoUi {
 	pub active: Option<(Id, Id, Attachment)>,
 	pub state: VideoState,
@@ -160,10 +162,13 @@ impl VideoUi {
 				ui.set_min_size(screen.size());
 				ui.set_max_size(screen.size());
 				let response =
-					self.show_player(ui, message, attachment, true, download, opening, demo);
-				crate::attachments::media_context_menu(
-					&response, attachment, download, opening, demo,
-				);
+					self.show_player(ui, message, attachment, true, None, download, opening, demo);
+				// A linked video is no uploaded file to download or copy.
+				if !crate::embeds::is_embed_video(attachment) {
+					crate::attachments::media_context_menu(
+						&response, attachment, download, opening, demo,
+					);
+				}
 			});
 		// The shared link confirmation is drawn before the timeline. Leave the video
 		// overlay when opening an original so that confirmation remains visible.
@@ -336,7 +341,32 @@ impl VideoUi {
 		opening: &mut Option<String>,
 		demo: bool,
 	) -> egui::Response {
-		self.show_player(ui, message, attachment, false, download, opening, demo)
+		self.show_player(
+			ui, message, attachment, false, None, download, opening, demo,
+		)
+	}
+	/// A linked video's player; `poster` paints the embed's thumbnail into the idle stage.
+	#[allow(clippy::too_many_arguments)]
+	pub(crate) fn show_embed(
+		&mut self,
+		ui: &mut egui::Ui,
+		message: &Message,
+		attachment: &Attachment,
+		poster: PosterPaint<'_>,
+		download: &mut crate::DownloadUi,
+		opening: &mut Option<String>,
+		demo: bool,
+	) -> egui::Response {
+		self.show_player(
+			ui,
+			message,
+			attachment,
+			false,
+			Some(poster),
+			download,
+			opening,
+			demo,
+		)
 	}
 	#[allow(clippy::too_many_arguments)]
 	fn show_player(
@@ -345,6 +375,7 @@ impl VideoUi {
 		message: &Message,
 		attachment: &Attachment,
 		fullscreen: bool,
+		poster: Option<PosterPaint<'_>>,
 		download: &mut crate::DownloadUi,
 		opening: &mut Option<String>,
 		demo: bool,
@@ -375,7 +406,9 @@ impl VideoUi {
 		let painter = ui.painter().with_clip_rect(stage);
 		painter.rect_filled(stage, CORNER, egui::Color32::BLACK);
 		if self.texture.as_ref().filter(|_| active).is_none() {
-			if let Some((poster, _)) = self.posters.get(&attachment.id) {
+			if let Some(paint) = poster {
+				paint(ui, stage);
+			} else if let Some((poster, _)) = self.posters.get(&attachment.id) {
 				let size = poster.resolution_vec2();
 				if size.x > 0.0 && size.y > 0.0 {
 					// Contain, like playback: the decoded aspect can differ

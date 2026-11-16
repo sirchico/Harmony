@@ -16,13 +16,16 @@ const CACHE_CHUNKS: usize = 8;
 const INVALID: &str = "Video download failed or changed; reload the conversation";
 const UNSUPPORTED: &str = "Video server does not support buffering; download to play externally";
 
+/// `expected` is the attachment's size. A linked video has none (`0`): its length comes from
+/// the first range's `Content-Range` total, under the same 100 MiB bound, and every later
+/// range must report that total.
 pub(super) fn source(
 	url: Option<url::Url>,
 	expected: usize,
 	cancelled: Arc<AtomicBool>,
 	runtime: Handle,
 ) -> Result<Box<dyn platform::video::ReadSeek>, &'static str> {
-	if expected == 0 || expected > MAX_BYTES {
+	if (expected == 0 && url.is_none()) || expected > MAX_BYTES {
 		return Err("Video preview limit: 100 MiB");
 	}
 	let (input, len) = if let Some(url) = url {
@@ -60,13 +63,33 @@ pub(super) fn source(
 			(Input::Demo(bytes), bytes.len())
 		}
 	};
-	Ok(Box::new(Source {
+	let mut source = Source {
 		input,
 		cancelled,
 		len,
 		position: 0,
 		cache: VecDeque::new(),
-	}))
+	};
+	if source.len == 0 {
+		source.discover().map_err(|error| {
+			if error.kind() == io::ErrorKind::Unsupported {
+				UNSUPPORTED
+			} else if error.kind() == io::ErrorKind::FileTooLarge {
+				"Video preview limit: 100 MiB"
+			} else {
+				INVALID
+			}
+		})?;
+	}
+	Ok(Box::new(source))
+}
+
+/// The total of a first-range `Content-Range` (`bytes 0-<end>/<total>`) with its end checked.
+fn first_range_total(header: &str) -> Option<(usize, usize)> {
+	let (range, total) = header.strip_prefix("bytes 0-")?.split_once('/')?;
+	let end: usize = range.parse().ok()?;
+	let total: usize = total.parse().ok()?;
+	(total > 0 && end < total).then_some((end, total))
 }
 
 enum Input {
@@ -89,6 +112,85 @@ fn invalid() -> io::Error {
 	io::Error::new(io::ErrorKind::InvalidData, INVALID)
 }
 impl Source {
+	/// Learns a linked video's length from its first range and keeps that range buffered.
+	fn discover(&mut self) -> io::Result<()> {
+		let (client, url, runtime) = match &self.input {
+			Input::Http {
+				client,
+				url,
+				runtime,
+			} => (client, url, runtime),
+			#[cfg(feature = "demo")]
+			Input::Demo(_) => return Err(invalid()),
+		};
+		let bytes = runtime.block_on(async {
+			let cancelled = async {
+				while !self.cancelled.load(Ordering::Acquire) {
+					tokio::time::sleep(Duration::from_millis(20)).await;
+				}
+			};
+			let transfer = async {
+				let response = client_core::fingerprint::discord_request(
+					client.get(url.as_str()),
+					url.as_str(),
+				)
+				.header(wreq::header::ACCEPT_ENCODING, "identity")
+				.header(wreq::header::RANGE, format!("bytes=0-{}", CHUNK - 1))
+				.send()
+				.await
+				.map_err(|_| invalid())?;
+				if response.status() != wreq::StatusCode::PARTIAL_CONTENT {
+					return Err(io::Error::new(io::ErrorKind::Unsupported, UNSUPPORTED));
+				}
+				let (end, total) = response
+					.headers()
+					.get(wreq::header::CONTENT_RANGE)
+					.and_then(|value| value.to_str().ok())
+					.and_then(first_range_total)
+					.ok_or_else(invalid)?;
+				if total > MAX_BYTES {
+					return Err(io::Error::new(io::ErrorKind::FileTooLarge, "too large"));
+				}
+				let count = end + 1;
+				if count != CHUNK.min(total)
+					|| response
+						.headers()
+						.get(wreq::header::CONTENT_ENCODING)
+						.is_some_and(|value| value != "identity")
+					|| response
+						.content_length()
+						.is_some_and(|len| len != count as u64)
+				{
+					return Err(invalid());
+				}
+				let mut bytes = Vec::with_capacity(count);
+				let mut body = std::pin::pin!(response.bytes_stream());
+				while let Some(chunk) = futures_util::StreamExt::next(&mut body)
+					.await
+					.transpose()
+					.map_err(|_| invalid())?
+				{
+					if chunk.len() > count - bytes.len() {
+						return Err(invalid());
+					}
+					bytes.extend_from_slice(&chunk);
+				}
+				if bytes.len() != count {
+					return Err(invalid());
+				}
+				Ok((total, bytes))
+			};
+			tokio::select! { biased;
+				_ = cancelled => Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Cancelled")),
+				result = transfer => result,
+			}
+		})?;
+		self.check_cancelled()?;
+		let (total, bytes) = bytes;
+		self.len = total;
+		self.cache.push_back((0, bytes));
+		Ok(())
+	}
 	fn check_cancelled(&self) -> io::Result<()> {
 		if self.cancelled.load(Ordering::Acquire) {
 			// Read::read_exact retries Interrupted indefinitely.
@@ -314,6 +416,87 @@ mod tests {
 			"alternating tracks: {count} requests, {elapsed:?}, 64 reads, 10 ms response delay"
 		);
 		assert_eq!(count, 2);
+	}
+
+	/// A linked video learns its length from the first range, reads to that end, and is
+	/// refused past the 100 MiB bound or when the server ignores ranges.
+	#[test]
+	fn linked_video_length_comes_from_the_first_range() {
+		fn serve(
+			total: usize,
+			ranges: bool,
+			requests: usize,
+		) -> (url::Url, std::thread::JoinHandle<()>) {
+			let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+			let url = url::Url::parse(&format!(
+				"http://{}/clip.mp4",
+				listener.local_addr().unwrap()
+			))
+			.unwrap();
+			let server = std::thread::spawn(move || {
+				for _ in 0..requests {
+					let (mut socket, _) = listener.accept().unwrap();
+					let mut header = Vec::new();
+					while !header.ends_with(b"\r\n\r\n") {
+						let mut byte = [0];
+						socket.read_exact(&mut byte).unwrap();
+						header.push(byte[0]);
+					}
+					let header = String::from_utf8(header).unwrap().to_ascii_lowercase();
+					let range = header
+						.lines()
+						.find_map(|line| line.strip_prefix("range: bytes="))
+						.unwrap();
+					let (start, end) = range.split_once('-').unwrap();
+					let start: usize = start.parse().unwrap();
+					let end = end.parse::<usize>().unwrap().min(total - 1);
+					let count = end - start + 1;
+					if ranges {
+						write!(socket, "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes {start}-{end}/{total}\r\nContent-Length: {count}\r\nConnection: close\r\n\r\n").unwrap();
+						// Small totals send their bytes; large ones only need the header.
+						if total <= MAX_BYTES {
+							socket
+								.write_all(&vec![(start / CHUNK) as u8; count])
+								.unwrap();
+						}
+					} else {
+						write!(
+							socket,
+							"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+						)
+						.unwrap();
+					}
+				}
+			});
+			(url, server)
+		}
+		let runtime = tokio::runtime::Builder::new_multi_thread()
+			.worker_threads(1)
+			.enable_all()
+			.build()
+			.unwrap();
+		let open = |url| {
+			source(
+				Some(url),
+				0,
+				Arc::new(AtomicBool::new(false)),
+				runtime.handle().clone(),
+			)
+		};
+		let total = CHUNK + 1000;
+		let (url, server) = serve(total, true, 2);
+		let mut input = open(url).unwrap();
+		let mut bytes = Vec::new();
+		input.read_to_end(&mut bytes).unwrap();
+		server.join().unwrap();
+		assert_eq!(bytes.len(), total);
+		assert!(bytes[CHUNK..].iter().all(|byte| *byte == 1));
+		let (url, server) = serve(MAX_BYTES + 1, true, 1);
+		assert_eq!(open(url).err(), Some("Video preview limit: 100 MiB"));
+		server.join().unwrap();
+		let (url, server) = serve(total, false, 1);
+		assert_eq!(open(url).err(), Some(UNSUPPORTED));
+		server.join().unwrap();
 	}
 
 	#[test]

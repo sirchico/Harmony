@@ -1166,6 +1166,19 @@ impl Avatars {
 		)
 	}
 
+	/// A linked video's thumbnail painted into its idle player stage.
+	pub(crate) fn paint_poster(
+		&mut self,
+		ui: &mut egui::Ui,
+		media: &model::EmbedMedia,
+		rect: egui::Rect,
+		demo: bool,
+	) {
+		let native = (media.width > 0 && media.height > 0)
+			.then(|| [media.width.min(16384), media.height.min(16384)]);
+		self.paint_media(ui, media, rect, native, demo, Surface::Inline);
+	}
+
 	pub(crate) fn decoded_longest_side(&mut self, media: &model::EmbedMedia) -> Option<u32> {
 		self.largest_held(media)
 			.map(|[width, height]| width.max(height))

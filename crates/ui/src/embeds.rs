@@ -163,6 +163,97 @@ fn inline_image(embed: &Embed) -> Option<&model::EmbedMedia> {
 		.flatten()
 }
 
+/// A linked video file plays in place, as on Discord, through Discord's media proxy copy only:
+/// the origin host never sees the viewer. Iframe players (no proxied file) and looping gifv
+/// clips keep their existing rendering. The stand-in attachment has size 0, which keeps it
+/// out of the attachment poster, download and playback paths that validate real files.
+pub(crate) fn embed_video(embed: &Embed, index: usize) -> Option<model::Attachment> {
+	if embed.kind == "gifv" {
+		return None;
+	}
+	let video = embed.video.as_ref()?;
+	let proxy = video
+		.proxy_url
+		.as_deref()
+		.filter(|url| model::valid_proxied_media_url(url))?;
+	let path = proxy.split(['?', '#']).next().unwrap_or(proxy);
+	let filename = path
+		.rsplit('/')
+		.next()
+		.filter(|name| !name.is_empty())
+		.unwrap_or("video.mp4");
+	let poster = embed.thumbnail.as_ref().or(embed.image.as_ref());
+	Some(model::Attachment {
+		id: model::Id(u64::MAX - index as u64),
+		filename: filename.chars().take(128).collect(),
+		description: None,
+		content_type: Some("video/mp4".into()),
+		size: 0,
+		media: model::EmbedMedia {
+			url: video.url.clone().or_else(|| embed.url.clone()),
+			proxy_url: Some(proxy.to_owned()),
+			width: if video.width > 0 {
+				video.width
+			} else {
+				poster.map_or(0, |poster| poster.width)
+			},
+			height: if video.height > 0 {
+				video.height
+			} else {
+				poster.map_or(0, |poster| poster.height)
+			},
+			placeholder: Vec::new(),
+		},
+		spoiler: false,
+		duration_ms: None,
+		waveform: Vec::new(),
+	})
+}
+
+/// Stand-in attachments of the message's playable linked videos, as [`embed_video`] makes them.
+pub fn embed_videos(message: &Message) -> impl Iterator<Item = model::Attachment> + '_ {
+	message
+		.embeds
+		.iter()
+		.enumerate()
+		.filter_map(|(index, embed)| embed_video(embed, index))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn video_player(
+	ui: &mut egui::Ui,
+	player: &mut crate::video::VideoUi,
+	message: &Message,
+	embed: &Embed,
+	file: &model::Attachment,
+	images: &mut Avatars,
+	download: &mut DownloadUi,
+	opening: &mut Option<String>,
+	demo: bool,
+) {
+	let poster = embed.thumbnail.as_ref().or(embed.image.as_ref());
+	let mut paint = |ui: &mut egui::Ui, stage: egui::Rect| {
+		let Some(poster) = poster else {
+			return;
+		};
+		// Contain, like playback, so the poster never spills past the stage.
+		let rect = if poster.width > 0 && poster.height > 0 {
+			let size = egui::vec2(poster.width as f32, poster.height as f32);
+			let scale = (stage.width() / size.x).min(stage.height() / size.y);
+			egui::Rect::from_center_size(stage.center(), size * scale)
+		} else {
+			stage
+		};
+		images.paint_poster(ui, poster, rect, demo);
+	};
+	player.show_embed(ui, message, file, &mut paint, download, opening, demo);
+}
+
+/// Whether `attachment` is an [`embed_video`] stand-in rather than an uploaded file.
+pub fn is_embed_video(attachment: &model::Attachment) -> bool {
+	attachment.size == 0 && attachment.id.0 > u64::MAX - 64
+}
+
 /// A link that resolves to a hosted clip arrives as a video embed without a poster
 /// image. Discord draws the clip itself there, so the card shows its frames instead of
 /// an empty page; playback still opens in the browser through the card's video line.
@@ -555,6 +646,7 @@ pub fn show(
 	images: &mut Avatars,
 	opening: &mut Option<String>,
 	download: &mut DownloadUi,
+	mut video: Option<&mut crate::video::VideoUi>,
 	profile: &mut crate::profiles::ProfileSession,
 	state: &client_core::State,
 	card_surface: crate::design::MessageCardSurface,
@@ -585,7 +677,28 @@ pub fn show(
 			cache,
 			!hide_media_links || !standalone_media_links(message),
 		);
+		let playable = video
+			.as_ref()
+			.and_then(|_| embed_video(embed, index))
+			.filter(|_| count == 1);
+		let mut video = video.as_deref_mut();
 		ui.push_id(("embed", index), |ui| {
+			// A bare linked video file is just its player, as on Discord.
+			if let (Some(file), Some(player)) = (&playable, video.as_deref_mut())
+				&& [&embed.title, &embed.description]
+					.into_iter()
+					.flatten()
+					.all(|text| text.trim().is_empty())
+				&& embed.author.is_none()
+				&& embed.provider.is_none()
+				&& embed.fields.is_empty()
+			{
+				video_player(
+					ui, player, message, embed, file, images, download, opening, demo,
+				);
+				ui.add_space(6.0);
+				return;
+			}
 			if count > 1 && inline_image(embed).is_some() {
 				gallery(ui, group, images, message.id, download, demo);
 				if let Some(url) = &source_url {
@@ -677,11 +790,13 @@ pub fn show(
 						.auto_shrink([false, true])
 						.show(ui, |ui| {
 							let part = 1 + index as u16 * 64;
-							let large = large_thumbnail(embed).filter(|_| count == 1);
-							let thumbnail = embed
-								.thumbnail
-								.as_ref()
-								.filter(|_| large.is_none() && ui.available_width() >= 300.0);
+							// A playable video uses its thumbnail as the player's poster.
+							let large =
+								large_thumbnail(embed).filter(|_| count == 1 && playable.is_none());
+							let thumbnail = embed.thumbnail.as_ref().filter(|_| {
+								large.is_none()
+									&& playable.is_none() && ui.available_width() >= 300.0
+							});
 							let body_width = (ui.available_width()
 								- if thumbnail.is_some() { 96.0 } else { 0.0 })
 							.max(1.0);
@@ -790,7 +905,12 @@ pub fn show(
 								});
 								field += count;
 							}
-							if count > 1 {
+							if let (Some(file), Some(player)) = (&playable, video) {
+								video_player(
+									ui, player, message, embed, file, images, download, opening,
+									demo,
+								);
+							} else if count > 1 {
 								gallery(ui, group, images, message.id, download, demo);
 							} else if let Some(image) = embed.image.as_ref().or(large) {
 								image_preview(
@@ -809,7 +929,8 @@ pub fn show(
 								clip_preview(ui, clip, images, demo);
 							}
 							if thumbnail.is_none()
-								&& large.is_none() && let Some(image) = &embed.thumbnail
+								&& large.is_none() && playable.is_none()
+								&& let Some(image) = &embed.thumbnail
 							{
 								image_preview(
 									ui,
@@ -821,8 +942,9 @@ pub fn show(
 									demo,
 								);
 							}
-							if embed.video.is_some()
-								|| matches!(embed.kind.as_str(), "video" | "gifv")
+							if playable.is_none()
+								&& (embed.video.is_some()
+									|| matches!(embed.kind.as_str(), "video" | "gifv"))
 							{
 								ui.small(crate::i18n::translate(
 									"embeds-show-video-preview-playback-opens-in-your-browser",
@@ -1048,6 +1170,7 @@ mod tests {
 					&mut images,
 					&mut None,
 					&mut DownloadUi::default(),
+					None,
 					&mut crate::profiles::ProfileSession::default(),
 					&client_core::State::default(),
 					crate::design::MessageCardSurface::Conversation,
@@ -1198,6 +1321,7 @@ mod tests {
 								&mut images,
 								&mut opening,
 								&mut DownloadUi::default(),
+								None,
 								&mut crate::profiles::ProfileSession::default(),
 								&client_core::State::default(),
 								crate::design::MessageCardSurface::Conversation,
@@ -1289,6 +1413,7 @@ mod tests {
 									&mut images,
 									&mut opening,
 									&mut download,
+									None,
 									&mut profile,
 									&client_core::State::default(),
 									crate::design::MessageCardSurface::Conversation,

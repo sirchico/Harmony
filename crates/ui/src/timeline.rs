@@ -2373,7 +2373,9 @@ impl TimelineView {
 								&& !(hide_blocked
 									&& state.user_blocked(message.author.id) == Some(true))
 								&& message.channel == *channel
-								&& message.attachments.contains(attachment)
+								&& (message.attachments.contains(attachment)
+									|| crate::embeds::embed_videos(message)
+										.any(|video| video == *attachment))
 								&& (self.component_viewing
 									== Some((
 										message.id,
@@ -4109,6 +4111,7 @@ impl TimelineView {
 													avatars,
 													&mut self.opening,
 													&mut self.download,
+													Some(&mut self.video),
 													profile,
 													state,
 													crate::design::MessageCardSurface::Conversation,
@@ -10526,6 +10529,7 @@ mod tests {
 					&mut crate::avatars::Avatars::default(),
 					&mut None,
 					&mut crate::attachments::DownloadUi::default(),
+					None,
 					&mut profile,
 					&State {
 						demo: true,
