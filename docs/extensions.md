@@ -251,7 +251,7 @@ content (8 KiB), forum data (6 KiB) and conversation activity (2 KiB) also share
 that ceiling; no new total snapshot allocation is authorized. The timeline
 skips messages larger than 4 KiB and reports partial data. Granting
 `message_details` also caps both timeline text and metadata rows at 12 when requested together, while preserving
-the 20-KiB timeline byte budget and shared 10-million-fuel limit. Valid wire-sized
+the 20-KiB timeline byte budget and shared fuel limit (10 million plus 400 per input byte). Valid wire-sized
 inputs can still exceed execution fuel. Bounded list responses
 expose `truncated`; voice participant IDs are capped without a completeness flag.
 No snapshot includes tokens, deleted/ephemeral text, attachment bytes/URLs, raw
@@ -453,7 +453,7 @@ identify a useful next check, not a complete crash trace:
 
 | Host error category | Author action |
 | --- | --- |
-| `Fuel` | Reduce handler loops, JSON work or requested data; the limit is 10 million fuel. |
+| `Fuel` | Reduce handler loops, JSON work or requested data; the limit is 10 million fuel plus 400 per input byte. |
 | `Memory` | Reduce memory/table allocation; linear memory remains capped at 16 MiB. This category also covers engine allocation failure, not only hitting that exact cap. |
 | `Stack` | Reduce recursion and stack allocations. |
 | `Trap` | Check for panic, invalid memory access or arithmetic traps. No panic text is exposed. |

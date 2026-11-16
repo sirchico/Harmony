@@ -175,6 +175,21 @@ pub struct ExtensionOutput {
 	/// GIF picker results (`gif_search` actions only), at most [`MAX_GIF_RESULTS`].
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub gifs: Vec<GifResult>,
+	/// Categories for the GIF picker's home page (`gif_search` with an empty query), at most
+	/// [`MAX_GIF_CATEGORIES`].
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub gif_categories: Vec<GifCategoryResult>,
+}
+
+/// Most categories one home page may return.
+pub const MAX_GIF_CATEGORIES: usize = 32;
+
+/// A GIF picker home category: choosing it searches for `name`; `preview` is shown behind it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GifCategoryResult {
+	pub name: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub preview: Option<String>,
 }
 
 /// Most GIFs one search may return.

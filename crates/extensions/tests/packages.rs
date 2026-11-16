@@ -176,3 +176,57 @@ fn every_published_plugin_action_returns_output_the_host_accepts() {
 		}
 	}
 }
+
+/// GIF searches read real-sized provider pages: 50 GIFs from one provider, shaped like the
+/// services' slim answers (quote-heavy JSON, about 1.8 KB per GIF), within the input bound and
+/// the execution budget. Cheap padding hid the fuel cost before.
+#[test]
+fn gif_provider_handles_full_size_provider_pages() {
+	let bytes = PACKAGES
+		.iter()
+		.find(|(name, _)| *name == "gif-provider-switcher")
+		.unwrap()
+		.1;
+	let package = extensions::parse_package(bytes).unwrap();
+	let tags = (0..110)
+		.map(|i| format!("\"tag {i}\""))
+		.collect::<Vec<_>>()
+		.join(",");
+	let tenor: Vec<String> = (0..50)
+		.map(|i| {
+			format!(
+				r#"{{"id":"{i}","title":"","h1_title":"Wave {i}","content_description":"A cat waves {i}","itemurl":"https://tenor.com/view/wave-{i}","url":"https://tenor.com/{i}","created":1.5,"shares":1,"hasaudio":false,"tags":[{tags}],"flags":[],"media":[{{"tinygif":{{"url":"https://media.tenor.com/t{i}/tenor.gif","dims":[220,124],"preview":"https://media.tenor.com/t{i}/tenor.png","size":1}},"gif":{{"url":"https://media.tenor.com/g{i}/tenor.gif","dims":[498,280],"preview":"https://media.tenor.com/g{i}/tenor.png","size":2}},"mp4":{{"url":"https://media.tenor.com/m{i}/tenor.mp4","dims":[498,280],"duration":1.2,"preview":"https://media.tenor.com/m{i}/tenor.png","size":3}}}}]}}"#
+			)
+		})
+		.collect();
+	let tenor = format!(r#"{{"results":[{}],"next":"50"}}"#, tenor.join(","));
+	assert!(tenor.len() > 80_000, "{}", tenor.len());
+	let mut invocation = Invocation {
+		action: "search".into(),
+		values: [("query", "cat"), ("provider", "tenor")]
+			.into_iter()
+			.map(|(k, v)| (k.to_owned(), v.to_owned()))
+			.collect(),
+		..Default::default()
+	};
+	let first = extensions::invoke(&package, &invocation).unwrap();
+	assert_eq!(first.requests.len(), 1);
+	invocation.responses = vec![extensions::HostResponse::ok(
+		"tenor",
+		extensions::ResponseValue::Http {
+			response: Box::new(extensions::HttpResponse {
+				status: 200,
+				content_type: Some("application/json".into()),
+				location: None,
+				encoding: extensions::ContentEncoding::Text,
+				body: tenor,
+				truncated: false,
+			}),
+		},
+	)];
+	invocation.continuation = first.continuation;
+	invocation.round = 1;
+	let output = extensions::invoke(&package, &invocation).unwrap();
+	assert_eq!(output.gifs.len(), 50);
+	assert!(output.gifs.iter().all(|gif| !gif.preview.contains('?')));
+}

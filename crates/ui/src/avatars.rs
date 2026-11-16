@@ -972,7 +972,8 @@ impl Avatars {
 		}
 	}
 	fn preview_key(&self, preview: &str) -> String {
-		if self.animate_gifs && (preview.ends_with(".gif") || preview.ends_with(".webp")) {
+		let path = preview.split('?').next().unwrap_or(preview);
+		if self.animate_gifs && (path.ends_with(".gif") || path.ends_with(".webp")) {
 			format!("anim:{preview}")
 		} else {
 			format!("gif:{preview}")

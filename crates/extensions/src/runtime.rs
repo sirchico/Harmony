@@ -6,6 +6,9 @@ use wasmi::{
 
 const MEMORY_BYTES: usize = 16 * 1024 * 1024;
 const FUEL: u64 = 10_000_000;
+/// Extra fuel per input byte, so an action can read all the data it is handed (a service's
+/// answer, a file) within the input bound: at most about 115 million instructions in total.
+const FUEL_PER_INPUT_BYTE: u64 = 400;
 
 fn engine() -> Engine {
 	let mut config = Config::default();
@@ -124,6 +127,10 @@ pub fn invoke(package: &Package, input: &Invocation) -> Result<Output, Error> {
 	let engine = engine();
 	let module = module(&engine, &package.wasm)?;
 	let (mut store, instance) = instantiate(&engine, &module)?;
+	let remaining = store.get_fuel().map_err(|_| Error::Execution)?;
+	store
+		.set_fuel(remaining + bytes.len() as u64 * FUEL_PER_INPUT_BYTE)
+		.map_err(|_| Error::Execution)?;
 	let memory = instance.get_memory(&store, "memory").ok_or(Error::Module)?;
 	let (alloc_name, invoke_name) = exports(&module).ok_or(Error::Module)?;
 	let alloc = instance

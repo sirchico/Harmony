@@ -761,8 +761,9 @@ fn cdn_url(key: &str) -> Option<String> {
 		});
 	}
 	if let Some(source) = key.strip_prefix("anim:") {
-		return (model::valid_gif_preview(source)
-			&& (source.ends_with(".gif") || source.ends_with(".webp")))
+		let path = source.split('?').next().unwrap_or(source);
+		return ((model::valid_gif_preview(source) || model::valid_gif_category_preview(source))
+			&& (path.ends_with(".gif") || path.ends_with(".webp")))
 		.then(|| source.to_owned());
 	}
 	if let Some(source) = key.strip_prefix("embed:") {
@@ -770,7 +771,7 @@ fn cdn_url(key: &str) -> Option<String> {
 	}
 	// Provider previews arrive only inside a service GIF result; the address is used verbatim.
 	if let Some(source) = key.strip_prefix("gif:") {
-		return model::valid_gif_preview(source).then(|| source.to_owned());
+		return model::valid_gif_category_preview(source).then(|| source.to_owned());
 	}
 	// Catalog artwork arrives as full Discord CDN addresses inside a requested badge catalog.
 	if let Some(url) = key.strip_prefix("badge-art:") {
@@ -2992,6 +2993,17 @@ mod tests {
 		assert!(super::cdn_url("anim:https://media.tenor.com/x/tenor.gif").is_some());
 		assert!(super::cdn_url("anim:https://static.klipy.com/x.gif").is_some());
 		assert!(super::cdn_url("anim:https://evil.example/x.gif").is_none());
+		// KLIPY category artwork through Discord's image proxy, but no other proxied files.
+		let category = "https://images-ext-1.discordapp.net/external/AbC/https/static.klipy.com/ii/a/b.gif?width=220&height=220&format=gif&animated=true";
+		assert!(super::cdn_url(&format!("anim:{category}")).is_some());
+		assert!(super::cdn_url(&format!("gif:{category}")).is_some());
+		assert!(
+			super::cdn_url(
+				"anim:https://images-ext-1.discordapp.net/external/AbC/https/example.com/page"
+			)
+			.is_none()
+		);
+		assert!(super::cdn_url("anim:https://cdn.discordapp.com/attachments/1/2/x.gif").is_none());
 	}
 
 	#[test]

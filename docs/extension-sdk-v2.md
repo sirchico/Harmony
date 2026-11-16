@@ -307,7 +307,8 @@ does not run the extension; `all` runs both and shows Klipy, Tenor and Giphy res
 The search text arrives as the value `query` (empty for trending) and the current choice as
 `provider`; return up to 50 `gifs` (`id`, `title`, `url` to send, `preview` to show, `width`,
 `height`). Prefix IDs with `tenor-` or `giphy-` to badge results with their provider; IDs use
-letters, digits, `-` and `_`. Results the picker would reject (other media hosts, previews with a
+letters, digits, `-` and `_`. With an empty query, `gif_categories` (up to 32: a search `name`
+and a `preview` image or clip) replace the home page's built-in categories. Results the picker would reject (other media hosts, previews with a
 query string, oversized fields) are dropped individually. A panel text returned instead of GIFs is
 shown as the reason. Only the newest search waits while one runs.
 

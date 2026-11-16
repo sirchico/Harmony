@@ -1099,7 +1099,24 @@ impl Bridge {
 							})
 							.unwrap_or_default();
 					}
-					self.provider_gifs(state, request, Some(gifs));
+					let categories = output
+						.gif_categories
+						.into_iter()
+						.map(|category| model::GifCategory {
+							name: category.name.trim().to_owned(),
+							preview: category.preview,
+						})
+						// Artwork from hosts the picker cannot load leaves a flat tile.
+						.map(|mut category| {
+							if !category.valid() {
+								category.preview = None;
+							}
+							category
+						})
+						.filter(model::GifCategory::valid)
+						.take(model::GIF_CATEGORIES)
+						.collect();
+					self.provider_gifs(state, request, Some(model::GifPage { gifs, categories }));
 					self.run_gif_search(state, ctx, messaging);
 				}
 				Ok(Event::Invoked { id, output })
@@ -2043,10 +2060,10 @@ impl Bridge {
 		})
 	}
 	/// The extension's results (`None` when it failed) for `request`.
-	fn provider_gifs(&mut self, state: &mut State, request: u64, gifs: Option<Vec<model::Gif>>) {
+	fn provider_gifs(&mut self, state: &mut State, request: u64, page: Option<model::GifPage>) {
 		let event = match self.gif_merge.as_mut() {
 			Some(merge) if merge.request == request => {
-				merge.provider = Some(gifs);
+				merge.provider = Some(page);
 				match self.gif_merge.take_if(|merge| merge.builtin.is_some()) {
 					Some(merge) => merge.finish(),
 					None => return,
@@ -2054,12 +2071,7 @@ impl Bridge {
 			}
 			_ => client_core::Event::Gifs {
 				request,
-				result: gifs
-					.map(|gifs| model::GifPage {
-						gifs,
-						categories: Vec::new(),
-					})
-					.ok_or(client_core::auth::Failure::Network),
+				result: page.ok_or(client_core::auth::Failure::Network),
 			},
 		};
 		state.apply(client_core::Envelope {
@@ -2513,7 +2525,7 @@ struct GifMerge {
 	request: u64,
 	builtin: Option<Result<model::GifPage, client_core::auth::Failure>>,
 	/// The extension's results; `Some(None)` when it failed.
-	provider: Option<Option<Vec<model::Gif>>>,
+	provider: Option<Option<model::GifPage>>,
 }
 impl GifMerge {
 	fn finish(self) -> client_core::Event {
@@ -2529,10 +2541,11 @@ impl GifMerge {
 }
 
 /// KLIPY, Tenor and Giphy results taken in turn, as one valid picker page: duplicates
-/// dropped, within the page's item and byte bounds. Fails only when both sides failed.
+/// dropped, within the page's item and byte bounds. The extension's home categories replace
+/// KLIPY's when it sends any. Fails only when both sides failed.
 fn merge_gif_pages(
 	builtin: Result<model::GifPage, client_core::auth::Failure>,
-	provider: Option<Vec<model::Gif>>,
+	provider: Option<model::GifPage>,
 ) -> Result<model::GifPage, client_core::auth::Failure> {
 	let (klipy, categories, failure) = match builtin {
 		Ok(page) => (page.gifs, page.categories, None),
@@ -2542,7 +2555,13 @@ fn merge_gif_pages(
 		return Err(failure);
 	}
 	let provider = provider.unwrap_or_default();
+	let categories = if provider.categories.is_empty() {
+		categories
+	} else {
+		provider.categories
+	};
 	let (tenor, giphy): (Vec<_>, Vec<_>) = provider
+		.gifs
 		.into_iter()
 		.partition(|gif| gif.id.starts_with("tenor-"));
 	let mut sources = [klipy.into_iter(), tenor.into_iter(), giphy.into_iter()];
@@ -2592,17 +2611,36 @@ mod tests {
 			gifs: vec![gif("k1", "klipy.com"), gif("k2", "klipy.com")],
 			categories: Vec::new(),
 		};
-		let provider = vec![
-			gif("tenor-1", "tenor.com"),
-			gif("giphy-1", "giphy.com"),
-			gif("tenor-2", "tenor.com"),
-			// Invalid results from the extension are dropped, not the whole page.
-			gif("giphy bad", "giphy.com"),
-		];
-		let page = merge_gif_pages(Ok(klipy.clone()), Some(provider.clone())).unwrap();
+		let provider = model::GifPage {
+			gifs: vec![
+				gif("tenor-1", "tenor.com"),
+				gif("giphy-1", "giphy.com"),
+				gif("tenor-2", "tenor.com"),
+				// Invalid results from the extension are dropped, not the whole page.
+				gif("giphy bad", "giphy.com"),
+			],
+			categories: vec![model::GifCategory {
+				name: "wave".into(),
+				preview: Some("https://media.tenor.com/w/tenor.gif".into()),
+			}],
+		};
+		let mut with_categories = klipy.clone();
+		with_categories.categories = vec![model::GifCategory {
+			name: "happy".into(),
+			preview: None,
+		}];
+		let page = merge_gif_pages(Ok(with_categories.clone()), Some(provider.clone())).unwrap();
 		let ids: Vec<_> = page.gifs.iter().map(|gif| gif.id.as_str()).collect();
 		assert_eq!(ids, ["k1", "tenor-1", "giphy-1", "k2", "tenor-2"]);
 		assert!(page.valid());
+		// The extension's home categories replace KLIPY's; without any, KLIPY's stay.
+		assert_eq!(page.categories[0].name, "wave");
+		let no_categories = model::GifPage {
+			categories: Vec::new(),
+			..provider.clone()
+		};
+		let page = merge_gif_pages(Ok(with_categories), Some(no_categories)).unwrap();
+		assert_eq!(page.categories[0].name, "happy");
 		assert_eq!(
 			merge_gif_pages(Err(client_core::auth::Failure::Network), Some(provider))
 				.unwrap()

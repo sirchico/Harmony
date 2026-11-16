@@ -150,8 +150,11 @@ impl TrendingReply {
 		for category in self.categories {
 			let category = GifCategory {
 				name: category.name.trim().chars().take(64).collect(),
-				// Unusable artwork leaves the flat tile rather than dropping the category.
-				preview: category.src.filter(|src| model::valid_gif_preview(src)),
+				// Discord serves KLIPY artwork through its image proxy. Unusable artwork leaves
+				// the flat tile rather than dropping the category.
+				preview: category
+					.src
+					.filter(|src| model::valid_gif_category_preview(src)),
 			};
 			if category.valid() && !categories.iter().any(|known| known.name == category.name) {
 				categories.push(category);
@@ -236,7 +239,7 @@ mod tests {
 			)
 		};
 		let categories = format!(
-			r#"{{"categories":[{{"name":"happy","src":"https://static.klipy.com/c/happy.mp4"}},{{"name":"dance","src":"https://static.klipy.com/c/dance.gif"}}],"gifs":[{}]}}"#,
+			r#"{{"categories":[{{"name":"happy","src":"https://static.klipy.com/c/happy.mp4"}},{{"name":"dance","src":"https://static.klipy.com/c/dance.gif"}},{{"name":"hello","src":"https://images-ext-1.discordapp.net/external/AbC_12-x/https/static.klipy.com/ii/d7/ec/f3/OXB1.gif?keep_aspect_ratio=true&height=220&width=220&format=gif&animated=true"}},{{"name":"proxied page","src":"https://images-ext-1.discordapp.net/external/AbC_12-x/https/example.com/page"}}],"gifs":[{}]}}"#,
 			klipy(r#""sample""#)
 		);
 		let grid = format!(
@@ -262,7 +265,13 @@ mod tests {
 				.iter()
 				.map(|category| (category.name.as_str(), category.preview.is_some()))
 				.collect::<Vec<_>>(),
-			[("happy", false), ("dance", true)]
+			[
+				("happy", false),
+				("dance", true),
+				// Discord's proxied KLIPY artwork is kept; other proxied addresses are not.
+				("hello", true),
+				("proxied page", false)
+			]
 		);
 		// An empty grid falls back to the sample rather than an empty Trending view.
 		let page = decode_categories()
@@ -270,7 +279,7 @@ mod tests {
 			.unwrap();
 		assert_eq!(page.gifs.len(), 1);
 		assert_eq!(page.gifs[0].id, "sample");
-		assert_eq!(page.categories.len(), 2);
+		assert_eq!(page.categories.len(), 4);
 	}
 
 	#[test]

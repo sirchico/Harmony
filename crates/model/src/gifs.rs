@@ -142,6 +142,24 @@ pub fn valid_discord_media_url(url: &str) -> bool {
 		})
 }
 
+/// Category artwork on the GIF picker home: a provider preview, or the animated GIF or WebP
+/// Discord's image proxy serves for KLIPY categories
+/// (`https://images-ext-1.discordapp.net/external/.../https/static.klipy.com/....gif?...`).
+pub fn valid_gif_category_preview(url: &str) -> bool {
+	valid_gif_preview(url)
+		|| (valid_discord_media_url(url)
+			&& [
+				"https://images-ext-1.discordapp.net/external/",
+				"https://images-ext-2.discordapp.net/external/",
+			]
+			.iter()
+			.any(|prefix| url.starts_with(prefix))
+			&& {
+				let path = url.split('?').next().unwrap_or(url);
+				path.ends_with(".gif") || path.ends_with(".webp")
+			})
+}
+
 /// A favorite may share any bounded HTTPS page. This does not authorize fetching it;
 /// previews still require an admitted provider or Discord media source.
 pub fn valid_gif_favorite_url(url: &str) -> bool {
@@ -195,7 +213,10 @@ impl GifCategory {
 		(1..=64).contains(&self.name.len())
 			&& !self.name.trim().is_empty()
 			&& !self.name.chars().any(char::is_control)
-			&& self.preview.as_deref().is_none_or(valid_gif_preview)
+			&& self
+				.preview
+				.as_deref()
+				.is_none_or(valid_gif_category_preview)
 	}
 }
 

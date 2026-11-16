@@ -936,7 +936,23 @@ pub struct Output {
 	/// API v2: GIF picker results (`gif_search` actions only).
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub gifs: Vec<GifResult>,
+	/// API v2: categories for the GIF picker's home page (`gif_search` with an empty query).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub gif_categories: Vec<GifCategoryResult>,
 }
+
+/// A GIF picker home category: choosing it searches for `name`. `preview` is shown behind the
+/// name and follows the same host rules as a GIF preview (an image or a provider clip).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GifCategoryResult {
+	pub name: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub preview: Option<String>,
+}
+
+/// Most categories one home page may return.
+pub const MAX_GIF_CATEGORIES: usize = 32;
 
 /// One GIF for the picker. `url` is what is sent when it is chosen; `preview` is shown in the
 /// picker and must be a Tenor, Klipy or Giphy media address without a query string.
@@ -1633,6 +1649,25 @@ impl Output {
 					|| gif.height == 0
 					|| gif.width > 4096
 					|| gif.height > 4096
+			}) {
+				return Err(Error::Invalid);
+			}
+		}
+		if !self.gif_categories.is_empty() {
+			if surface != Surface::GifSearch {
+				return Err(Error::Capability);
+			}
+			if self.gif_categories.len() > MAX_GIF_CATEGORIES {
+				return Err(Error::Limit);
+			}
+			if self.gif_categories.iter().any(|category| {
+				category.name.trim().is_empty()
+					|| category.name.chars().count() > 64
+					|| category.name.chars().any(char::is_control)
+					|| category
+						.preview
+						.as_deref()
+						.is_some_and(|preview| !valid_https_url(preview))
 			}) {
 				return Err(Error::Invalid);
 			}

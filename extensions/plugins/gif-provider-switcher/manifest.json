@@ -2,7 +2,7 @@
   "api_version": 2,
   "id": "gif-provider-switcher",
   "name": "GIF Provider Switcher",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "author": "Harmony contributors",
   "license": "MIT OR Apache-2.0",
   "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/gif-provider-switcher",
@@ -12,7 +12,7 @@
     "network"
   ],
   "origins": [
-    "tenor.googleapis.com",
+    "api.tenor.com",
     "api.giphy.com"
   ],
   "actions": [
@@ -25,15 +25,14 @@
   "requires": {
     "features": {
       "gifs.provider": "^1.0",
-      "network": "^1.0",
-      "secrets": "^1.0"
+      "network": "^1.0"
     }
   },
   "settings": [
     {
       "id": "provider",
       "label": "GIF provider",
-      "description": "Where the GIF picker searches; also in the dropdown beside its search field. Klipy is the built-in search. Tenor and Giphy need your own API key.",
+      "description": "Where the GIF picker searches; also in the dropdown beside its search field.",
       "type": "choice",
       "options": [
         {
@@ -53,43 +52,7 @@
           "label": "All 3"
         }
       ],
-      "default": "all"
-    },
-    {
-      "id": "rating",
-      "label": "Content rating",
-      "type": "choice",
-      "options": [
-        {
-          "value": "g",
-          "label": "G"
-        },
-        {
-          "value": "pg",
-          "label": "PG"
-        },
-        {
-          "value": "pg-13",
-          "label": "PG-13"
-        },
-        {
-          "value": "r",
-          "label": "R"
-        }
-      ],
-      "default": "pg-13"
-    },
-    {
-      "id": "giphy-key",
-      "label": "Giphy API key",
-      "description": "From developers.giphy.com. Kept in your system's credential store and only sent to Giphy.",
-      "type": "secret"
-    },
-    {
-      "id": "tenor-key",
-      "label": "Tenor API key",
-      "description": "A Google Cloud key with the Tenor API enabled. Kept in your system's credential store and only sent to Tenor.",
-      "type": "secret"
+      "default": "tenor"
     }
   ]
 }
