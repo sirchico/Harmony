@@ -48,14 +48,50 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/base-decoder.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/base-decoder.harmony-extension",
       "sha256": "8860412c09934383d7a5f4d5d717a8ba602d4c3b19b45fe7575f47d98927c7b1",
       "download_bytes": 1662171,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/base-decoder.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/base-decoder.png",
         "sha256": "2a8a1ddce924eabdae9841100da608b6f05e21cbec23be923826f5f3c83eb91f",
         "download_bytes": 53284
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "clear-urls",
+        "name": "ClearURLs",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/clear-urls",
+        "kind": "plugin",
+        "capabilities": [
+          "send_hook"
+        ],
+        "actions": [
+          {
+            "id": "clean",
+            "label": "Remove trackers from links as you send",
+            "surface": "before_send"
+          }
+        ],
+        "requires": {
+          "features": {
+            "hooks.before_send": "^1.0"
+          }
+        }
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/clear-urls.harmony-extension",
+      "sha256": "263f81eb37d2ae6bd89f74181010e04dab4ae481463a97c2b0536ce38445c9de",
+      "download_bytes": 1712620,
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/clear-urls.png",
+        "sha256": "c07141865962ca1aaf23289f1380c834e54903a311d0c01d88a28cf72fdf8584",
+        "download_bytes": 75336
       }
     },
     {
@@ -142,12 +178,12 @@
           }
         }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/copy-file-contents.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/copy-file-contents.harmony-extension",
       "sha256": "0f9d6f6cad5035f1000984937158c531649723d7a57638d1808ca71787bd6141",
       "download_bytes": 1654119,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/copy-file-contents.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/copy-file-contents.png",
         "sha256": "a208d27a29188d16e2248310b2a0da7471ec6d31798d734957124838444289d9",
         "download_bytes": 60636
       }
@@ -191,14 +227,252 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/external-search-tools.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/external-search-tools.harmony-extension",
       "sha256": "44d383a9a2c6d6cc27a69aa41996773ede5b05da1d5e1e3f857eb9d6491d3901",
       "download_bytes": 1711376,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/external-search-tools.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/external-search-tools.png",
         "sha256": "7017ad1e9857207257329f85b880b22a06d0866423b9e5a7ca104b0b3b5457b8",
         "download_bytes": 47290
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "gif-provider-switcher",
+        "name": "GIF Provider Switcher",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/gif-provider-switcher",
+        "kind": "plugin",
+        "capabilities": [
+          "gif_provider",
+          "network"
+        ],
+        "origins": [
+          "tenor.googleapis.com",
+          "api.giphy.com"
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "label": "Search GIFs",
+            "surface": "gif_search"
+          }
+        ],
+        "requires": {
+          "features": {
+            "gifs.provider": "^1.0",
+            "network": "^1.0",
+            "secrets": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "provider",
+            "label": "GIF provider",
+            "description": "Where the GIF picker searches; also in the dropdown beside its search field. Klipy is the built-in search. Tenor and Giphy need your own API key.",
+            "type": "choice",
+            "options": [
+              {
+                "value": "tenor",
+                "label": "Tenor"
+              },
+              {
+                "value": "giphy",
+                "label": "Giphy"
+              },
+              {
+                "value": "klipy",
+                "label": "Klipy"
+              },
+              {
+                "value": "all",
+                "label": "All 3"
+              }
+            ],
+            "default": "all"
+          },
+          {
+            "id": "rating",
+            "label": "Content rating",
+            "type": "choice",
+            "options": [
+              {
+                "value": "g",
+                "label": "G"
+              },
+              {
+                "value": "pg",
+                "label": "PG"
+              },
+              {
+                "value": "pg-13",
+                "label": "PG-13"
+              },
+              {
+                "value": "r",
+                "label": "R"
+              }
+            ],
+            "default": "pg-13"
+          },
+          {
+            "id": "giphy-key",
+            "label": "Giphy API key",
+            "description": "From developers.giphy.com. Kept in your system's credential store and only sent to Giphy.",
+            "type": "secret"
+          },
+          {
+            "id": "tenor-key",
+            "label": "Tenor API key",
+            "description": "A Google Cloud key with the Tenor API enabled. Kept in your system's credential store and only sent to Tenor.",
+            "type": "secret"
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/gif-provider-switcher.harmony-extension",
+      "sha256": "cb05d2bfec1b32844585310bedb13bb9b177d5fc1df5345c84da6ad40646638a",
+      "download_bytes": 1864857,
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/gif-provider-switcher.png",
+        "sha256": "d28f725a6dfe72f3fbfbd5c916c1a9f1a664fbcc56b5df4d455edd6d0165272d",
+        "download_bytes": 100740
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "message-logger-enhanced",
+        "name": "Message Logger Enhanced",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/message-logger-enhanced",
+        "kind": "plugin",
+        "capabilities": [
+          "message_events",
+          "storage",
+          "ui_contributions",
+          "notifications"
+        ],
+        "slots": [
+          "message.accessory"
+        ],
+        "actions": [
+          {
+            "id": "message",
+            "label": "Log edits and deletions",
+            "surface": "message_event"
+          },
+          {
+            "id": "open",
+            "label": "Message Logger",
+            "surface": "panel"
+          }
+        ],
+        "requires": {
+          "features": {
+            "storage.kv": "^1.0",
+            "storage.log": "^1.0",
+            "host_requests": "^1.0",
+            "ui.contributions": "^1.0",
+            "notifications": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "edits-in-chat",
+            "label": "Show earlier text under edited messages",
+            "type": "toggle",
+            "default": true
+          },
+          {
+            "id": "ghost-pings",
+            "label": "Notify me about ghost pings",
+            "description": "A message that mentioned you was deleted before you saw it.",
+            "type": "toggle",
+            "default": true
+          }
+        ],
+        "quotas": {
+          "storage_bytes": 4194304,
+          "log_bytes": 8388608
+        }
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/message-logger-enhanced.harmony-extension",
+      "sha256": "93007ffd7e80d4c44d5579f892d5bbebbb724a8c492c552327971102e61b5187",
+      "download_bytes": 1824876,
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/message-logger-enhanced.png",
+        "sha256": "154e56b3db6bdc266fda686b8c1d1d4e4a8bd1c0e117fd18959119b218be67c3",
+        "download_bytes": 62054
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "message-notifier",
+        "name": "Message Notifier",
+        "version": "1.0.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/message-notifier",
+        "kind": "plugin",
+        "capabilities": [
+          "message_events",
+          "all_message_events",
+          "notifications",
+          "context_menus",
+          "storage"
+        ],
+        "actions": [
+          {
+            "id": "message",
+            "label": "Watch for messages",
+            "surface": "message_event"
+          },
+          {
+            "id": "toggle",
+            "label": "Notify me about their messages",
+            "surface": "user"
+          }
+        ],
+        "requires": {
+          "features": {
+            "events.all_messages": "^1.0",
+            "notifications": "^1.0",
+            "settings": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "users",
+            "label": "Also notify me about these user IDs",
+            "description": "Separate IDs with commas. You can also choose people from their menu.",
+            "type": "text",
+            "max_chars": 2000
+          },
+          {
+            "id": "preview",
+            "label": "Show the message text in the notification",
+            "type": "toggle",
+            "default": false
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/message-notifier.harmony-extension",
+      "sha256": "787ab7189ba415a7bb2c883c0d0594eb774ab7919986052f0b49e2952e5dc315",
+      "download_bytes": 1789253,
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/message-notifier.png",
+        "sha256": "78f4dea6c6413034e68ff8643dab5792870b1034e871e6edbb788881fdf7623e",
+        "download_bytes": 53175
       }
     },
     {
@@ -271,12 +545,12 @@
           }
         }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/reverse-image-search.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/reverse-image-search.harmony-extension",
       "sha256": "696aa0287e016fe905d52844ee93134c131c29a9b040272e09b44f1174e20d52",
       "download_bytes": 1654885,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/reverse-image-search.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/reverse-image-search.png",
         "sha256": "f0b3170178512638ac9cc0efdbb1b137de2b03bf9fc6a0b856a85d196bf98ab2",
         "download_bytes": 71561
       }
@@ -309,14 +583,120 @@
           }
         }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/server-info.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/server-info.harmony-extension",
       "sha256": "1a8464e6c44d1d0774e6cfcb51cf94d9b1d9bfcadd8030f1b68f25544e39046c",
       "download_bytes": 1663016,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/server-info.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/server-info.png",
         "sha256": "1920079e0109d281a49615ad88de569852a77ac47f1eeeb2b1e7892d33c8cb30",
         "download_bytes": 56801
+      }
+    },
+    {
+      "manifest": {
+        "api_version": 2,
+        "id": "translate",
+        "name": "Translate",
+        "version": "1.1.0",
+        "author": "Harmony contributors",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/translate",
+        "kind": "plugin",
+        "capabilities": [
+          "selected_message",
+          "network",
+          "ui_contributions",
+          "send_hook",
+          "storage"
+        ],
+        "slots": [
+          "message.accessory",
+          "composer.button"
+        ],
+        "origins": [
+          "translate.googleapis.com",
+          "api-free.deepl.com",
+          "api.deepl.com"
+        ],
+        "actions": [
+          {
+            "id": "restore",
+            "label": "Show the translate button",
+            "surface": "activation"
+          },
+          {
+            "id": "translate",
+            "label": "Translate",
+            "surface": "message_toolbar",
+            "icon": "translate"
+          },
+          {
+            "id": "translate-menu",
+            "label": "Translate",
+            "surface": "message"
+          },
+          {
+            "id": "open",
+            "label": "Translate",
+            "surface": "panel"
+          },
+          {
+            "id": "toggle-auto",
+            "label": "Toggle Auto Translate",
+            "surface": "panel"
+          },
+          {
+            "id": "auto",
+            "label": "Auto Translate your messages",
+            "surface": "before_send"
+          }
+        ],
+        "requires": {
+          "features": {
+            "network": "^1.0",
+            "ui.contributions": "^1.0",
+            "secrets": "^1.0",
+            "hooks.before_send": "^1.0"
+          }
+        },
+        "settings": [
+          {
+            "id": "service",
+            "label": "Translation provider",
+            "type": "choice",
+            "options": [
+              {
+                "value": "google",
+                "label": "Google Translate"
+              },
+              {
+                "value": "deepl",
+                "label": "DeepL Free — API key required"
+              },
+              {
+                "value": "deepl-pro",
+                "label": "DeepL Pro — API key required"
+              }
+            ],
+            "default": "google"
+          },
+          {
+            "id": "deepl-key",
+            "label": "DeepL API Key",
+            "description": "Your DeepL API key (from deepl.com/your-account). Kept in your system's credential store and only sent to DeepL.",
+            "type": "secret"
+          }
+        ]
+      },
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/translate.harmony-extension",
+      "sha256": "d272251023550106ba8d0329d725798fafe8731a5c83cbe7737f461bc7694134",
+      "download_bytes": 1899160,
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
+      "preview": {
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/translate.png",
+        "sha256": "bcb88b608dae224e742ca79711d6a99c115006fd0dfd26898bde14193ccf6449",
+        "download_bytes": 74473
       }
     },
     {
@@ -361,12 +741,12 @@
           }
         }
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/user-tags.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/user-tags.harmony-extension",
       "sha256": "9ca4547ce23c72e369e94d97cd640fcfd8552a21df064cbe68c85198a5003493",
       "download_bytes": 1758377,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/user-tags.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/user-tags.png",
         "sha256": "6eed88d612f8bf18337d7a3ba55260d001ae271d5e668a2e38aeef6dc42def6a",
         "download_bytes": 73790
       }
@@ -418,12 +798,12 @@
           }
         ]
       },
-      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/plugins/packages/view-raw-message.harmony-extension",
+      "release_url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/plugins/packages/view-raw-message.harmony-extension",
       "sha256": "f664d2ad19ae9a948e679592cf15983f3319133897d5686f30d223e91f55b446",
       "download_bytes": 1667465,
-      "source_commit": "36e99d5efa2294ecbb1f155456a6351ae31c4118",
+      "source_commit": "a010eaca480426fd2684969f5720a9dc12830066",
       "preview": {
-        "url": "https://raw.githubusercontent.com/sirchico/Harmony/36e99d5efa2294ecbb1f155456a6351ae31c4118/extensions/previews/view-raw-message.png",
+        "url": "https://raw.githubusercontent.com/sirchico/Harmony/a010eaca480426fd2684969f5720a9dc12830066/extensions/previews/view-raw-message.png",
         "sha256": "cf5effc70b94a7d3de940293ba072db399c9c15e20f59f1cbb333c1958e692be",
         "download_bytes": 57406
       }
