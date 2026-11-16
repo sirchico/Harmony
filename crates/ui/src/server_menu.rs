@@ -208,7 +208,12 @@ impl ServerMenu {
 				egui::Button::new(()).frame(false),
 			);
 			egui::ContainerAtom::new((
-				design::semibold(ui, title, 15.0),
+				// Leave room for the 5 px gap and 14 px chevron.
+				crate::rtl::truncated(
+					ui,
+					design::semibold(ui, title, 15.0),
+					button.rect.width() - 19.0,
+				),
 				egui::Atom::paint(egui::Vec2::splat(14.0), |ui, args| {
 					icons::paint(
 						ui.painter(),

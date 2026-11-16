@@ -531,7 +531,7 @@ impl MessagingUi {
 		name_job.wrap.max_width = name_width;
 		name_job.wrap.max_rows = 1;
 		name_job.wrap.break_anywhere = true;
-		let name = ui.painter().layout_job(name_job);
+		let name = crate::rtl::layout_line(ui.ctx(), name_job);
 		let name_rect = egui::Rect::from_min_size(
 			egui::pos2(row.left() + 34.0, row.center().y - name.size().y * 0.5),
 			egui::vec2(name_width, name.size().y),
@@ -729,10 +729,13 @@ impl MessagingUi {
 						egui::Layout::left_to_right(egui::Align::Center),
 						|ui| {
 							ui.add(
-								egui::Label::new(RichText::new(name).color(name_color))
-									.truncate()
-									.show_tooltip_when_elided(false)
-									.selectable(false),
+								egui::Label::new(crate::rtl::label_text(
+									ui,
+									RichText::new(name).color(name_color),
+								))
+								.truncate()
+								.show_tooltip_when_elided(false)
+								.selectable(false),
 							)
 							.on_hover_text(name);
 						},
@@ -4045,10 +4048,11 @@ impl MessagingUi {
 									ui.vertical(|ui| {
 										ui.spacing_mut().item_spacing.y = 2.0;
 										ui.add(
-											egui::Label::new(
+											egui::Label::new(crate::rtl::label_text(
+												ui,
 												design::semibold(ui, &name, 15.0)
 													.color(colors.text_strong),
-											)
+											))
 											.truncate(),
 										);
 										ui.label(

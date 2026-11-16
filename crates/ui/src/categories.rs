@@ -403,7 +403,7 @@ fn category_header(
 	job.wrap.max_width = (rect.width() - 44.0).max(10.0);
 	job.wrap.max_rows = 1;
 	job.wrap.break_anywhere = true;
-	let label = ui.painter().layout_job(job);
+	let label = crate::rtl::layout_line(ui.ctx(), job);
 	let label_rect = egui::Rect::from_min_size(
 		egui::pos2(rect.left() + 16.0, rect.bottom() - 4.0 - label.size().y),
 		egui::vec2(rect.width() - 44.0, label.size().y),
@@ -1260,10 +1260,11 @@ impl MessagingUi {
 											}
 										} else {
 											ui.add(
-												egui::Label::new(
+												egui::Label::new(crate::rtl::label_text(
+													ui,
 													design::medium(ui, &label, 16.0)
 														.color(name_color),
-												)
+												))
 												.truncate()
 												.selectable(false),
 											);

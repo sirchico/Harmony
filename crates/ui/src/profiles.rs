@@ -539,8 +539,11 @@ fn voice_card(
 						icons::inline(ui, Icon::Speaker, 14.0, theme.muted);
 						let name = &spot.channel.name;
 						ui.add(
-							egui::Label::new(design::semibold(ui, name, 14.0).color(theme.text))
-								.truncate(),
+							egui::Label::new(crate::rtl::label_text(
+								ui,
+								design::semibold(ui, name, 14.0).color(theme.text),
+							))
+							.truncate(),
 						)
 						.on_hover_text(name);
 					});
@@ -4511,14 +4514,31 @@ fn card_view(
 											RichText::new,
 										);
 										let enabled = actions_enabled(state);
-										let response = ui
-											.add(egui::Label::new(text.size(body)).wrap().sense(
-												if enabled {
-													egui::Sense::click()
-												} else {
-													egui::Sense::hover()
-												},
-											))
+										let sense = if enabled {
+											egui::Sense::click()
+										} else {
+											egui::Sense::hover()
+										};
+										// Arabic and other right-to-left notes keep their word order.
+										let rtl = note.and_then(|note| {
+											crate::rtl::paragraph(
+												ui,
+												note,
+												egui::TextFormat::simple(
+													egui::FontId::proportional(body),
+													ui.visuals().text_color(),
+												),
+												sense,
+											)
+										});
+										let response = rtl
+											.unwrap_or_else(|| {
+												ui.add(
+													egui::Label::new(text.size(body))
+														.wrap()
+														.sense(sense),
+												)
+											})
 											.on_hover_text(crate::i18n::translate(
 												"profiles-show-note-only-you",
 											));

@@ -509,8 +509,12 @@ impl MessagingUi {
 					.map(str::to_owned)
 					.unwrap_or_else(|| crate::i18n::translate("your-account"));
 				ui.add(
-					egui::Label::new(design::semibold(ui, &name, 20.0).color(colors.text_strong))
-						.wrap(),
+					egui::Label::new(crate::rtl::wrapping(
+						ui,
+						design::semibold(ui, &name, 20.0).color(colors.text_strong),
+						ui.available_width(),
+					))
+					.wrap(),
 				);
 				if let Some(profile) = profile {
 					ui.add(
@@ -834,9 +838,10 @@ impl MessagingUi {
 						ui.set_width(width);
 						ui.spacing_mut().item_spacing.y = 2.0;
 						ui.add(
-							egui::Label::new(
+							egui::Label::new(crate::rtl::label_text(
+								ui,
 								design::semibold(ui, &name, 15.0).color(colors.text_strong),
-							)
+							))
 							.truncate(),
 						);
 						let (status, color) = if draft.is_empty() {

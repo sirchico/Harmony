@@ -418,6 +418,250 @@ impl Layout {
 	}
 }
 
+/// Labels show at most a short logical prefix; longer names and titles are cut before shaping.
+const LABEL_BYTES: usize = 1024;
+const LABEL_ITEMS: usize = 512;
+const LABEL_CACHE_BYTES: usize = 4 * 1024 * 1024;
+
+#[derive(Default)]
+struct Labels {
+	entries: std::collections::VecDeque<(u64, Arc<Galley>, usize)>,
+	bytes: usize,
+}
+
+fn label_cache_id() -> egui::Id {
+	egui::Id::unique("bounded-rtl-label-cache")
+}
+
+/// One row of a name or title in Unicode bidi visual order, like message bodies: words and
+/// emoji of a right-to-left run no longer read left to right. `None` for text without RTL
+/// letters (callers keep egui's layout, so LTR labels are unchanged) or with line breaks.
+/// A finite `job.wrap.max_width` cuts the logical end and adds "…". The galley keeps the
+/// logical job text, so accessibility, hover text and copying stay in logical order.
+pub(crate) fn single_line(ctx: &egui::Context, job: &LayoutJob) -> Option<Arc<Galley>> {
+	use std::hash::{Hash, Hasher};
+	if !crate::composer_text::has_rtl(&job.text)
+		|| job
+			.text
+			.contains(['\r', '\n', '\u{0085}', '\u{2028}', '\u{2029}'])
+	{
+		return None;
+	}
+	let mut hasher = std::collections::hash_map::DefaultHasher::new();
+	job.hash(&mut hasher);
+	ctx.pixels_per_point().to_bits().hash(&mut hasher);
+	crate::fonts::revision(ctx).hash(&mut hasher);
+	ctx.fonts(|fonts| (fonts.discovered_fonts().len(), fonts.layout_generation()))
+		.hash(&mut hasher);
+	let key = hasher.finish();
+	let cache = ctx.data_mut(|data| {
+		data.get_temp_mut_or_default::<Arc<std::sync::Mutex<Labels>>>(label_cache_id())
+			.clone()
+	});
+	{
+		let mut cache = cache.lock().expect("RTL label cache lock");
+		if let Some(index) = cache.entries.iter().position(|entry| entry.0 == key) {
+			let entry = cache.entries.remove(index).expect("known label entry");
+			let galley = entry.1.clone();
+			cache.entries.push_back(entry);
+			return Some(galley);
+		}
+	}
+	let galley = label_uncached(ctx, job)?;
+	let bytes = galley_bytes(&galley);
+	if bytes <= LABEL_CACHE_BYTES / 8 {
+		let mut cache = cache.lock().expect("RTL label cache lock");
+		while cache.entries.len() >= LABEL_ITEMS || cache.bytes + bytes > LABEL_CACHE_BYTES {
+			let Some(old) = cache.entries.pop_front() else {
+				break;
+			};
+			cache.bytes -= old.2;
+		}
+		cache.bytes += bytes;
+		cache.entries.push_back((key, galley.clone(), bytes));
+	}
+	Some(galley)
+}
+
+/// `layout_job` for a one-row name or title, in bidi visual order when it has RTL letters.
+pub(crate) fn layout_line(ctx: &egui::Context, job: LayoutJob) -> Arc<Galley> {
+	single_line(ctx, &job).unwrap_or_else(|| ctx.fonts_mut(|fonts| fonts.layout_job(job)))
+}
+
+/// A truncated one-row label: text with RTL letters becomes a visual-order galley sized to
+/// the available width; any other text is returned unchanged.
+pub(crate) fn label_text(ui: &egui::Ui, text: impl Into<egui::WidgetText>) -> egui::WidgetText {
+	truncated(ui, text, ui.available_width())
+}
+
+/// A wrapping heading or sentence: with RTL letters it is one visual-order row when that
+/// row fits `width`; longer text keeps egui's wrapped layout.
+pub(crate) fn wrapping(
+	ui: &egui::Ui,
+	text: impl Into<egui::WidgetText>,
+	width: f32,
+) -> egui::WidgetText {
+	let text = text.into();
+	if !crate::composer_text::has_rtl(text.text()) {
+		return text;
+	}
+	let mut job = Arc::unwrap_or_clone(text.clone().into_layout_job(
+		ui.style(),
+		egui::FontSelection::Default,
+		ui.text_valign(),
+	));
+	job.wrap = egui::text::TextWrapping::no_max_width();
+	single_line(ui.ctx(), &job)
+		.filter(|galley| galley.size().x <= width)
+		.map_or(text, egui::WidgetText::Galley)
+}
+
+/// A wrapping plain-text paragraph (a note or bio) in bidi visual order, laid out like message
+/// bodies so words of a right-to-left run read right to left on every row. `None` when the text
+/// has no RTL letters or exceeds the bounded layout; callers then keep their egui label.
+pub(crate) fn paragraph(
+	ui: &mut egui::Ui,
+	text: &str,
+	format: TextFormat,
+	sense: egui::Sense,
+) -> Option<egui::Response> {
+	if !crate::composer_text::has_rtl(text) {
+		return None;
+	}
+	let spans = [Span {
+		text: text.to_owned(),
+		format,
+		action: 0,
+		object: None,
+		copy: true,
+	}];
+	let layout = layout(ui.ctx(), &spans, ui.available_width().max(1.0))?;
+	let (rect, response) = ui.allocate_exact_size(layout.size, sense);
+	response.widget_info(|| {
+		egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), &layout.source)
+	});
+	if ui.is_rect_visible(rect) {
+		layout.paint(ui, rect.min);
+	}
+	Some(response)
+}
+
+/// [`label_text`] truncated at `width` instead of the available width.
+pub(crate) fn truncated(
+	ui: &egui::Ui,
+	text: impl Into<egui::WidgetText>,
+	width: f32,
+) -> egui::WidgetText {
+	let text = text.into();
+	if !crate::composer_text::has_rtl(text.text()) {
+		return text;
+	}
+	let mut job = Arc::unwrap_or_clone(text.clone().into_layout_job(
+		ui.style(),
+		egui::FontSelection::Default,
+		ui.text_valign(),
+	));
+	job.wrap = egui::text::TextWrapping::truncate_at_width(width.max(0.0));
+	single_line(ui.ctx(), &job).map_or(text, egui::WidgetText::Galley)
+}
+
+fn label_uncached(ctx: &egui::Context, job: &LayoutJob) -> Option<Arc<Galley>> {
+	let logical: String = job
+		.sections
+		.iter()
+		.filter_map(|section| {
+			job.text
+				.get(section.byte_range.start.0..section.byte_range.end.0)
+		})
+		.collect();
+	let mut end = logical.len().min(LABEL_BYTES);
+	while !logical.is_char_boundary(end) {
+		end -= 1;
+	}
+	let mut elided = end < logical.len();
+	let (mut galley, cells) = label_shape(ctx, job, end, elided)?;
+	let width = job.wrap.max_width;
+	if width.is_finite() && galley.size().x > width + 0.5 {
+		// Keep the longest logical prefix of whole clusters that fits with its ellipsis.
+		let mut ends: Vec<usize> = cells
+			.iter()
+			.map(|cell| logical[..cell.logical.end.min(end)].trim_end().len())
+			.filter(|&cut| cut < end)
+			.collect();
+		ends.sort_unstable();
+		ends.dedup();
+		let mut best = label_shape(ctx, job, 0, true)?.0;
+		let (mut low, mut high) = (0, ends.len());
+		while low < high {
+			let mid = (low + high) / 2;
+			let (shaped, _) = label_shape(ctx, job, ends[mid], true)?;
+			if shaped.size().x <= width + 0.5 {
+				best = shaped;
+				low = mid + 1;
+			} else {
+				high = mid;
+			}
+		}
+		galley = best;
+		elided = true;
+	}
+	let mut logical_job = job.clone();
+	logical_job.halign = egui::Align::LEFT;
+	logical_job.justify = false;
+	let galley_mut = Arc::make_mut(&mut galley);
+	galley_mut.job = Arc::new(logical_job);
+	galley_mut.elided = elided;
+	Some(galley)
+}
+
+/// Shape the first `end` logical bytes of `job`'s sections as one bidi paragraph.
+fn label_shape(
+	ctx: &egui::Context,
+	job: &LayoutJob,
+	end: usize,
+	ellipsis: bool,
+) -> Option<(Arc<Galley>, Vec<Cell>)> {
+	let mut spans = Vec::new();
+	let mut at = 0;
+	for section in &job.sections {
+		let text = job
+			.text
+			.get(section.byte_range.start.0..section.byte_range.end.0)?;
+		let take = text.len().min(end.saturating_sub(at));
+		if take > 0 {
+			spans.push(Span {
+				text: text.get(..take)?.to_owned(),
+				format: section.format.clone(),
+				action: 0,
+				object: None,
+				copy: true,
+			});
+		}
+		at += text.len();
+	}
+	if ellipsis {
+		spans.push(Span {
+			text: "…".to_owned(),
+			format: job.sections.last()?.format.clone(),
+			action: 0,
+			object: None,
+			copy: true,
+		});
+	}
+	let input = Prepared::new(&spans)?;
+	let bidi = BidiInfo::new(&input.logical, None);
+	let [paragraph] = bidi.paragraphs.as_slice() else {
+		return None;
+	};
+	Some(shape(
+		ctx,
+		&input,
+		&bidi,
+		paragraph,
+		paragraph.range.clone(),
+	))
+}
+
 const CACHE_ITEMS: usize = 32;
 const CACHE_BYTES: usize = 8 * 1024 * 1024;
 const ENTRY_BYTES: usize = 4 * 1024 * 1024;
@@ -655,6 +899,63 @@ mod tests {
 		}
 	}
 	#[test]
+	fn single_line_labels_draw_rtl_words_and_emoji_in_visual_order() {
+		let ctx = egui::Context::default();
+		crate::fonts::install(&ctx);
+		let job = |text: &str, width: f32| {
+			let mut job = LayoutJob::simple(
+				text.into(),
+				egui::FontId::proportional(16.0),
+				Color32::WHITE,
+				width,
+			);
+			job.wrap = egui::text::TextWrapping::truncate_at_width(width);
+			job
+		};
+		let mut cases = Vec::new();
+		let mut elided = None;
+		ctx.run_ui(egui::RawInput::default(), |ui| {
+			for text in [
+				"السلام عليكم",
+				"السلام Ahmed",
+				"Ahmed السلام عليكم",
+				"السلام 🌙 عليكم",
+			] {
+				let cells = label_shape(ui.ctx(), &job(text, f32::INFINITY), text.len(), false)
+					.expect("label shape")
+					.1;
+				cases.push((text, cells));
+			}
+			let name = "السلام عليكم ورحمة الله وبركاته";
+			elided = single_line(ui.ctx(), &job(name, 60.0));
+		})
+		.drop_without_applying_deltas();
+		for (text, cells) in &cases {
+			let x = |word: &str| {
+				let at = text.find(word).expect("word in label");
+				cells
+					.iter()
+					.find(|cell| cell.logical.contains(&at))
+					.expect("shaped word")
+					.rect
+					.center()
+					.x
+			};
+			match *text {
+				"السلام عليكم" => assert!(x("السلام") > x("عليكم")),
+				// The RTL paragraph puts the later Latin run on its left; Latin stays LTR.
+				"السلام Ahmed" => assert!(x("السلام") > x("Ahmed") && x("A") < x("d")),
+				"Ahmed السلام عليكم" => {
+					assert!(x("Ahmed") < x("عليكم") && x("عليكم") < x("السلام"));
+				}
+				_ => assert!(x("السلام") > x("🌙") && x("🌙") > x("عليكم")),
+			}
+		}
+		let elided = elided.expect("RTL label");
+		assert!(elided.elided && elided.size().x <= 60.5);
+		assert_eq!(elided.text(), "السلام عليكم ورحمة الله وبركاته");
+	}
+	#[test]
 	fn rtl_cache_rebuilds_native_meshes_after_font_atlas_reset() {
 		let ctx = egui::Context::default();
 		crate::fonts::install(&ctx);
@@ -839,6 +1140,7 @@ pub(crate) fn scope(
 			cache.entries.clear();
 			cache.bytes = 0;
 		}
+		ctx.data_mut(|data| data.remove::<Arc<std::sync::Mutex<Labels>>>(label_cache_id()));
 		crate::select::clear(ctx);
 	}
 }

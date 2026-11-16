@@ -340,10 +340,11 @@ impl MessagingUi {
 									ui.new_child(egui::UiBuilder::new().max_rect(layout.text));
 								text.spacing_mut().item_spacing.y = 1.0;
 								text.add(
-									egui::Label::new(
+									egui::Label::new(crate::rtl::label_text(
+										&text,
 										design::semibold(ui, state.user_display_name(user), 15.0)
 											.color(colors.text_strong),
-									)
+									))
 									.truncate(),
 								);
 								text.add(

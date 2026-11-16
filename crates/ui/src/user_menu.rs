@@ -566,7 +566,10 @@ fn roles_menu(
 							));
 						}
 						if ui
-							.add_enabled(enabled, egui::Checkbox::new(&mut checked, name))
+							.add_enabled(
+								enabled,
+								egui::Checkbox::new(&mut checked, crate::rtl::label_text(ui, name)),
+							)
 							.clicked()
 						{
 							*action = Some(Action::SetRole {

@@ -54,7 +54,7 @@ pub(crate) fn gradient(
 	});
 	let mut job = LayoutJob::simple(text.to_owned(), font, primary, width.max(0.0));
 	job.wrap = egui::text::TextWrapping::truncate_at_width(width.max(0.0));
-	let mut galley = ui.painter().layout_job(job);
+	let mut galley = crate::rtl::layout_line(ui.ctx(), job);
 	let Some(stops) = stops.filter(|stops| stops.len() >= 2 && GRADIENTS.load(Ordering::Relaxed))
 	else {
 		return galley;

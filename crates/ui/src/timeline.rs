@@ -215,7 +215,8 @@ pub fn visible_range(rows: &[(Id, f32)], min: f32, max: f32) -> (usize, usize, f
 fn channel_welcome(ui: &mut egui::Ui, channel: &model::Channel, height: f32) {
 	let colors = crate::design::palette(ui);
 	let width = (ui.available_width() - 32.0).max(1.0);
-	let heading = egui::WidgetText::from(
+	let heading = crate::rtl::wrapping(
+		ui,
 		crate::design::semibold(
 			ui,
 			crate::i18n::translate_args(
@@ -225,6 +226,7 @@ fn channel_welcome(ui: &mut egui::Ui, channel: &model::Channel, height: f32) {
 			28.0,
 		)
 		.color(colors.text_strong),
+		width,
 	)
 	.into_galley(
 		ui,
@@ -686,13 +688,16 @@ fn thread_card(
 		});
 		let title = card.name.map(|name| {
 			let reserved = count.as_ref().map_or(0.0, |count| count.size().x + 8.0);
-			egui::WidgetText::from(
+			let width = (inner - reserved).max(40.0);
+			crate::rtl::truncated(
+				ui,
 				crate::design::semibold(ui, name, 14.5).color(colors.text_strong),
+				width,
 			)
 			.into_galley(
 				ui,
 				Some(egui::TextWrapMode::Truncate),
-				(inner - reserved).max(40.0),
+				width,
 				egui::FontSelection::Default,
 			)
 		});
@@ -716,13 +721,16 @@ fn thread_card(
 				.map_or(colors.text_strong, |role| {
 					crate::design::role_name_color(role.primary, colors.chat, colors.text_strong)
 				});
-			let author = egui::WidgetText::from(
+			let author_width = (inner * 0.45).max(40.0);
+			let author = crate::rtl::truncated(
+				ui,
 				crate::design::medium(ui, state.message_author_name(message), 12.5).color(color),
+				author_width,
 			)
 			.into_galley(
 				ui,
 				Some(egui::TextWrapMode::Truncate),
-				(inner * 0.45).max(40.0),
+				author_width,
 				egui::FontSelection::Default,
 			);
 			let text_left = 28.0 + author.size().x + 8.0;
@@ -1056,22 +1064,26 @@ fn channel_intro(ui: &mut egui::Ui, name: &str, kind: u8, post: bool, width: f32
 				crate::i18n::translate_args("timeline-channel-intro-title", &[("channel", name)])
 			};
 			ui.add(
-				egui::Label::new(
+				egui::Label::new(crate::rtl::wrapping(
+					ui,
 					crate::design::semibold(ui, title, if thread { 30.0 } else { 32.0 })
 						.color(colors.text_strong),
-				)
+					ui.available_width(),
+				))
 				.wrap()
 				.selectable(false),
 			);
 			if !thread {
-				ui.label(
+				ui.label(crate::rtl::wrapping(
+					ui,
 					RichText::new(crate::i18n::translate_args(
 						"timeline-channel-intro-start",
 						&[("channel", name)],
 					))
 					.size(15.0)
 					.color(colors.muted),
-				);
+					ui.available_width(),
+				));
 			}
 		});
 }
@@ -1098,7 +1110,11 @@ fn intro_sentence(ui: &mut egui::Ui, key: &str, name: &str) {
 		}
 		None => job.append(&text, 0.0, plain),
 	}
-	ui.add(egui::Label::new(job).wrap().selectable(false));
+	ui.add(
+		egui::Label::new(crate::rtl::wrapping(ui, job, ui.available_width()))
+			.wrap()
+			.selectable(false),
+	);
 }
 
 /// "Welcome to the beginning of the … group" header, as in the official client.
@@ -1123,9 +1139,13 @@ fn group_intro(
 			avatars.show_group(ui, channel, 80.0, state.demo);
 			let name = state.conversation_name(channel);
 			ui.add(
-				egui::Label::new(crate::design::semibold(ui, name, 30.0).color(colors.text_strong))
-					.wrap()
-					.selectable(false),
+				egui::Label::new(crate::rtl::wrapping(
+					ui,
+					crate::design::semibold(ui, name, 30.0).color(colors.text_strong),
+					ui.available_width(),
+				))
+				.wrap()
+				.selectable(false),
 			);
 			intro_sentence(ui, "timeline-group-intro", name);
 		});
@@ -1157,9 +1177,10 @@ fn dm_intro(
 			profile.person_click(ui, &avatar, None, user);
 			let name = state.user_display_name(user).to_owned();
 			let heading = ui.add(
-				egui::Label::new(
+				egui::Label::new(crate::rtl::label_text(
+					ui,
 					crate::design::semibold(ui, name.as_str(), 30.0).color(colors.text_strong),
-				)
+				))
 				.sense(egui::Sense::click())
 				.selectable(false),
 			);

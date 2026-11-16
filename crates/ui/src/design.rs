@@ -46,12 +46,16 @@ pub fn rail_name(response: &egui::Response, name: impl AsRef<str>) {
 	));
 	let font_id = egui::TextStyle::Body.resolve(style.as_ref());
 	let text_color = style.visuals.widgets.noninteractive.fg_stroke.color;
-	let galley = painter.layout(
+	let job = egui::text::LayoutJob::simple(
 		name.to_owned(),
 		font_id,
 		text_color,
 		style.spacing.tooltip_width,
 	);
+	// RTL names keep one row in visual order; other names wrap as before.
+	let mut line = job.clone();
+	line.wrap = egui::text::TextWrapping::truncate_at_width(style.spacing.tooltip_width);
+	let galley = crate::rtl::single_line(ctx, &line).unwrap_or_else(|| painter.layout_job(job));
 	let margin = style.spacing.menu_margin;
 	let size = galley.size() + margin.sum();
 	let screen = ctx.content_rect();

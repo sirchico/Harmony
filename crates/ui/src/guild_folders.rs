@@ -322,7 +322,10 @@ impl MessagingUi {
 			.interactable(false)
 			.show(|ui| {
 				ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
-				ui.label(design::semibold(ui, &guild.name, 14.0));
+				ui.label(crate::rtl::label_text(
+					ui,
+					design::semibold(ui, &guild.name, 14.0),
+				));
 				for (icon, streaming) in [(Icon::Speaker, false), (Icon::ScreenShare, true)] {
 					let entries = guild_voice(state, guild.id, streaming);
 					if entries.clone().next().is_none() {

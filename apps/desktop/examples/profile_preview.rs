@@ -446,6 +446,36 @@ fn prime_extension_chat(state: &mut client_core::State) {
 }
 
 /// Shared before/after fixture; all channel metadata and server artwork are synthetic.
+/// Synthetic Arabic and mixed-direction names for the server, channels and message authors.
+fn prime_rtl_names(state: &mut client_core::State) {
+	if let Some(guild) = state.guilds.first_mut() {
+		guild.name = "مجتمع هارموني 🌙".into();
+	}
+	let names = ["الدردشة العامة 💬", "قناة Harmony", "أخبار اليوم"];
+	for (channel, name) in state
+		.channels
+		.iter_mut()
+		.filter(|channel| channel.kind == 0)
+		.zip(names)
+	{
+		channel.name = name.into();
+	}
+	let messages: Vec<_> = state.timeline.iter().cloned().collect();
+	state.timeline.clear();
+	for mut message in messages {
+		message.author.name = match message.author.id.0 {
+			1 => "السلام عليكم 🌙",
+			_ => "أحمد Ahmed",
+		}
+		.into();
+		state
+			.timeline
+			.insert(message, false, false)
+			.expect("valid synthetic RTL names");
+	}
+	state.revision += 1;
+}
+
 fn prime_channel_links(state: &mut client_core::State) {
 	let channel = state.selected.expect("synthetic channel-link conversation");
 	let mut guild = state.guilds[0].clone();
@@ -1158,6 +1188,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let member_presence = value("--presence=").unwrap_or("online").to_owned();
 	let card_status = value("--status=").map(str::to_owned);
 	let private_profile = args.iter().any(|arg| arg == "--private");
+	let rtl_names = args.iter().any(|arg| arg == "--rtl-names");
 	let fixture = extension.as_deref().map(extension_fixture).transpose()?;
 	let image_menu = (extension.as_deref() == Some("reverse-image-search")).then(|| {
 		(
@@ -1282,6 +1313,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.timeline
 					.seed_cache(vec![message])
 					.expect("valid synthetic markdown");
+			}
+			if rtl_names {
+				prime_rtl_names(&mut state);
 			}
 			if page == "channel-links" {
 				prime_channel_links(&mut state);

@@ -1528,14 +1528,15 @@ fn title_row(ui: &mut egui::Ui, post: &Channel, unread: bool, size: f32) {
 			ui.painter()
 				.circle_filled(rect.center(), 4.0, colors.text_strong);
 		}
+		let title = if unread {
+			design::semibold(ui, &post.name, size).color(colors.text_strong)
+		} else {
+			design::medium(ui, &post.name, size).color(colors.muted)
+		};
 		ui.add(
-			egui::Label::new(if unread {
-				design::semibold(ui, &post.name, size).color(colors.text_strong)
-			} else {
-				design::medium(ui, &post.name, size).color(colors.muted)
-			})
-			.truncate()
-			.selectable(false),
+			egui::Label::new(crate::rtl::label_text(ui, title))
+				.truncate()
+				.selectable(false),
 		);
 	});
 }

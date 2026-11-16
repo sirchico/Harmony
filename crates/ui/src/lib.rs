@@ -1493,8 +1493,11 @@ impl MessagingUi {
 					),
 					|ui| {
 						ui.add(
-							egui::Label::new(design::semibold(ui, title, 13.0).color(colors.text))
-								.truncate(),
+							egui::Label::new(crate::rtl::label_text(
+								ui,
+								design::semibold(ui, title, 13.0).color(colors.text),
+							))
+							.truncate(),
 						);
 					},
 				);
@@ -2915,9 +2918,10 @@ impl MessagingUi {
 						// Keep the status row at its text height so the measured centring holds.
 						ui.spacing_mut().interact_size.y = 0.0;
 						ui.add(
-							egui::Label::new(
+							egui::Label::new(crate::rtl::label_text(
+								ui,
 								design::medium(ui, name, 16.0).color(colors.text_strong),
-							)
+							))
 							.truncate(),
 						);
 						{

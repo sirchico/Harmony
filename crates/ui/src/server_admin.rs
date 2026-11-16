@@ -811,11 +811,12 @@ impl Admin {
 												.show(ui, |ui| {
 													ui.set_max_width((roles - 30.0).max(30.0));
 													ui.add(
-														egui::Label::new(
+														egui::Label::new(crate::rtl::label_text(
+															ui,
 															RichText::new(&role.role.name)
 																.size(12.0)
 																.color(colors.text),
-														)
+														))
 														.truncate(),
 													)
 													.on_hover_text(&role.role.name);
