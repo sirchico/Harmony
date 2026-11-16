@@ -72,9 +72,24 @@ pub fn valid_gif_url(url: &str) -> bool {
 }
 
 /// Allow only provider media hosts and supported image formats.
+/// Giphy's media hosts, for GIF search extensions (addresses without query strings).
+const GIPHY_HOSTS: &[&str] = &[
+	"media.giphy.com",
+	"i.giphy.com",
+	"media0.giphy.com",
+	"media1.giphy.com",
+	"media2.giphy.com",
+	"media3.giphy.com",
+	"media4.giphy.com",
+];
+
 pub fn valid_gif_preview(url: &str) -> bool {
 	(plain_https_path(url, &["media.tenor.com", "c.tenor.com"])
 		&& (url.ends_with(".png") || url.ends_with(".gif")))
+		|| (plain_https_path(url, GIPHY_HOSTS)
+			&& [".gif", ".webp"]
+				.iter()
+				.any(|extension| url.ends_with(extension)))
 		|| (plain_https_path(
 			url,
 			&["static.klipy.com", "static1.klipy.com", "static2.klipy.com"],
@@ -85,7 +100,7 @@ pub fn valid_gif_preview(url: &str) -> bool {
 
 /// Retain synchronized video metadata without enabling network preview decoding.
 pub fn valid_gif_video_source(url: &str) -> bool {
-	plain_https_path(
+	(plain_https_path(
 		url,
 		&[
 			"media.tenor.com",
@@ -94,9 +109,10 @@ pub fn valid_gif_video_source(url: &str) -> bool {
 			"static1.klipy.com",
 			"static2.klipy.com",
 		],
-	) && [".mp4", ".webm", ".mov"]
-		.iter()
-		.any(|extension| url.ends_with(extension))
+	) || plain_https_path(url, GIPHY_HOSTS))
+		&& [".mp4", ".webm", ".mov"]
+			.iter()
+			.any(|extension| url.ends_with(extension))
 }
 
 /// Discord attachment or proxied media, as stored by GIFs favorited from messages.

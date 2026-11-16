@@ -12,6 +12,8 @@ const SETTINGS_FILE: &str = "settings.json";
 /// IDs of the secrets the user has set. Values live only in the OS credential store.
 const SECRETS_FILE: &str = "secrets.json";
 const KV_FILE: &str = "kv.json";
+/// One JSON `LogEntry` per line; the newest lines are at the end.
+const LOG_FILE: &str = "log.jsonl";
 /// Hosts that serve Discord message attachments.
 const ATTACHMENT_HOSTS: &[&str] = &["cdn.discordapp.com", "media.discordapp.net"];
 
@@ -197,6 +199,81 @@ pub(super) fn apply_kv(
 	}
 }
 
+fn read_log(directory: &Path, quota: u64) -> Vec<extensions::LogEntry> {
+	read_bounded(&directory.join(LOG_FILE), quota.max(1) as usize)
+		.ok()
+		.map(|bytes| {
+			bytes
+				.split(|b| *b == b'\n')
+				// A line cut short by a crash is skipped, not treated as corrupt data.
+				.filter_map(|line| serde_json::from_slice::<extensions::LogEntry>(line).ok())
+				.collect()
+		})
+		.unwrap_or_default()
+}
+
+/// Appends lines to the extension's log, dropping the oldest lines to stay within its log
+/// quota. `clear` empties it first.
+pub(super) fn apply_log(
+	directory: &Path,
+	manifest: &Manifest,
+	lines: &[String],
+	clear: bool,
+	gate: &Gate,
+) -> Result<(), String> {
+	if lines.is_empty() && !clear {
+		return Ok(());
+	}
+	let quota = quotas(manifest).log_bytes;
+	if quota == 0 {
+		return Err("This extension has no log quota".into());
+	}
+	let mut entries = if clear {
+		Vec::new()
+	} else {
+		read_log(directory, quota)
+	};
+	let first = entries.last().map_or(0, |entry| entry.seq) + 1;
+	let now = std::time::SystemTime::now()
+		.duration_since(std::time::UNIX_EPOCH)
+		.map_or(0, |elapsed| elapsed.as_millis() as u64);
+	for (seq, line) in (first..).zip(lines) {
+		entries.push(extensions::LogEntry {
+			seq,
+			at_ms: now,
+			text: line.clone(),
+		});
+	}
+	let encoded: Vec<Vec<u8>> = entries
+		.iter()
+		.filter_map(|entry| serde_json::to_vec(entry).ok())
+		.collect();
+	// Keep the newest lines that fit; trim to three quarters so appends are not rewritten
+	// on every call once the log is full.
+	let mut total = encoded
+		.iter()
+		.map(|line| line.len() as u64 + 1)
+		.sum::<u64>();
+	let mut start = 0;
+	if total > quota {
+		while start < encoded.len() && total > quota / 4 * 3 {
+			total -= encoded[start].len() as u64 + 1;
+			start += 1;
+		}
+	}
+	let mut bytes = Vec::with_capacity(total as usize);
+	for line in &encoded[start..] {
+		bytes.extend_from_slice(line);
+		bytes.push(b'\n');
+	}
+	gate.check()?;
+	if bytes.is_empty() {
+		remove_file(&directory.join(LOG_FILE))
+	} else {
+		atomic_write(&directory.join(LOG_FILE), &bytes, gate)
+	}
+}
+
 /// Answers a request the worker can serve itself, or `None` when the app must answer it.
 pub(super) fn answer_local(
 	directory: &Path,
@@ -238,6 +315,26 @@ pub(super) fn answer_local(
 			max_bytes,
 		} => read_attachment(invocation, id, attachment_id, *max_bytes, gate),
 		HostRequest::ServerProfile { .. } => return None,
+		HostRequest::Http { id, request } => http(directory, manifest, id, request, gate),
+		HostRequest::LogRead { id, before, limit } => {
+			let entries = read_log(directory, quotas(manifest).log_bytes);
+			let limit = limit.unwrap_or(extensions::MAX_LOG_READ) as usize;
+			let mut older: Vec<_> = entries
+				.into_iter()
+				.rev()
+				.filter(|entry| before.is_none_or(|before| entry.seq < before))
+				.take(limit + 1)
+				.collect();
+			let more = older.len() > limit;
+			older.truncate(limit);
+			HostResponse::ok(
+				id,
+				ResponseValue::LogEntries {
+					entries: older,
+					more,
+				},
+			)
+		}
 	})
 }
 
@@ -363,4 +460,234 @@ pub(super) fn installed_bytes(parent: &Path) -> u64 {
 		.filter_map(|entry| std::fs::metadata(entry.path().join("package.json")).ok())
 		.map(|metadata| metadata.len())
 		.sum()
+}
+
+// ---- Network requests (API v2 `http`) ----
+
+/// Recent request times per extension, for the per-minute limit.
+static REQUESTS: std::sync::Mutex<
+	BTreeMap<String, std::collections::VecDeque<std::time::Instant>>,
+> = std::sync::Mutex::new(BTreeMap::new());
+
+/// Hosts this extension may contact now: fixed origins, plus the hosts of URLs the user typed
+/// into the settings that `setting:` origins name.
+fn allowed_hosts(directory: &Path, manifest: &Manifest) -> Vec<String> {
+	let values = settings(directory, manifest);
+	manifest
+		.origins
+		.iter()
+		.filter_map(|origin| match origin.strip_prefix("setting:") {
+			Some(id) => match values.get(id) {
+				Some(SettingValue::Text(text)) => url::Url::parse(text.trim())
+					.ok()
+					.filter(|url| url.scheme() == "https")
+					.and_then(|url| url.host_str().map(str::to_ascii_lowercase))
+					.filter(|host| extensions::valid_origin_host(host)),
+				_ => None,
+			},
+			None => Some(origin.clone()),
+		})
+		.collect()
+}
+
+fn decode_base64(text: &str) -> Option<Vec<u8>> {
+	let value = |b: u8| match b {
+		b'A'..=b'Z' => Some(b - b'A'),
+		b'a'..=b'z' => Some(b - b'a' + 26),
+		b'0'..=b'9' => Some(b - b'0' + 52),
+		b'+' => Some(62),
+		b'/' => Some(63),
+		_ => None,
+	};
+	let trimmed = text.trim_end_matches('=');
+	let mut out = Vec::with_capacity(trimmed.len() * 3 / 4);
+	let (mut buffer, mut bits) = (0u32, 0u32);
+	for byte in trimmed.bytes() {
+		buffer = (buffer << 6) | u32::from(value(byte)?);
+		bits += 6;
+		if bits >= 8 {
+			bits -= 8;
+			out.push((buffer >> bits) as u8);
+		}
+	}
+	Some(out)
+}
+
+/// Makes one extension request, or explains why it was refused. Never follows redirects.
+fn http(
+	directory: &Path,
+	manifest: &Manifest,
+	id: &str,
+	request: &extensions::HttpRequest,
+	gate: &Gate,
+) -> HostResponse {
+	let refuse = |code, message: &str| HostResponse::error(id, code, message);
+	let Ok(mut url) = url::Url::parse(&request.url) else {
+		return refuse(RequestErrorCode::Invalid, "The address is not a valid URL");
+	};
+	let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
+	if url.scheme() != "https"
+		|| !url.username().is_empty()
+		|| url.password().is_some()
+		|| url.port().is_some_and(|port| port != 443)
+		|| !allowed_hosts(directory, manifest).contains(&host)
+	{
+		return refuse(
+			RequestErrorCode::NotGranted,
+			"That site is not one this extension may contact",
+		);
+	}
+	{
+		let now = std::time::Instant::now();
+		let mut recent = REQUESTS
+			.lock()
+			.unwrap_or_else(|poisoned| poisoned.into_inner());
+		let times = recent.entry(manifest.id.clone()).or_default();
+		times.retain(|at| now.duration_since(*at) < Duration::from_secs(60));
+		if times.len() >= extensions::REQUESTS_PER_MINUTE {
+			return refuse(RequestErrorCode::Limit, "Too many requests; wait a minute");
+		}
+		times.push_back(now);
+	}
+	let Some(scope) = directory.parent() else {
+		return refuse(RequestErrorCode::Failed, "Extension folder is unavailable");
+	};
+	let mut headers = request.headers.clone();
+	for secret in &request.secret_headers {
+		let value = secret_name(scope, &manifest.id, &secret.secret)
+			.ok()
+			.and_then(|name| platform::load_extension_secret(&name).ok().flatten());
+		let Some(value) = value else {
+			return refuse(
+				RequestErrorCode::Unavailable,
+				&format!(
+					"Set the {} secret in this extension's settings",
+					secret.secret
+				),
+			);
+		};
+		headers.push((secret.header.clone(), format!("{}{value}", secret.prefix)));
+	}
+	for secret in &request.secret_params {
+		let value = secret_name(scope, &manifest.id, &secret.secret)
+			.ok()
+			.and_then(|name| platform::load_extension_secret(&name).ok().flatten());
+		let Some(value) = value else {
+			return refuse(
+				RequestErrorCode::Unavailable,
+				&format!(
+					"Set the {} secret in this extension's settings",
+					secret.secret
+				),
+			);
+		};
+		url.query_pairs_mut().append_pair(&secret.param, &value);
+	}
+	let body = match &request.body {
+		Some(text) if request.body_base64 => match decode_base64(text) {
+			Some(bytes) => Some(bytes),
+			None => return refuse(RequestErrorCode::Invalid, "The body is not valid base64"),
+		},
+		Some(text) => Some(text.clone().into_bytes()),
+		None => None,
+	};
+	let limit = (quotas(manifest).network_response_bytes as usize)
+		.min(request.max_bytes.map_or(usize::MAX, |max| max as usize))
+		.max(1);
+	match super::extension_http(&url, request.method, &headers, body, limit, gate) {
+		Ok((status, content_type, location, bytes, truncated)) => {
+			let (encoding, body) = match String::from_utf8(bytes) {
+				Ok(text) => (extensions::ContentEncoding::Text, text),
+				Err(error) => (
+					extensions::ContentEncoding::Base64,
+					base64(error.as_bytes()),
+				),
+			};
+			HostResponse::ok(
+				id,
+				ResponseValue::Http {
+					response: Box::new(extensions::HttpResponse {
+						status,
+						content_type,
+						location,
+						encoding,
+						body,
+						truncated,
+					}),
+				},
+			)
+		}
+		Err(message) => refuse(RequestErrorCode::Failed, &message),
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn gate() -> Gate {
+		Gate {
+			epoch: 0,
+			generation: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+			wake_cancel: std::sync::Arc::new(tokio::sync::Notify::new()),
+		}
+	}
+
+	/// Only listed hosts, and the host of a server the user typed into a setting, may be
+	/// contacted; anything else is refused before any connection is made.
+	#[test]
+	fn requests_go_only_to_listed_and_user_chosen_sites() {
+		let directory =
+			std::env::temp_dir().join(format!("harmony-network-check-{}", std::process::id()));
+		let scoped = directory.join("account").join("probe");
+		std::fs::create_dir_all(&scoped).unwrap();
+		let manifest: Manifest = serde_json::from_str(
+			r#"{"api_version":2,"id":"probe","name":"Probe","version":"1.0.0","author":"Synthetic",
+			"license":"MIT","source":"https://example.org/probe","kind":"plugin",
+			"capabilities":["network"],"origins":["api.example.org","setting:server"],
+			"settings":[{"id":"server","label":"Server","type":"text","max_chars":200}],
+			"actions":[{"id":"open","label":"Open","surface":"panel"}]}"#,
+		)
+		.unwrap();
+		assert!(manifest.validate().is_ok());
+		let refused = |url: &str| {
+			let request = extensions::HttpRequest {
+				method: extensions::HttpMethod::Get,
+				url: url.into(),
+				headers: Vec::new(),
+				secret_headers: Vec::new(),
+				secret_params: Vec::new(),
+				body: None,
+				body_base64: false,
+				max_bytes: None,
+			};
+			http(&scoped, &manifest, "r", &request, &gate())
+				.error
+				.map(|error| error.code)
+		};
+		for url in [
+			"https://evil.example.com/",
+			"http://api.example.org/",
+			"https://api.example.org:8443/",
+			"https://user:pass@api.example.org/",
+			"https://files.example.net/upload",
+		] {
+			assert_eq!(refused(url), Some(RequestErrorCode::NotGranted), "{url}");
+		}
+		save_settings(
+			&scoped,
+			&manifest,
+			&BTreeMap::from([(
+				"server".into(),
+				SettingValue::Text("https://files.example.net/base".into()),
+			)]),
+			&gate(),
+		)
+		.unwrap();
+		assert_eq!(
+			allowed_hosts(&scoped, &manifest),
+			["api.example.org", "files.example.net"]
+		);
+		std::fs::remove_dir_all(&directory).unwrap();
+	}
 }

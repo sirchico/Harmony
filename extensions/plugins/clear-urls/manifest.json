@@ -1,0 +1,15 @@
+{
+  "api_version": 2,
+  "id": "clear-urls",
+  "name": "ClearURLs",
+  "version": "1.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/clear-urls",
+  "kind": "plugin",
+  "capabilities": ["send_hook"],
+  "actions": [
+    { "id": "clean", "label": "Remove trackers from links as you send", "surface": "before_send" }
+  ],
+  "requires": { "features": { "hooks.before_send": "^1.0" } }
+}

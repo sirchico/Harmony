@@ -161,6 +161,15 @@ pub enum ExtensionRequest {
 		field: String,
 		value: Option<SecretText>,
 	},
+	/// API v2: a text message to pass through `before_send` hooks before it is sent.
+	BeforeSend {
+		command: Box<client_core::Command>,
+	},
+	/// API v2: the user dismissed one of an extension's message accessory lines.
+	DismissContribution {
+		id: String,
+		key: String,
+	},
 }
 
 const CONTEXT_ACTIONS: &str = "extension-context-actions";
@@ -748,7 +757,9 @@ impl ExtensionUi {
 						.filter(|action| {
 							matches!(
 								action.surface,
-								Surface::MessageToolbar | Surface::Image | Surface::Attachment
+								Surface::MessageToolbar
+									| Surface::Image | Surface::Attachment
+									| Surface::BeforeSend
 							)
 						})
 						.map(|action| crate::extension_items::ItemAction {
@@ -1235,6 +1246,16 @@ impl ExtensionUi {
 		invocation.storage = None;
 		invocation.app = None;
 		output.storage = None;
+		// A result that only changed what Harmony draws (badges, lines) needs no window.
+		if output.panel.is_empty()
+			&& output.replacement.is_none()
+			&& output.effects.is_empty()
+			&& output.appearance.is_none()
+			&& output.rich_presence.is_none()
+			&& output.api_proxy.is_none()
+		{
+			return;
+		}
 		// A host-drawn button whose result only copies text or opens links does so at once:
 		// the click on Harmony's own button is the consent.
 		let from_button = self.entries.iter().any(|entry| {
@@ -1286,10 +1307,77 @@ impl ExtensionUi {
 			values: BTreeMap::new(),
 		});
 	}
+	fn gif_provider_entry(&self) -> Option<&ExtensionEntry> {
+		self.entries.iter().find(|entry| {
+			entry.enabled
+				&& entry
+					.manifest
+					.capabilities
+					.contains(&extensions::Capability::GifProvider)
+		})
+	}
+	/// With an enabled GIF provider extension, its chosen source: its `provider` setting
+	/// (`klipy`, `tenor`, `giphy` or `all`), or the declared default.
+	pub fn gif_provider_choice(&self) -> Option<String> {
+		let entry = self.gif_provider_entry()?;
+		let text = |value: Option<&extensions::SettingValue>| match value {
+			Some(extensions::SettingValue::Text(text)) => Some(text.clone()),
+			_ => None,
+		};
+		Some(
+			entry
+				.runtime
+				.as_ref()
+				.and_then(|runtime| text(runtime.settings.get("provider")))
+				.or_else(|| {
+					entry
+						.manifest
+						.settings
+						.iter()
+						.find(|field| field.id == "provider")
+						.and_then(|field| text(field.default.as_ref()))
+				})
+				.unwrap_or_else(|| "all".to_owned()),
+		)
+	}
+	/// Saves the source picked in the GIF picker's dropdown as the extension's setting.
+	pub(crate) fn set_gif_provider_choice(&mut self, ctx: &egui::Context, value: String) {
+		let Some(id) = self
+			.gif_provider_entry()
+			.map(|entry| entry.manifest.id.clone())
+		else {
+			return;
+		};
+		let Some(entry) = self
+			.entries
+			.iter_mut()
+			.find(|entry| entry.manifest.id == id)
+		else {
+			return;
+		};
+		let runtime = entry.runtime.get_or_insert_with(Default::default);
+		runtime
+			.settings
+			.insert("provider".into(), extensions::SettingValue::Text(value));
+		let values = runtime.settings.clone();
+		self.queue(ctx, ExtensionRequest::SaveSettings { id, values });
+	}
+	/// Whether an enabled extension wants to see messages before they are sent.
+	pub(crate) fn has_send_hooks(&self) -> bool {
+		self.item_actions
+			.iter()
+			.any(|action| action.surface == Surface::BeforeSend)
+	}
 	pub(crate) fn queue(&mut self, ctx: &egui::Context, request: ExtensionRequest) {
 		if matches!(request, ExtensionRequest::PreviewTheme { .. }) {
 			self.requests
 				.retain(|pending| !matches!(pending, ExtensionRequest::PreviewTheme { .. }));
+		}
+		// A message being sent is never dropped: the bridge sends it even if no hook runs.
+		if matches!(request, ExtensionRequest::BeforeSend { .. }) {
+			self.requests.push(request);
+			ctx.request_repaint();
+			return;
 		}
 		if self.requests.len()
 			< if matches!(&request, ExtensionRequest::Disable { .. }) {
@@ -2983,6 +3071,7 @@ fn v2_review(manifest: &Manifest) -> Vec<String> {
 			quotas.network_response_bytes,
 			limits.network_response_bytes.default,
 		),
+		("saved log", quotas.log_bytes, limits.log_bytes.default),
 	] {
 		if requested > default {
 			lines.push(format!("Up to {} of {label}", kib(requested)));
@@ -2996,6 +3085,27 @@ fn v2_review(manifest: &Manifest) -> Vec<String> {
 	if secrets > 0 {
 		lines.push(format!(
 			"{secrets} secret value(s), kept in your system's credential store"
+		));
+	}
+	if !manifest.origins.is_empty() {
+		let sites: Vec<String> = manifest
+			.origins
+			.iter()
+			.map(|origin| match origin.strip_prefix("setting:") {
+				Some(id) => {
+					let label = manifest
+						.settings
+						.iter()
+						.find(|field| field.id == id)
+						.map_or(id, |field| field.label.as_str());
+					format!("the server you enter as \"{label}\"")
+				}
+				None => origin.clone(),
+			})
+			.collect();
+		lines.push(format!(
+			"Contact these sites through Harmony: {}",
+			sites.join(", ")
 		));
 	}
 	for dependency in manifest.dependencies.iter().filter(|d| !d.optional) {
@@ -3234,6 +3344,11 @@ fn request_bytes(request: &ExtensionRequest) -> usize {
 						})
 						.sum::<usize>()
 			}
+			ExtensionRequest::DismissContribution { id, key } => id.len() + key.len(),
+			ExtensionRequest::BeforeSend { command } => match command.as_ref() {
+				client_core::Command::Send { content, nonce, .. } => content.len() + nonce.len(),
+				_ => 0,
+			},
 			ExtensionRequest::SaveSecret { id, field, value } => {
 				id.len() + field.len() + value.as_ref().map_or(0, SecretText::len)
 			}
@@ -3555,6 +3670,11 @@ fn capability_label(capability: Capability) -> &'static str {
 		}
 		Capability::ServerProfiles => "Look up public details of servers I am in",
 		Capability::UiContributions => "Add badges, notes and buttons to the slots it lists",
+		Capability::SendHook => "Read and change each message as I send it",
+		Capability::Notifications => "Show system notifications",
+		Capability::AllMessageEvents => "Receive new messages from every conversation I can read",
+		Capability::Network => "Contact the sites it lists, through Harmony",
+		Capability::GifProvider => "Provide the GIF picker's search results",
 		Capability::Composer => "Read my draft and propose text changes",
 		Capability::Storage => "Store local data for this account, within its storage quota",
 		Capability::AppContext => "Read my account and current conversation details",
@@ -3827,7 +3947,10 @@ mod tests {
 			"synthetic.app".into(),
 			invocation,
 			context.clone(),
-			Output::default(),
+			Output {
+				panel: vec![Element::Separator],
+				..Default::default()
+			},
 			&state,
 		);
 		let result = shop.result.as_ref().unwrap();
@@ -3848,6 +3971,7 @@ mod tests {
 			theme_preview: None,
 			preview: None,
 			manifest: Manifest {
+				origins: Vec::new(),
 				slots: Vec::new(),
 				api_version: 1,
 				id: "synthetic.words".into(),

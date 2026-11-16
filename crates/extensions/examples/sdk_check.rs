@@ -66,6 +66,11 @@ fn check_message_counter(name: &str, package: &Package) {
 		(MessageEventKind::Delete, [1, 1, 1]),
 	] {
 		input.message_event = Some(Box::new(MessageEvent {
+			open: false,
+			author_name: None,
+			guild_id: None,
+			place: None,
+			mentions_me: false,
 			kind,
 			channel_id: "100".into(),
 			message_id: "200".into(),
@@ -103,6 +108,11 @@ fn check_message_counter(name: &str, package: &Package) {
 	);
 	input.action = "message-event".into();
 	input.message_event = Some(Box::new(MessageEvent {
+		open: false,
+		author_name: None,
+		guild_id: None,
+		place: None,
+		mentions_me: false,
 		kind: MessageEventKind::Delete,
 		channel_id: "100".into(),
 		message_id: "200".into(),
@@ -131,6 +141,11 @@ fn check_message_counter(name: &str, package: &Package) {
 	input.action = "message-event".into();
 	input.storage = reset.storage;
 	input.message_event = Some(Box::new(MessageEvent {
+		open: false,
+		author_name: None,
+		guild_id: None,
+		place: None,
+		mentions_me: false,
 		kind: MessageEventKind::Create,
 		channel_id: "100".into(),
 		message_id: "200".into(),

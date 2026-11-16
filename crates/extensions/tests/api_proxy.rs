@@ -4,6 +4,7 @@ use extensions::{
 
 fn manifest() -> Manifest {
 	Manifest {
+		origins: Vec::new(),
 		slots: Vec::new(),
 		api_version: 1,
 		id: "api-proxy".into(),

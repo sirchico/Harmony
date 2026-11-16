@@ -74,6 +74,8 @@ pub enum ContributionIcon {
 	Code,
 	Server,
 	Eye,
+	Globe,
+	Translate,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -106,6 +108,18 @@ pub struct ContributionItem {
 	pub action: Option<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub animation: Option<Animation>,
+	/// `message.accessory` only: a smaller second line, such as "translated from Spanish".
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub note: Option<String>,
+	/// `message.accessory` only: adds a Dismiss link that hides the item.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub dismissible: bool,
+	/// `message.accessory` only: draws the text in italics, like a quotation.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub italic: bool,
+	/// `composer.button` only: a declared `panel` action run by a right-click or Shift-click.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub secondary_action: Option<String>,
 }
 
 impl ContributionItem {
@@ -135,12 +149,34 @@ impl ContributionItem {
 		self.animation = Some(Animation { kind, period_ms });
 		self
 	}
+	/// `message.accessory`: a smaller second line under the text.
+	pub fn note(mut self, note: impl Into<String>) -> Self {
+		self.note = Some(note.into());
+		self
+	}
+	/// `message.accessory`: a Dismiss link that hides the item.
+	pub fn dismissible(mut self) -> Self {
+		self.dismissible = true;
+		self
+	}
+	/// `message.accessory`: italic text, like a quotation.
+	pub fn italic(mut self) -> Self {
+		self.italic = true;
+		self
+	}
+	/// `composer.button`: a `panel` action run by a right-click or Shift-click.
+	pub fn secondary_action(mut self, action: impl Into<String>) -> Self {
+		self.secondary_action = Some(action.into());
+		self
+	}
 }
 
 /// One change to your contributions. Keys are yours alone: other extensions can use the same
 /// key without touching your items.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
+// A wire type built once per output; boxing the item would only complicate authors' code.
+#[allow(clippy::large_enum_variant)]
 pub enum ContributionOp {
 	Set {
 		slot: Slot,

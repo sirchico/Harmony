@@ -25,7 +25,7 @@ CAPABILITIES = {"selected_message", "composer", "storage", "deleted_messages", "
 RESERVED = {"con", "prn", "aux", "nul"} | {f"{prefix}{n}" for prefix in ("com", "lpt") for n in range(1, 10)}
 MAX_PREVIEW = 256 * 1024
 CATALOG_FILES = {1: "catalog.json", 2: "catalog-v2.json"}
-V2_SURFACES = {"message", "composer", "panel", "activation", "message_event", "app_event", "tick", "user", "channel", "server", "role", "message_toolbar", "image", "attachment"}
+V2_SURFACES = {"message", "composer", "panel", "activation", "message_event", "app_event", "tick", "user", "channel", "server", "role", "message_toolbar", "image", "attachment", "before_send", "gif_search"}
 
 
 def require(condition, message):

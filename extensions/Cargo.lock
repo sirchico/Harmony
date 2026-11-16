@@ -17,6 +17,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "clear-urls"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+]
+
+[[package]]
 name = "copy-file-contents"
 version = "1.1.0"
 dependencies = [
@@ -58,6 +65,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "gif-provider-switcher"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+ "serde",
 ]
 
 [[package]]
@@ -194,6 +209,21 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 [[package]]
 name = "message-delete-protector"
 version = "1.0.2"
+dependencies = [
+ "harmony-extension-sdk",
+]
+
+[[package]]
+name = "message-logger-enhanced"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+ "serde",
+]
+
+[[package]]
+name = "message-notifier"
+version = "1.0.0"
 dependencies = [
  "harmony-extension-sdk",
 ]
@@ -345,6 +375,14 @@ checksum = "b1e27c91459209c2986af3dcf603a5a74a4368754ce37414f59acc971167f643"
 dependencies = [
  "displaydoc",
  "zerovec",
+]
+
+[[package]]
+name = "translate"
+version = "1.0.0"
+dependencies = [
+ "harmony-extension-sdk",
+ "serde",
 ]
 
 [[package]]

@@ -32,6 +32,22 @@ impl Pending {
 	}
 }
 
+/// A text message held for `before_send` hooks. Holds run one at a time, in send order.
+struct SendHold {
+	command: client_core::Command,
+	account: String,
+	/// (extension, its `before_send` action), in a stable order.
+	hooks: Vec<(String, String)>,
+	next: usize,
+	/// The hook whose answer is awaited.
+	waiting: Option<String>,
+	deadline: Instant,
+	generation: u64,
+}
+
+/// Longest text a hook may turn a message into: Discord's longest message.
+const MAX_SENT_CHARS: usize = 4000;
+
 struct TickSchedule {
 	enabled_at: Instant,
 	next_due: Instant,
@@ -127,6 +143,8 @@ fn attach_app_data(
 
 enum ReactiveEvent {
 	Message(MessageEvent),
+	/// A new message in another conversation (`all_message_events`).
+	Elsewhere(MessageEvent),
 	App(AppEventKind),
 	ActionResult(ActionResult),
 }
@@ -134,6 +152,7 @@ impl ReactiveEvent {
 	fn available(&self, state: &State) -> bool {
 		match self {
 			Self::Message(_) => crate::extension_events::available(state),
+			Self::Elsewhere(_) => crate::extension_app::available(state),
 			Self::App(_) | Self::ActionResult(_) => crate::extension_app::available(state),
 		}
 	}
@@ -152,7 +171,7 @@ impl QueuedEvent {
 			+ match &self.event {
 				ReactiveEvent::App(_) => 0,
 				ReactiveEvent::ActionResult(result) => result.request_id.len(),
-				ReactiveEvent::Message(event) => {
+				ReactiveEvent::Message(event) | ReactiveEvent::Elsewhere(event) => {
 					event.channel_id.len()
 						+ event.message_id.len()
 						+ event.author_id.as_ref().map_or(0, String::len)
@@ -201,6 +220,19 @@ pub struct Bridge {
 	lookups: crate::extension_lookups::Lookups,
 	/// API v2 interface contributions, owned per extension.
 	contributions: ui::ContributionStore,
+	/// API v2 notifications waiting for the app: (extension name, notification).
+	notifications: VecDeque<(String, extensions::Notification)>,
+	/// When each extension's recent notifications were shown, for the per-minute limit.
+	notified: BTreeMap<String, VecDeque<Instant>>,
+	/// Messages waiting for `before_send` hooks, oldest first.
+	holds: VecDeque<SendHold>,
+	/// The newest GIF picker search waiting for the provider extension: (query, request).
+	gif_search: Option<(Option<String>, u64, String)>,
+	/// With the `all` source: Discord's KLIPY page and the extension's results for one request,
+	/// shown together once both are in.
+	gif_merge: Option<GifMerge>,
+	/// The provider and request whose results are awaited.
+	gif_waiting: Option<(String, u64)>,
 }
 impl Bridge {
 	fn tick_pending(&self, generation: u64, id: &str) -> bool {
@@ -445,6 +477,60 @@ impl Bridge {
 			&& crate::extension_events::available(state)
 			&& self.scope_current(state)
 	}
+	/// Whether an extension wants new messages from every conversation.
+	pub fn has_messages_elsewhere(&self, state: &State) -> bool {
+		self.scope_current(state)
+			&& self.installed.iter().any(|entry| {
+				self.subscribes(entry)
+					&& entry
+						.manifest
+						.capabilities
+						.contains(&Capability::AllMessageEvents)
+			})
+	}
+	/// Queues a new message from another conversation for extensions granted it.
+	pub fn message_elsewhere(&mut self, state: &State, event: MessageEvent) {
+		if !self.has_messages_elsewhere(state) || event.validate().is_err() {
+			return;
+		}
+		let mut context = ExtensionContext::capture(state, false);
+		context.app_wide = true;
+		context.channel = None;
+		for entry in &self.installed {
+			if !self.subscribes(entry)
+				|| !entry
+					.manifest
+					.capabilities
+					.contains(&Capability::AllMessageEvents)
+			{
+				continue;
+			}
+			let action = entry
+				.manifest
+				.actions
+				.iter()
+				.find(|action| action.surface == Surface::MessageEvent)
+				.unwrap();
+			let queued = QueuedEvent {
+				id: entry.manifest.id.clone(),
+				action: action.id.clone(),
+				context: context.clone(),
+				event: ReactiveEvent::Elsewhere(event.clone()),
+			};
+			if self.message_events.len() >= MAX_MESSAGE_EVENTS
+				|| self
+					.message_events
+					.iter()
+					.map(QueuedEvent::bytes)
+					.sum::<usize>() + queued.bytes()
+					> MAX_MESSAGE_EVENT_BYTES
+			{
+				self.message_events_dropped = true;
+				continue;
+			}
+			self.message_events.push_back(queued);
+		}
+	}
 	pub fn message_event(&mut self, state: &State, event: MessageEvent) {
 		if !self.has_message_events(state) || event.validate().is_err() {
 			return;
@@ -603,6 +689,12 @@ impl Bridge {
 			self.transitions.clear();
 			self.lookups.clear();
 			self.contributions.clear();
+			self.notifications.clear();
+			// Messages held for hooks belong to the old account: they are not sent.
+			self.holds.clear();
+			self.gif_search = None;
+			self.gif_waiting = None;
+			self.gif_merge = None;
 			self.imported = None;
 			self.api_proxy_loaded = false;
 			self.installed.clear();
@@ -647,6 +739,8 @@ impl Bridge {
 				"Result discarded because the conversation or draft changed.".into();
 		}
 		let now = Instant::now();
+		self.advance_holds(state, ctx, messaging, now);
+		self.run_gif_search(state, ctx, messaging);
 		if let Some(next) = self.contributions.expire(now) {
 			ctx.request_repaint_after(next.saturating_duration_since(now));
 		}
@@ -692,6 +786,37 @@ impl Bridge {
 				continue;
 			}
 			match outcome {
+				Err(error)
+					if pending
+						.as_ref()
+						.and_then(|pending| pending.invocation.as_ref())
+						.is_some_and(|(id, _, _)| {
+							self.gif_waiting
+								.as_ref()
+								.is_some_and(|(provider, _)| provider == id)
+						}) =>
+				{
+					let (_, request) = self.gif_waiting.take().unwrap();
+					messaging.extensions.status = format!("GIF search failed. {error}");
+					self.provider_gifs(state, request, None);
+					self.run_gif_search(state, ctx, messaging);
+				}
+				Err(error)
+					if pending
+						.as_ref()
+						.and_then(|pending| pending.invocation.as_ref())
+						.is_some_and(|(id, _, _)| {
+							self.holds
+								.front()
+								.is_some_and(|hold| hold.waiting.as_deref() == Some(id.as_str()))
+						}) =>
+				{
+					let id = pending.unwrap().invocation.unwrap().0;
+					messaging.extensions.status = format!(
+						"{id} could not check the message, so it was sent unchanged. {error}"
+					);
+					self.hook_answered(&id, None, state, ctx, messaging);
+				}
 				Err(error) => {
 					if let Some(id) = pending.as_ref().and_then(|pending| pending.tick.as_ref()) {
 						if let Some(schedule) = self.ticks.get_mut(id) {
@@ -912,6 +1037,9 @@ impl Bridge {
 					{
 						messaging.extensions.status = error;
 					}
+					if !self.disabled.contains(&id) {
+						self.queue_notifications(&id, &output.notifications);
+					}
 					if !self.disabled.contains(&id)
 						&& let Some(appearance) = &output.appearance
 					{
@@ -940,6 +1068,48 @@ impl Bridge {
 						}
 					}
 				}
+				Ok(Event::Invoked { id, output })
+					if self
+						.gif_waiting
+						.as_ref()
+						.is_some_and(|(provider, _)| *provider == id) =>
+				{
+					let (_, request) = self.gif_waiting.take().unwrap();
+					let gifs: Vec<model::Gif> = output
+						.gifs
+						.into_iter()
+						.map(|gif| model::Gif {
+							id: gif.id,
+							title: gif.title,
+							url: gif.url,
+							preview: gif.preview,
+							width: gif.width,
+							height: gif.height,
+						})
+						// Only results the picker accepts: bounded fields and known media hosts.
+						.filter(model::Gif::valid)
+						.collect();
+					if gifs.is_empty() && !output.panel.is_empty() {
+						messaging.extensions.status = output
+							.panel
+							.iter()
+							.find_map(|element| match element {
+								extensions::Element::Text { text } => Some(text.clone()),
+								_ => None,
+							})
+							.unwrap_or_default();
+					}
+					self.provider_gifs(state, request, Some(gifs));
+					self.run_gif_search(state, ctx, messaging);
+				}
+				Ok(Event::Invoked { id, output })
+					if self
+						.holds
+						.front()
+						.is_some_and(|hold| hold.waiting.as_deref() == Some(id.as_str())) =>
+				{
+					self.hook_answered(&id, output.replacement, state, ctx, messaging);
+				}
 				Ok(Event::Invoked { id, output }) => {
 					if let Some((requested, invocation, context)) =
 						pending.and_then(|p| p.invocation)
@@ -952,6 +1122,7 @@ impl Bridge {
 						{
 							messaging.extensions.status = error;
 						}
+						self.queue_notifications(&id, &output.notifications);
 						if context.is_current(state)
 							&& let Some(appearance) = &output.appearance
 						{
@@ -1045,12 +1216,30 @@ impl Bridge {
 					settings,
 					secrets,
 				}) => {
+					let mut reload = false;
 					if let Some(entry) = self.installed.iter_mut().find(|e| e.manifest.id == id) {
 						entry.settings = settings;
 						entry.secrets = secrets;
+						// Activation reads settings (which features to switch on): run it again.
+						reload = entry
+							.manifest
+							.actions
+							.iter()
+							.any(|action| action.surface == Surface::Activation);
 					}
 					self.entries(messaging);
 					messaging.extensions.status = "Settings saved.".into();
+					if reload {
+						self.submit(
+							Job::Load {
+								account: account.clone(),
+							},
+							None,
+							state.generation,
+							ctx,
+							messaging,
+						);
+					}
 				}
 				Ok(Event::LoggedOut | Event::Preview { .. }) => {}
 			}
@@ -1272,6 +1461,63 @@ impl Bridge {
 						messaging.extensions.status =
 							"Refresh the catalog or import this package again.".into();
 					}
+				}
+				ExtensionRequest::DismissContribution { id, key } => {
+					// Only that line goes; the extension's other items stay.
+					let _ = self.contributions.apply(
+						&id,
+						&[extensions::ContributionOp::Remove {
+							slot: extensions::Slot::MessageAccessory,
+							key,
+						}],
+						Instant::now(),
+					);
+					messaging.set_contributions(self.contributions.view());
+				}
+				ExtensionRequest::BeforeSend { command } => {
+					let hooks: Vec<(String, String)> = self
+						.installed
+						.iter()
+						.filter(|entry| {
+							entry.error.is_none()
+								&& !self.disabled.contains(&entry.manifest.id)
+								&& entry.manifest.capabilities.contains(&Capability::SendHook)
+						})
+						.filter_map(|entry| {
+							entry
+								.manifest
+								.actions
+								.iter()
+								.find(|action| action.surface == Surface::BeforeSend)
+								.map(|action| (entry.manifest.id.clone(), action.id.clone()))
+						})
+						.take(extensions::MAX_SEND_HOOKS)
+						.collect();
+					// Hooks that may fetch (translation, say) get a longer hold.
+					let budget = if hooks.iter().any(|(id, _)| {
+						self.installed.iter().any(|entry| {
+							entry.manifest.id == *id
+								&& entry.manifest.capabilities.contains(&Capability::Network)
+						})
+					}) {
+						extensions::SEND_HOOK_NETWORK_BUDGET_MS
+					} else {
+						extensions::SEND_HOOK_BUDGET_MS
+					};
+					match (hooks.is_empty(), account.clone()) {
+						(false, Some(account)) => self.holds.push_back(SendHold {
+							command: *command,
+							account,
+							hooks,
+							next: 0,
+							waiting: None,
+							deadline: Instant::now() + Duration::from_millis(budget),
+							generation: state.generation,
+						}),
+						// Nothing to run: send as typed.
+						_ => self.lookups.push_command(*command),
+					}
+					self.advance_holds(state, ctx, messaging, Instant::now());
 				}
 				ExtensionRequest::SaveSettings { id, values } => {
 					if let Some(job) =
@@ -1519,7 +1765,7 @@ impl Bridge {
 					};
 					let feedback = matches!(&queued.event, ReactiveEvent::ActionResult(_));
 					match queued.event {
-						ReactiveEvent::Message(event) => {
+						ReactiveEvent::Message(event) | ReactiveEvent::Elsewhere(event) => {
 							invocation.message_event = Some(Box::new(event))
 						}
 						ReactiveEvent::App(kind) => {
@@ -1726,6 +1972,258 @@ impl Bridge {
 			account?.clone()
 		};
 		Some(job(id.to_owned(), account))
+	}
+	/// The enabled extension that answers the GIF picker, if any: (id, its `gif_search` action).
+	fn gif_provider(&self) -> Option<(String, String)> {
+		self.installed.iter().find_map(|entry| {
+			(entry.error.is_none()
+				&& !self.disabled.contains(&entry.manifest.id)
+				&& entry
+					.manifest
+					.capabilities
+					.contains(&Capability::GifProvider))
+			.then_some(())?;
+			entry
+				.manifest
+				.actions
+				.iter()
+				.find(|action| action.surface == Surface::GifSearch)
+				.map(|action| (entry.manifest.id.clone(), action.id.clone()))
+		})
+	}
+	pub fn has_gif_provider(&self) -> bool {
+		self.gif_provider().is_some()
+	}
+	/// Routes a GIF picker search by the chosen source. Returns whether Discord's own (KLIPY)
+	/// search should still run: for `klipy`, and alongside the extension for `all`. A newer
+	/// search replaces one not yet run.
+	pub fn search_gifs(&mut self, query: Option<String>, request: u64, source: &str) -> bool {
+		match source {
+			"klipy" => {
+				self.gif_merge = None;
+				true
+			}
+			"all" => {
+				self.gif_merge = Some(GifMerge {
+					request,
+					builtin: None,
+					provider: None,
+				});
+				self.gif_search = Some((query, request, source.to_owned()));
+				true
+			}
+			_ => {
+				self.gif_merge = None;
+				self.gif_search = Some((query, request, source.to_owned()));
+				false
+			}
+		}
+	}
+	/// Discord's GIF page for a request merged with the extension's: held until both are in.
+	/// Other events pass through unchanged.
+	pub fn take_builtin_gifs(
+		&mut self,
+		envelope: client_core::Envelope,
+	) -> Option<client_core::Envelope> {
+		let client_core::Event::Gifs { request, result } = &envelope.event else {
+			return Some(envelope);
+		};
+		let Some(merge) = self
+			.gif_merge
+			.as_mut()
+			.filter(|merge| merge.request == *request)
+		else {
+			return Some(envelope);
+		};
+		merge.builtin = Some(result.clone());
+		let merge = self.gif_merge.take_if(|merge| merge.provider.is_some())?;
+		Some(client_core::Envelope {
+			generation: envelope.generation,
+			event: merge.finish(),
+		})
+	}
+	/// The extension's results (`None` when it failed) for `request`.
+	fn provider_gifs(&mut self, state: &mut State, request: u64, gifs: Option<Vec<model::Gif>>) {
+		let event = match self.gif_merge.as_mut() {
+			Some(merge) if merge.request == request => {
+				merge.provider = Some(gifs);
+				match self.gif_merge.take_if(|merge| merge.builtin.is_some()) {
+					Some(merge) => merge.finish(),
+					None => return,
+				}
+			}
+			_ => client_core::Event::Gifs {
+				request,
+				result: gifs
+					.map(|gifs| model::GifPage {
+						gifs,
+						categories: Vec::new(),
+					})
+					.ok_or(client_core::auth::Failure::Network),
+			},
+		};
+		state.apply(client_core::Envelope {
+			generation: state.generation,
+			event,
+		});
+	}
+	fn run_gif_search(
+		&mut self,
+		state: &State,
+		ctx: &egui::Context,
+		messaging: &mut ui::MessagingUi,
+	) {
+		if self.gif_waiting.is_some() {
+			return;
+		}
+		let Some((query, request, source)) = self.gif_search.take() else {
+			return;
+		};
+		let (Some((id, action)), Some(account)) = (
+			self.gif_provider(),
+			state.user.as_ref().map(|user| user.id.0.to_string()),
+		) else {
+			return;
+		};
+		let invocation = Invocation {
+			action,
+			values: BTreeMap::from([
+				("query".to_owned(), query.unwrap_or_default()),
+				("provider".to_owned(), source),
+			]),
+			..Default::default()
+		};
+		let mut context = ExtensionContext::capture(state, false);
+		context.app_wide = true;
+		context.channel = None;
+		self.gif_waiting = Some((id.clone(), request));
+		self.submit(
+			Job::Invoke {
+				id: id.clone(),
+				account,
+				invocation: invocation.clone(),
+			},
+			Some((id, invocation, context)),
+			state.generation,
+			ctx,
+			messaging,
+		);
+	}
+	/// Runs the next hook of the oldest held message, or sends it when every hook has answered
+	/// or its time is up. Later messages wait, so messages are never sent out of order.
+	fn advance_holds(
+		&mut self,
+		state: &State,
+		ctx: &egui::Context,
+		messaging: &mut ui::MessagingUi,
+		now: Instant,
+	) {
+		while let Some(hold) = self.holds.front_mut() {
+			if hold.generation != state.generation {
+				self.holds.pop_front();
+				continue;
+			}
+			if now >= hold.deadline {
+				if hold.waiting.is_some() {
+					messaging.extensions.status =
+						"An extension took too long to check a message; it was sent as it was."
+							.into();
+				}
+				let hold = self.holds.pop_front().unwrap();
+				self.lookups.push_command(hold.command);
+				continue;
+			}
+			if hold.waiting.is_some() {
+				ctx.request_repaint_after(hold.deadline.saturating_duration_since(now));
+				return;
+			}
+			let Some((id, action)) = hold.hooks.get(hold.next).cloned() else {
+				let hold = self.holds.pop_front().unwrap();
+				self.lookups.push_command(hold.command);
+				continue;
+			};
+			hold.next += 1;
+			let client_core::Command::Send { content, .. } = &hold.command else {
+				let hold = self.holds.pop_front().unwrap();
+				self.lookups.push_command(hold.command);
+				continue;
+			};
+			hold.waiting = Some(id.clone());
+			let invocation = Invocation {
+				action,
+				composer: Some(content.clone()),
+				..Default::default()
+			};
+			let account = hold.account.clone();
+			let mut context = ExtensionContext::capture(state, false);
+			context.app_wide = true;
+			context.channel = None;
+			self.submit(
+				Job::Invoke {
+					id: id.clone(),
+					account,
+					invocation: invocation.clone(),
+				},
+				Some((id, invocation, context)),
+				state.generation,
+				ctx,
+				messaging,
+			);
+			ctx.request_repaint_after(Duration::from_millis(extensions::SEND_HOOK_BUDGET_MS));
+			return;
+		}
+	}
+
+	/// Applies one hook's answer to the oldest held message and moves on. An empty, oversized
+	/// or missing answer keeps the text as it was.
+	fn hook_answered(
+		&mut self,
+		id: &str,
+		replacement: Option<String>,
+		state: &State,
+		ctx: &egui::Context,
+		messaging: &mut ui::MessagingUi,
+	) {
+		if let Some(hold) = self.holds.front_mut()
+			&& hold.waiting.as_deref() == Some(id)
+		{
+			hold.waiting = None;
+			if let client_core::Command::Send { content, .. } = &mut hold.command
+				&& let Some(text) = replacement
+				&& !text.trim().is_empty()
+				&& text.chars().count() <= MAX_SENT_CHARS
+			{
+				*content = text;
+			}
+		}
+		self.advance_holds(state, ctx, messaging, Instant::now());
+	}
+
+	/// Notifications extensions asked for, already rate limited, for the app to show.
+	pub fn take_notifications(&mut self) -> Vec<(String, extensions::Notification)> {
+		self.notifications.drain(..).collect()
+	}
+	/// Queues an extension's notifications, at most a few per minute per extension.
+	fn queue_notifications(&mut self, id: &str, notifications: &[extensions::Notification]) {
+		const MAX_WAITING: usize = 16;
+		let now = Instant::now();
+		let name = self
+			.installed
+			.iter()
+			.find(|entry| entry.manifest.id == id)
+			.map_or_else(|| id.to_owned(), |entry| entry.manifest.name.clone());
+		let recent = self.notified.entry(id.to_owned()).or_default();
+		recent.retain(|at| now.duration_since(*at) < Duration::from_secs(60));
+		for notification in notifications {
+			if recent.len() >= extensions::NOTIFICATIONS_PER_MINUTE
+				|| self.notifications.len() >= MAX_WAITING
+			{
+				break;
+			}
+			recent.push_back(now);
+			self.notifications
+				.push_back((name.clone(), notification.clone()));
+		}
 	}
 	/// Discord lookups extensions asked for; the app sends them like its own commands.
 	pub fn take_commands(&mut self) -> Vec<client_core::Command> {
@@ -2010,8 +2508,112 @@ fn source_hash(source: &InstallSource) -> &str {
 	}
 }
 
+/// One GIF request answered by both Discord (KLIPY) and the provider extension.
+struct GifMerge {
+	request: u64,
+	builtin: Option<Result<model::GifPage, client_core::auth::Failure>>,
+	/// The extension's results; `Some(None)` when it failed.
+	provider: Option<Option<Vec<model::Gif>>>,
+}
+impl GifMerge {
+	fn finish(self) -> client_core::Event {
+		client_core::Event::Gifs {
+			request: self.request,
+			result: merge_gif_pages(
+				self.builtin
+					.unwrap_or(Err(client_core::auth::Failure::Network)),
+				self.provider.flatten(),
+			),
+		}
+	}
+}
+
+/// KLIPY, Tenor and Giphy results taken in turn, as one valid picker page: duplicates
+/// dropped, within the page's item and byte bounds. Fails only when both sides failed.
+fn merge_gif_pages(
+	builtin: Result<model::GifPage, client_core::auth::Failure>,
+	provider: Option<Vec<model::Gif>>,
+) -> Result<model::GifPage, client_core::auth::Failure> {
+	let (klipy, categories, failure) = match builtin {
+		Ok(page) => (page.gifs, page.categories, None),
+		Err(failure) => (Vec::new(), Vec::new(), Some(failure)),
+	};
+	if let (Some(failure), None) = (failure, &provider) {
+		return Err(failure);
+	}
+	let provider = provider.unwrap_or_default();
+	let (tenor, giphy): (Vec<_>, Vec<_>) = provider
+		.into_iter()
+		.partition(|gif| gif.id.starts_with("tenor-"));
+	let mut sources = [klipy.into_iter(), tenor.into_iter(), giphy.into_iter()];
+	let mut page = model::GifPage {
+		gifs: Vec::new(),
+		categories,
+	};
+	loop {
+		let mut any = false;
+		for source in &mut sources {
+			let Some(gif) = source.next() else {
+				continue;
+			};
+			any = true;
+			if page.gifs.len() >= model::GIF_PAGE_SIZE
+				|| !gif.valid()
+				|| page.gifs.iter().any(|known| known.id == gif.id)
+			{
+				continue;
+			}
+			page.gifs.push(gif);
+			if !page.valid() {
+				page.gifs.pop();
+			}
+		}
+		if !any {
+			break;
+		}
+	}
+	Ok(page)
+}
+
 #[cfg(test)]
 mod tests {
+	/// "All" shows KLIPY, Tenor and Giphy in turn; a failed side leaves the other's results.
+	#[test]
+	fn all_sources_interleave_and_survive_one_failing() {
+		let gif = |id: &str, host: &str| model::Gif {
+			id: id.into(),
+			title: String::new(),
+			url: format!("https://{host}/view/{id}"),
+			preview: format!("https://media.tenor.com/{id}/tenor.gif"),
+			width: 100,
+			height: 100,
+		};
+		let klipy = model::GifPage {
+			gifs: vec![gif("k1", "klipy.com"), gif("k2", "klipy.com")],
+			categories: Vec::new(),
+		};
+		let provider = vec![
+			gif("tenor-1", "tenor.com"),
+			gif("giphy-1", "giphy.com"),
+			gif("tenor-2", "tenor.com"),
+			// Invalid results from the extension are dropped, not the whole page.
+			gif("giphy bad", "giphy.com"),
+		];
+		let page = merge_gif_pages(Ok(klipy.clone()), Some(provider.clone())).unwrap();
+		let ids: Vec<_> = page.gifs.iter().map(|gif| gif.id.as_str()).collect();
+		assert_eq!(ids, ["k1", "tenor-1", "giphy-1", "k2", "tenor-2"]);
+		assert!(page.valid());
+		assert_eq!(
+			merge_gif_pages(Err(client_core::auth::Failure::Network), Some(provider))
+				.unwrap()
+				.gifs
+				.len(),
+			3
+		);
+		assert_eq!(merge_gif_pages(Ok(klipy), None).unwrap().gifs.len(), 2);
+		assert!(merge_gif_pages(Err(client_core::auth::Failure::Network), None).is_err());
+	}
+
 	use super::*;
 
 	#[test]
@@ -2076,6 +2678,11 @@ mod tests {
 			..Default::default()
 		};
 		let event = MessageEvent {
+			open: false,
+			author_name: None,
+			guild_id: None,
+			place: None,
+			mentions_me: false,
 			kind: extensions::MessageEventKind::Create,
 			channel_id: state.selected.unwrap().0.to_string(),
 			message_id: "2".into(),
@@ -2482,5 +3089,78 @@ mod tests {
 		assert!(bridge.source_for(&id, &"a".repeat(64), true).is_none());
 		assert!(bridge.source_for(&id, &"b".repeat(64), false).is_none());
 		assert!(bridge.source_for(&id, &"d".repeat(64), true).is_none());
+	}
+
+	/// Messages held for `before_send` hooks go out in the order they were sent, with a hook's
+	/// answer applied; a hook that never answers costs at most the budget and the original
+	/// text is sent.
+	#[test]
+	fn held_messages_keep_their_order_and_fail_open() {
+		let state = test_support::demo_state();
+		let ctx = egui::Context::default();
+		let mut messaging = ui::MessagingUi::default();
+		let send = |content: &str| client_core::Command::Send {
+			sticker: None,
+			channel: model::Id(20),
+			content: content.into(),
+			nonce: content.into(),
+			reply: None,
+		};
+		let hold = |content: &str, waiting: Option<&str>, deadline: Instant| SendHold {
+			command: send(content),
+			account: "account".into(),
+			hooks: Vec::new(),
+			next: 0,
+			waiting: waiting.map(Into::into),
+			deadline,
+			generation: state.generation,
+		};
+		let later = Instant::now() + Duration::from_secs(60);
+		let mut bridge = Bridge::default();
+		bridge
+			.holds
+			.push_back(hold("first ?si=1", Some("clear-urls"), later));
+		bridge.holds.push_back(hold("second", None, later));
+		// The second message waits behind the first, whose hook has not answered.
+		bridge.advance_holds(&state, &ctx, &mut messaging, Instant::now());
+		assert!(bridge.take_commands().is_empty());
+		// An answer from another extension is not taken for this hook's.
+		bridge.hook_answered("other", Some("wrong".into()), &state, &ctx, &mut messaging);
+		assert!(bridge.take_commands().is_empty());
+		bridge.hook_answered(
+			"clear-urls",
+			Some("first".into()),
+			&state,
+			&ctx,
+			&mut messaging,
+		);
+		let sent: Vec<String> = bridge
+			.take_commands()
+			.into_iter()
+			.map(|command| match command {
+				client_core::Command::Send { content, .. } => content,
+				_ => unreachable!(),
+			})
+			.collect();
+		assert_eq!(sent, ["first", "second"]);
+
+		// A hook that misses the budget: the text goes out as typed.
+		let mut bridge = Bridge::default();
+		let past = Instant::now() - Duration::from_millis(1);
+		bridge.holds.push_back(hold("as typed", Some("slow"), past));
+		bridge.advance_holds(&state, &ctx, &mut messaging, Instant::now());
+		assert!(matches!(
+			&bridge.take_commands()[..],
+			[client_core::Command::Send { content, .. }] if content == "as typed"
+		));
+		// Its late answer changes nothing.
+		bridge.hook_answered(
+			"slow",
+			Some("too late".into()),
+			&state,
+			&ctx,
+			&mut messaging,
+		);
+		assert!(bridge.take_commands().is_empty());
 	}
 }

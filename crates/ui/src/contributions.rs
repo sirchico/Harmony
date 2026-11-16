@@ -33,7 +33,17 @@ pub struct ContributionStore {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shown {
 	pub extension: String,
+	/// The extension's key for this item, used to dismiss it.
+	pub key: String,
 	pub item: ContributionItem,
+}
+
+/// An accessory line the user dismissed this frame: (extension, key).
+const DISMISSED: &str = "contribution-dismissed";
+
+/// Takes the accessory line dismissed this frame, if any.
+pub(crate) fn take_dismissed(ctx: &egui::Context) -> Option<(String, String)> {
+	ctx.data_mut(|data| data.remove_temp(egui::Id::unique(DISMISSED)))
 }
 
 /// Items for one target in one slot: the first few in a stable order, and how many more.
@@ -165,17 +175,19 @@ impl ContributionStore {
 		};
 		// BTreeMap order is (slot, extension, key): stable regardless of arrival order, so two
 		// extensions targeting the same thing always appear in the same order.
-		let push = |shelf: &mut Shelf, slot: Slot, extension: &str, item: &ContributionItem| {
-			if shelf.items.len() < slot.shown_per_target() {
-				shelf.items.push(Shown {
-					extension: extension.to_owned(),
-					item: item.clone(),
-				});
-			} else {
-				shelf.more += 1;
-			}
-		};
-		for ((slot, extension, _), entry) in &self.items {
+		let push =
+			|shelf: &mut Shelf, slot: Slot, extension: &str, key: &str, item: &ContributionItem| {
+				if shelf.items.len() < slot.shown_per_target() {
+					shelf.items.push(Shown {
+						extension: extension.to_owned(),
+						key: key.to_owned(),
+						item: item.clone(),
+					});
+				} else {
+					shelf.more += 1;
+				}
+			};
+		for ((slot, extension, key), entry) in &self.items {
 			view.animated |= entry.item.animation.is_some();
 			match &entry.target {
 				ContributionTarget::Message { message_id } => {
@@ -186,6 +198,7 @@ impl ContributionStore {
 						view.messages.entry((*slot, id)).or_default(),
 						*slot,
 						extension,
+						key,
 						&entry.item,
 					);
 					// Both message slots can change a row's height (badges sit under rows
@@ -196,7 +209,8 @@ impl ContributionStore {
 						print.hash(&mut hasher);
 						slot.hash(&mut hasher);
 						extension.hash(&mut hasher);
-						entry.item.text.hash(&mut hasher);
+						// Any field can change the row's height (a note line, wrapping).
+						entry.item.hash(&mut hasher);
 						*print = hasher.finish();
 					}
 				}
@@ -206,11 +220,14 @@ impl ContributionStore {
 							view.users.entry(id).or_default(),
 							*slot,
 							extension,
+							key,
 							&entry.item,
 						);
 					}
 				}
-				ContributionTarget::App => push(&mut view.composer, *slot, extension, &entry.item),
+				ContributionTarget::App => {
+					push(&mut view.composer, *slot, extension, key, &entry.item)
+				}
 			}
 		}
 		self.view = Arc::new(view);
@@ -266,6 +283,8 @@ pub(crate) fn icon(icon: ContributionIcon) -> crate::icons::Icon {
 		ContributionIcon::Code => Icon::FileCode,
 		ContributionIcon::Server => Icon::Servers,
 		ContributionIcon::Eye => Icon::Eye,
+		ContributionIcon::Globe => Icon::Globe,
+		ContributionIcon::Translate => Icon::Translate,
 	}
 }
 
@@ -414,14 +433,70 @@ pub(crate) fn accessories(ui: &mut egui::Ui, view: &ContributionView, shelf: &Sh
 				rect,
 				color.gamma_multiply(alpha),
 			);
-			let label = ui.add(
-				egui::Label::new(
-					egui::RichText::new(&item.text)
-						.size(13.0)
-						.color(design::mix(colors.text, color, 0.35).gamma_multiply(alpha)),
-				)
-				.wrap(),
-			);
+			let mut text = egui::RichText::new(&item.text).size(13.0);
+			text = if item.italic {
+				// Quote style: message-sized, muted italics.
+				text.size(14.0)
+					.italics()
+					.color(colors.muted.gamma_multiply(alpha))
+			} else {
+				text.color(design::mix(colors.text, color, 0.35).gamma_multiply(alpha))
+			};
+			let label = ui
+				.vertical(|ui| {
+					ui.spacing_mut().item_spacing.y = 2.0;
+					let label = ui.add(egui::Label::new(text).wrap());
+					if item.note.is_some() || item.dismissible {
+						ui.horizontal_wrapped(|ui| {
+							ui.spacing_mut().item_spacing.x = 0.0;
+							let muted = |text: String| {
+								egui::RichText::new(text)
+									.size(12.0)
+									.italics()
+									.color(colors.muted)
+							};
+							let note = item.note.clone().unwrap_or_default();
+							if item.dismissible {
+								ui.label(muted(if note.is_empty() {
+									"(".to_owned()
+								} else {
+									format!("({note} - ")
+								}));
+								let dismiss = ui.add(
+									egui::Label::new(
+										egui::RichText::new("Dismiss")
+											.size(12.0)
+											.italics()
+											.color(colors.link),
+									)
+									.sense(egui::Sense::click()),
+								);
+								let dismiss = if dismiss.hovered() {
+									ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+									ui.painter().hline(
+										dismiss.rect.x_range(),
+										dismiss.rect.bottom() - 1.0,
+										egui::Stroke::new(1.0, colors.link),
+									);
+									dismiss
+								} else {
+									dismiss
+								};
+								if dismiss.clicked() {
+									let dismissed = (shown.extension.clone(), shown.key.clone());
+									ui.ctx().data_mut(|data| {
+										data.insert_temp(egui::Id::unique(DISMISSED), dismissed)
+									});
+								}
+								ui.label(muted(")".to_owned()));
+							} else {
+								ui.label(muted(format!("({note})")));
+							}
+						});
+					}
+					label
+				})
+				.inner;
 			let owner = shown.extension.clone();
 			let tooltip = item.tooltip.clone();
 			label.on_hover_ui(|ui| {
@@ -459,6 +534,10 @@ mod tests {
 			icon: None,
 			action: None,
 			animation: None,
+			note: None,
+			dismissible: false,
+			italic: false,
+			secondary_action: None,
 		}
 	}
 	fn set(slot: Slot, key: &str, user: &str, text: &str, ttl_ms: Option<u64>) -> ContributionOp {

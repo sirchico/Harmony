@@ -802,11 +802,83 @@ pub struct ClientPlatforms {
 	pub mobile: bool,
 	pub web: bool,
 	pub vr: bool,
+	/// A console or game the account is signed in on (Discord's `embedded` client).
+	pub embedded: bool,
+	/// Platforms whose own status is idle or Do Not Disturb, as [`Platform::bit`] masks; any
+	/// other active platform is online.
+	pub idle: u8,
+	pub dnd: u8,
+}
+
+/// One kind of client a person can be signed in on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Platform {
+	Desktop,
+	Mobile,
+	Web,
+	Embedded,
+	Vr,
+}
+
+impl Platform {
+	pub const ALL: [Platform; 5] = [
+		Platform::Desktop,
+		Platform::Mobile,
+		Platform::Web,
+		Platform::Embedded,
+		Platform::Vr,
+	];
+	pub fn bit(self) -> u8 {
+		match self {
+			Platform::Desktop => 1,
+			Platform::Mobile => 2,
+			Platform::Web => 4,
+			Platform::Embedded => 8,
+			Platform::Vr => 16,
+		}
+	}
+	/// The name Discord's clients show for it.
+	pub fn label(self) -> &'static str {
+		match self {
+			Platform::Desktop => "Desktop",
+			Platform::Mobile => "Mobile",
+			Platform::Web => "Web",
+			Platform::Embedded => "Embedded (Console or Game)",
+			Platform::Vr => "VR",
+		}
+	}
 }
 
 impl ClientPlatforms {
 	pub fn any(self) -> bool {
-		self.desktop || self.mobile || self.web || self.vr
+		self.desktop || self.mobile || self.web || self.vr || self.embedded
+	}
+	pub fn has(self, platform: Platform) -> bool {
+		match platform {
+			Platform::Desktop => self.desktop,
+			Platform::Mobile => self.mobile,
+			Platform::Web => self.web,
+			Platform::Embedded => self.embedded,
+			Platform::Vr => self.vr,
+		}
+	}
+	/// That platform's own status (`online`, `idle` or `dnd`), when signed in on it.
+	pub fn status(self, platform: Platform) -> Option<&'static str> {
+		if !self.has(platform) {
+			None
+		} else if self.dnd & platform.bit() != 0 {
+			Some("dnd")
+		} else if self.idle & platform.bit() != 0 {
+			Some("idle")
+		} else {
+			Some("online")
+		}
+	}
+	/// Active platforms with their own statuses, in a fixed order.
+	pub fn active(self) -> impl Iterator<Item = (Platform, &'static str)> {
+		Platform::ALL
+			.into_iter()
+			.filter_map(move |platform| self.status(platform).map(|status| (platform, status)))
 	}
 }
 

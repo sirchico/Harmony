@@ -6,7 +6,7 @@
 fetched through the jsDelivr npm mirror on September 10, 2026. The unmodified license is
 `LICENSE` and is staged in both packages as `licenses/Phosphor-Icons-MIT.txt`.
 
-One hundred and eight unmodified Phosphor `assets/fill/*.svg` and `assets/bold/*.svg` files are scaled
+One hundred and eleven unmodified Phosphor `assets/fill/*.svg` and `assets/bold/*.svg` files are scaled
 to 56×56 pixels, filled white, and rasterized by `resvg` 0.45.1 into one transparent PNG atlas
 with 64×64 cells (8 columns, 16 rows). `headphones-slash` is derived from `headphones-fill.svg`
 by masking a diagonal knockout and adding a 16-unit round-capped stroke, matching the style of
@@ -30,11 +30,11 @@ grid), marks threads; it is rasterized with the Phosphor set and carries no upst
 (MIT, same pinned 2.1.1 package, fetched November 10, 2026) with a 16-unit round-capped X masked
 out of the screen where `monitor-arrow-up` draws its arrow, so it pairs with the share glyph.
 
-- `atlas.png`: 512×1024 RGBA, 139,440 bytes as written by `resvg` (not yet passed through
+- `atlas.png`: 512×1024 RGBA, 142,384 bytes as written by `resvg` (not yet passed through
   `oxipng`; the last regeneration ran without it). SHA-256
-  `e802c0eb66ba6f6c2e2f26ca74216cb8a4fea3d257c3983fe8c5bdaadfd29407`.
+  `a0193fdbc64d1ce11738f93bba3f3ed077f77e7bc964e769c4af9e7b4e94110d`.
 - `index.tsv`: icon name, tab, zero-based cell; SHA-256
-  `93d6efdc6343e59fec7752dfe72cbdb80b2ba9df27c884fd3c99528d30fb7178`.
+  `60f6d7d64f79c907e07328a2789abb21771d33ba7da612cf026a4964e6b227ba`.
 
 Every upstream SVG's SHA-256 is pinned in `tools/generate-icons.py`, which refuses to build
 from mismatching files. Regenerate from the repository root:

@@ -3478,6 +3478,17 @@ impl Desktop {
 	}
 	/// Dispatches one queued command to the demo or live transport.
 	fn command(&mut self, command: Command) {
+		// An enabled GIF provider extension answers the GIF picker from its chosen source:
+		// Discord's KLIPY search, the extension (Tenor, Giphy), or both.
+		if let Command::Gifs { query, request } = &command
+			&& self.extensions.has_gif_provider()
+			&& let Some(source) = self.messaging.extensions.gif_provider_choice()
+			&& !self
+				.extensions
+				.search_gifs(query.clone(), *request, &source)
+		{
+			return;
+		}
 		// The offline preview has no one to tell.
 		if matches!(command, Command::Typing { .. }) && (self.state.demo || self.fixture_only) {
 			return;
@@ -5240,12 +5251,21 @@ impl Desktop {
 				)) {
 				self.notifications.dismiss();
 			}
+			// With every GIF source chosen, Discord's page waits for the extension's results.
+			let Some(event) = self.extensions.take_builtin_gifs(event) else {
+				continue;
+			};
 			let data_changes = extension_data_events::Changes::capture(&self.state, &event);
 			let extension_events = if self.extensions.has_message_events(&self.state) {
 				extension_events::capture(&self.state, &event.event)
 			} else {
 				Vec::new()
 			};
+			let elsewhere = self
+				.extensions
+				.has_messages_elsewhere(&self.state)
+				.then(|| extension_events::capture_elsewhere(&self.state, &event.event))
+				.flatten();
 			if event.generation == self.state.generation
 				&& (event.event.changes_access()
 					|| matches!(event.event, Event::Disconnected)
@@ -5267,6 +5287,9 @@ impl Desktop {
 				if let Some(event) = candidate.admit(&self.state) {
 					self.extensions.message_event(&self.state, event);
 				}
+			}
+			if let Some(event) = elsewhere {
+				self.extensions.message_elsewhere(&self.state, event);
 			}
 			if user_action_was_pending
 				&& !self.state.user_action_pending()
@@ -5893,6 +5916,34 @@ impl eframe::App for Desktop {
 		);
 		for command in self.extensions.take_commands() {
 			self.command(command);
+		}
+		// Extension notifications follow the same switches as message notifications.
+		let quiet = !self.messaging.notifications_enabled
+			|| self.messaging.own_presence.status == model::PresenceStatus::DoNotDisturb
+			|| self.fixture_only;
+		for (name, notification) in self.extensions.take_notifications() {
+			if quiet {
+				continue;
+			}
+			let title = format!("{name}: {}", notification.title);
+			match notification
+				.channel_id
+				.as_deref()
+				.and_then(|id| id.parse::<u64>().ok())
+			{
+				Some(channel) => {
+					self.notifications.notify_channel(
+						model::Id(channel),
+						title,
+						notification.body,
+						None,
+					);
+				}
+				None => {
+					self.notifications
+						.notify_message(title, notification.body, None);
+				}
+			}
 		}
 		if self.extensions.api_proxy_ready() {
 			let route = self.proxy_auth.tick(

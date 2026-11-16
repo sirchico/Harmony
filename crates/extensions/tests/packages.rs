@@ -60,6 +60,30 @@ const PACKAGES: &[(&str, &[u8])] = &[
 		"view-raw-message",
 		include_bytes!("../../../extensions/plugins/packages/view-raw-message.harmony-extension"),
 	),
+	(
+		"clear-urls",
+		include_bytes!("../../../extensions/plugins/packages/clear-urls.harmony-extension"),
+	),
+	(
+		"message-notifier",
+		include_bytes!("../../../extensions/plugins/packages/message-notifier.harmony-extension"),
+	),
+	(
+		"message-logger-enhanced",
+		include_bytes!(
+			"../../../extensions/plugins/packages/message-logger-enhanced.harmony-extension"
+		),
+	),
+	(
+		"translate",
+		include_bytes!("../../../extensions/plugins/packages/translate.harmony-extension"),
+	),
+	(
+		"gif-provider-switcher",
+		include_bytes!(
+			"../../../extensions/plugins/packages/gif-provider-switcher.harmony-extension"
+		),
+	),
 ];
 
 fn link(kind: MediaKind, name: &str) -> MediaLink {
@@ -108,7 +132,23 @@ fn input(action: &str, surface: Surface) -> Option<Invocation> {
 				guild_id: "5".into(),
 			}))
 		}
-		// Events and ticks need host data these packages do not subscribe to.
+		Surface::GifSearch => {
+			invocation.values.insert("query".into(), "cat".into());
+		}
+		Surface::BeforeSend => invocation.composer = Some("see https://youtu.be/a?si=x".into()),
+		Surface::MessageEvent => {
+			invocation.message_event = Some(Box::new(extensions::MessageEvent {
+				kind: extensions::MessageEventKind::Create,
+				channel_id: "2".into(),
+				message_id: "3".into(),
+				author_id: Some("4".into()),
+				content: Some("Synthetic message".into()),
+				author_name: Some("Robin".into()),
+				place: Some("Server · #general".into()),
+				..Default::default()
+			}))
+		}
+		// App events and ticks need host data these packages do not subscribe to.
 		_ => return None,
 	}
 	Some(invocation)

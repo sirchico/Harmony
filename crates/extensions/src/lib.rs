@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 mod contributions;
+mod phase3;
+pub use phase3::*;
+mod network;
+pub use network::*;
 mod runtime;
 pub use contributions::*;
 pub use runtime::invoke;
@@ -162,6 +166,17 @@ pub enum Capability {
 	ServerProfiles,
 	/// API v2: add declarative items to the interface slots the manifest lists.
 	UiContributions,
+	/// API v2: read and change each message as it is sent (`before_send`).
+	SendHook,
+	/// API v2: show system notifications from event actions, rate limited.
+	Notifications,
+	/// API v2: receive new messages from every conversation the account can read, not only
+	/// the open one. Needs `message_events`.
+	AllMessageEvents,
+	/// API v2: ask Harmony to make HTTPS requests to the sites listed in `origins`.
+	Network,
+	/// API v2: answer the GIF picker's searches (`gif_search`) instead of the built-in provider.
+	GifProvider,
 }
 
 /// Host-defined interface behavior that a plugin may switch on for the whole client from
@@ -236,6 +251,12 @@ pub enum Surface {
 	/// API v2: an icon button on file attachments the action's `accepts` filter matches.
 	/// Receives that file as the only `media` link.
 	Attachment,
+	/// API v2: runs as each message is sent, with its text in `composer`; may only return
+	/// `replacement`. Needs `send_hook`. The original text is sent if it fails or is slow.
+	BeforeSend,
+	/// API v2: answers the GIF picker. The search text is the panel value `query` (empty for
+	/// trending); return `gifs`. Needs `gif_provider`.
+	GifSearch,
 }
 
 impl Surface {
@@ -333,6 +354,10 @@ pub struct Manifest {
 	/// API v2: interface slots this extension adds items to; needs `ui_contributions`.
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub slots: Vec<Slot>,
+	/// API v2: sites Harmony may contact for this extension (`network`): host names, or
+	/// `setting:<id>` for the host of a URL typed into that text setting.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub origins: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -594,15 +619,16 @@ pub struct AttachmentSource {
 	pub url: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MessageEventKind {
+	#[default]
 	Create,
 	Update,
 	Delete,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MessageEvent {
 	pub kind: MessageEventKind,
@@ -612,6 +638,20 @@ pub struct MessageEvent {
 	pub author_id: Option<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub content: Option<String>,
+	/// The author's name as Harmony shows it (create and update events).
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub author_name: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub guild_id: Option<String>,
+	/// Where the message is, such as `Server · #channel` or a conversation's name.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub place: Option<String>,
+	/// Whether the message mentions the current account directly or with @everyone.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub mentions_me: bool,
+	/// Whether the message's conversation is the one open on screen.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub open: bool,
 }
 
 /// The message a `message` action was invoked on. These are the IDs the user just clicked,
@@ -754,11 +794,26 @@ impl MessageEvent {
 		{
 			return Err(Error::Limit);
 		}
+		if let Some(guild) = &self.guild_id {
+			app::entity_id(guild)?;
+		}
+		let plain = |text: &Option<String>, max: usize| {
+			text.as_ref()
+				.is_none_or(|text| text.len() <= max && !text.chars().any(char::is_control))
+		};
+		if !plain(&self.author_name, 256) || !plain(&self.place, 256) {
+			return Err(Error::Invalid);
+		}
 		match self.kind {
 			MessageEventKind::Create if self.author_id.is_none() || self.content.is_none() => {
 				Err(Error::Invalid)
 			}
-			MessageEventKind::Delete if self.author_id.is_some() || self.content.is_some() => {
+			MessageEventKind::Delete
+				if self.author_id.is_some()
+					|| self.content.is_some()
+					|| self.author_name.is_some()
+					|| self.mentions_me =>
+			{
 				Err(Error::Invalid)
 			}
 			_ => Ok(()),
@@ -869,7 +924,36 @@ pub struct Output {
 	/// API v2: changes to this extension's interface contributions.
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub contributions: Vec<ContributionOp>,
+	/// API v2: system notifications to show (event actions with `notifications` only).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub notifications: Vec<Notification>,
+	/// API v2: lines appended to this extension's log (needs a log quota).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub log: Vec<String>,
+	/// API v2: empties the log before `log` lines are appended.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub log_clear: bool,
+	/// API v2: GIF picker results (`gif_search` actions only).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub gifs: Vec<GifResult>,
 }
+
+/// One GIF for the picker. `url` is what is sent when it is chosen; `preview` is shown in the
+/// picker and must be a Tenor, Klipy or Giphy media address without a query string.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GifResult {
+	pub id: String,
+	#[serde(default)]
+	pub title: String,
+	pub url: String,
+	pub preview: String,
+	pub width: u32,
+	pub height: u32,
+}
+
+/// Most GIFs one search may return.
+pub const MAX_GIF_RESULTS: usize = 50;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
@@ -1095,6 +1179,8 @@ impl Manifest {
 				Surface::AppEvent => Some(Capability::AppEvents),
 				Surface::Tick => Some(Capability::Appearance),
 				Surface::MessageToolbar => Some(Capability::SelectedMessage),
+				Surface::BeforeSend => Some(Capability::SendHook),
+				Surface::GifSearch => Some(Capability::GifProvider),
 				Surface::Image | Surface::Attachment => Some(Capability::MediaLinks),
 			};
 			if required.is_some_and(|c| !capabilities.contains(&c)) {
@@ -1451,9 +1537,15 @@ impl Invocation {
 		} else if self.message_event.is_some() {
 			return Err(Error::Capability);
 		}
+		// A hook's outgoing text is covered by `send_hook`, not the composer grant.
+		let composer_capability = if action.surface == Surface::BeforeSend {
+			Capability::SendHook
+		} else {
+			Capability::Composer
+		};
 		for (data, capability) in [
 			(&self.selected_message, Capability::SelectedMessage),
-			(&self.composer, Capability::Composer),
+			(&self.composer, composer_capability),
 			(&self.storage, Capability::Storage),
 		] {
 			if let Some(data) = data {
@@ -1480,7 +1572,8 @@ impl Invocation {
 		}
 		if self.selected_message.is_some()
 			&& !matches!(action.surface, Surface::Message | Surface::MessageToolbar)
-			|| self.composer.is_some() && action.surface != Surface::Composer
+			|| self.composer.is_some()
+				&& !matches!(action.surface, Surface::Composer | Surface::BeforeSend)
 			|| self.tick_ms.is_some() && action.surface != Surface::Tick
 			|| self.tick_ms.is_none() && action.surface == Surface::Tick
 		{
@@ -1522,6 +1615,28 @@ impl Output {
 			.find(|action| action.id == input.action)
 			.ok_or(Error::Invalid)?
 			.surface;
+		phase3::validate_output(self, manifest, surface)?;
+		if !self.gifs.is_empty() {
+			if surface != Surface::GifSearch {
+				return Err(Error::Capability);
+			}
+			if self.gifs.len() > MAX_GIF_RESULTS {
+				return Err(Error::Limit);
+			}
+			if self.gifs.iter().any(|gif| {
+				gif.id.is_empty()
+					|| gif.id.len() > 128
+					|| gif.title.len() > 256
+					|| !valid_https_url(&gif.url)
+					|| !valid_https_url(&gif.preview)
+					|| gif.width == 0
+					|| gif.height == 0
+					|| gif.width > 4096
+					|| gif.height > 4096
+			}) {
+				return Err(Error::Invalid);
+			}
+		}
 		if let Some(tweaks) = &self.interface_tweaks {
 			if !manifest.capabilities.contains(&Capability::InterfaceTweaks)
 				|| !matches!(surface, Surface::Activation | Surface::Panel)
@@ -1599,8 +1714,14 @@ impl Output {
 		{
 			return Err(Error::Capability);
 		}
+		// A replacement needs the draft it replaces: composer actions, or a send hook's text.
+		let replaces = if surface == Surface::BeforeSend {
+			Capability::SendHook
+		} else {
+			Capability::Composer
+		};
 		if self.replacement.is_some()
-			&& (input.composer.is_none() || !manifest.capabilities.contains(&Capability::Composer))
+			&& (input.composer.is_none() || !manifest.capabilities.contains(&replaces))
 		{
 			return Err(Error::Capability);
 		}

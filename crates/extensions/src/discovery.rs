@@ -92,6 +92,11 @@ impl HostInfo {
 				Capability::AttachmentContents,
 				Capability::ServerProfiles,
 				Capability::UiContributions,
+				Capability::SendHook,
+				Capability::Notifications,
+				Capability::AllMessageEvents,
+				Capability::Network,
+				Capability::GifProvider,
 			],
 			app_events: &[
 				AppEventKind::Ready,

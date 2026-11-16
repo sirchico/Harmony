@@ -19,8 +19,11 @@ fn manifest(action: &str, surface: Surface) -> Manifest {
 		}
 		Surface::MessageToolbar => capabilities.push(Capability::SelectedMessage),
 		Surface::Image | Surface::Attachment => capabilities.push(Capability::MediaLinks),
+		Surface::BeforeSend => capabilities.push(Capability::SendHook),
+		Surface::GifSearch => capabilities.push(Capability::GifProvider),
 	}
 	let manifest = Manifest {
+		origins: Vec::new(),
 		slots: Vec::new(),
 		api_version: extensions::API_VERSION,
 		id: "sdk-check".into(),
@@ -238,6 +241,11 @@ fn host_invocations_and_legacy_handlers_keep_the_v1_contract() {
 			let input = Invocation {
 				action: "event".into(),
 				message_event: Some(Box::new(extensions::MessageEvent {
+					open: false,
+					author_name: None,
+					guild_id: None,
+					place: None,
+					mentions_me: false,
 					kind,
 					channel_id: "18446744073709551615".into(),
 					message_id: "2".into(),

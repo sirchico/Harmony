@@ -101,6 +101,23 @@ impl eframe::App for Preview {
 					slash_demo::respond(&mut self.state, request);
 					continue;
 				}
+				client_core::Command::Gifs { query, request } => {
+					let mut page = test_support::gif_page(query.as_deref());
+					// The provider switcher preview shows results from all three sources.
+					if std::env::args().any(|arg| arg == "--extension=gif-provider-switcher") {
+						for (index, gif) in page.gifs.iter_mut().enumerate() {
+							match index % 3 {
+								1 => gif.id = format!("tenor-{}", gif.id),
+								2 => gif.id = format!("giphy-{}", gif.id),
+								_ => gif.url = format!("https://klipy.com/gifs/{}", gif.id),
+							}
+						}
+					}
+					client_core::Event::Gifs {
+						request,
+						result: Ok(page),
+					}
+				}
 				client_core::Command::BadgeSettings { request, settings } => {
 					client_core::Event::BadgeSettings {
 						request,
@@ -620,6 +637,21 @@ fn extension_fixture(
 		"reverse-image-search" => include_bytes!(
 			"../../../extensions/plugins/packages/reverse-image-search.harmony-extension"
 		),
+		"clear-urls" => {
+			include_bytes!("../../../extensions/plugins/packages/clear-urls.harmony-extension")
+		}
+		"message-notifier" => include_bytes!(
+			"../../../extensions/plugins/packages/message-notifier.harmony-extension"
+		),
+		"message-logger-enhanced" => include_bytes!(
+			"../../../extensions/plugins/packages/message-logger-enhanced.harmony-extension"
+		),
+		"translate" => {
+			include_bytes!("../../../extensions/plugins/packages/translate.harmony-extension")
+		}
+		"gif-provider-switcher" => include_bytes!(
+			"../../../extensions/plugins/packages/gif-provider-switcher.harmony-extension"
+		),
 		"harmony-midnight" => {
 			include_bytes!("../../../extensions/themes/midnight.harmony-extension")
 		}
@@ -748,10 +780,46 @@ fn item_fixture(id: &str) -> Option<extensions::Invocation> {
 					.into(),
 			);
 		}
-		"copy-file-contents" | "reverse-image-search" => return Some(invocation),
+		"message-notifier" => {
+			invocation.action = "toggle".into();
+			invocation.menu_target = Some(Box::new(extensions::MenuTarget::User {
+				user_id: "2".into(),
+				guild_id: Some("10".into()),
+				channel_id: None,
+			}));
+		}
+		"message-logger-enhanced" => invocation.action = "open".into(),
+		"translate" => {
+			// The translation appears under the message; there is no window.
+			invocation.action = "translate".into();
+			invocation.selected_message = Some(TRANSLATED.into());
+			invocation.selected_message_ref = message(TRANSLATED);
+		}
+		"copy-file-contents" | "reverse-image-search" | "clear-urls" | "gif-provider-switcher" => {
+			return Some(invocation);
+		}
 		_ => return None,
 	}
 	Some(invocation)
+}
+
+/// The synthetic message the Translate preview translates.
+const TRANSLATED: &str = "¿Alguien se apunta esta noche? Yo llevo la pizza.";
+
+/// Synthetic log lines for the Message Logger preview, newest first.
+fn logged_fixture() -> Vec<extensions::LogEntry> {
+	[
+		(3, 1_735_759_800_000, r#"{"kind":"ghost","author":"Robin (synthetic)","place":"Game Night Club · #general","content":"@you are you coming tonight?","channel_id":"20","message_id":"610"}"#),
+		(2, 1_735_759_500_000, r#"{"kind":"edited","author":"Robin (synthetic)","place":"Game Night Club · #general","content":"Game night starts at 8!","before":"Game night starts at 7!","channel_id":"20","message_id":"608"}"#),
+		(1, 1_735_759_200_000, r#"{"kind":"deleted","author":"Alex (synthetic)","place":"Game Night Club · #snacks","content":"I'll bring the pizza.","channel_id":"21","message_id":"602"}"#),
+	]
+	.into_iter()
+	.map(|(seq, at_ms, text)| extensions::LogEntry {
+		seq,
+		at_ms,
+		text: text.into(),
+	})
+	.collect()
 }
 
 /// Runs an invocation to completion, answering a server lookup with synthetic details.
@@ -771,6 +839,31 @@ fn rounds(
 			.requests
 			.iter()
 			.map(|request| {
+				if let extensions::HostRequest::Http { id, .. } = request {
+					// A synthetic translation service answer; nothing is contacted.
+					return extensions::HostResponse::ok(
+						id,
+						extensions::ResponseValue::Http {
+							response: Box::new(extensions::HttpResponse {
+								status: 200,
+								content_type: Some("application/json".into()),
+								location: None,
+								encoding: extensions::ContentEncoding::Text,
+								body: r#"{"sentences":[{"trans":"Is anyone in for tonight? I'll bring the pizza."}],"src":"es"}"#.into(),
+								truncated: false,
+							}),
+						},
+					);
+				}
+				if let extensions::HostRequest::LogRead { id, .. } = request {
+					return extensions::HostResponse::ok(
+						id,
+						extensions::ResponseValue::LogEntries {
+							entries: logged_fixture(),
+							more: false,
+						},
+					);
+				}
 				extensions::HostResponse::ok(
 					request.id(),
 					extensions::ResponseValue::ServerProfile {
@@ -1481,6 +1574,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				if matches!(id, "copy-file-contents" | "reverse-image-search") {
 					attach_fixture_files(&mut state);
 				}
+				if id == "clear-urls" {
+					// What the hook sent: the shared link without its tracking parameters.
+					let mut messages: Vec<model::Message> =
+						state.timeline.iter().cloned().collect();
+					if let Some(last) = messages.last_mut() {
+						last.content =
+							"Here's the song for tonight: https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+								.into();
+					}
+					state.timeline.clear();
+					state.timeline.seed_cache(messages)?;
+					state.drafts.insert(
+						state.selected.unwrap(),
+						"https://youtu.be/dQw4w9WgXcQ?si=tracking123".into(),
+					);
+				}
 				let item_preview = item_fixture(id).is_some();
 				if package.manifest.kind == extensions::ExtensionKind::Plugin && item_preview {
 					messaging.extensions.set_entries(vec![ui::ExtensionEntry {
@@ -1499,6 +1608,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						update_manifest: None,
 						runtime: None,
 					}]);
+				}
+				if id == "translate" {
+					let mut messages: Vec<model::Message> =
+						state.timeline.iter().cloned().collect();
+					if let Some(last) = messages.last_mut() {
+						last.content = TRANSLATED.into();
+					}
+					state.timeline.clear();
+					state.timeline.seed_cache(messages)?;
+					if let Some(output) = result.as_ref() {
+						let mut store = ui::ContributionStore::default();
+						// Activation draws the translate button beside the composer.
+						let restore = extensions::invoke(
+							&package,
+							&extensions::Invocation {
+								action: "restore".into(),
+								..Default::default()
+							},
+						)?;
+						store.apply(id, &restore.contributions, Instant::now())?;
+						store.apply(id, &output.contributions, Instant::now())?;
+						messaging.set_contributions(store.view());
+					}
+				}
+				if id == "gif-provider-switcher" {
+					// The picker looks the same; its results come from the chosen provider.
+					messaging.preview_gif_picker("trending");
 				}
 				if id == "user-tags" {
 					// Activation draws the saved tags next to people's names.

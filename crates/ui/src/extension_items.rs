@@ -284,6 +284,7 @@ mod tests {
 
 	fn entry(surface: Surface) -> ExtensionEntry {
 		let manifest = extensions::Manifest {
+			origins: Vec::new(),
 			api_version: extensions::API_V2,
 			id: "probe".into(),
 			name: "Probe".into(),

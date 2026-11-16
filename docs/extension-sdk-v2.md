@@ -86,7 +86,8 @@ if input.host().is_some_and(|host| host.supports_feature("sync", 1, 0)) { /* …
 
 Features offered by this build, all at `1.0.0`: `settings`, `secrets`, `storage.kv`,
 `host_requests`, `dependencies`, `media.links`, `attachments.read`, `lookups.server_profile`,
-`ui.contributions`.
+`ui.contributions`, `hooks.before_send`, `notifications`, `storage.log`, `events.all_messages`,
+`network`, `gifs.provider`.
 
 Packages export `harmony_alloc` and `harmony_invoke`. The SDK's `export!` also exports the same
 functions under their earlier names, so a package built today still runs in older releases, and
@@ -113,9 +114,9 @@ up to the host maximum, and the user sees the request before enabling.
 | --- | --- | --- | --- |
 | Settings | `settings_bytes` | 16 KiB | 64 KiB |
 | Key-value storage | `storage_bytes` | 1 MiB | 64 MiB |
-| Logs (Phase 3) | `log_bytes` | 0 | 256 MiB |
+| Logs | `log_bytes` | 0 | 256 MiB |
 | Media cache (Phase 5) | `media_cache_bytes` | 0 | 512 MiB |
-| Network responses (Phase 4) | `network_response_bytes` | 1 MiB | 16 MiB |
+| Network responses | `network_response_bytes` | 1 MiB | 16 MiB |
 
 All installed extensions together are bounded to 128 extensions and 512 MiB of packages.
 A write that would exceed a quota fails the action without changing stored data.
@@ -140,7 +141,8 @@ credential store (Windows Credential Manager, macOS Keychain, Secret Service on 
 credential store is available, secrets cannot be saved; there is no plaintext fallback.
 Extension code only learns whether each secret is set (`input.secret_set(id)`); the value is
 never sent to Wasm, never written to the extension's folder and never included in storage
-exports. Phase 4 adds host-made network requests that can use a secret without exposing it.
+exports. Network requests can still use a secret: Harmony adds it as a header or query
+parameter (see below).
 Disabling the extension or logging out deletes its secrets.
 
 ## Key-value storage
@@ -244,6 +246,71 @@ applies it right away; the click on Harmony's own button is the consent. A copy 
 clipboard" and the button shows a check mark for two seconds. Any other result, or a result with
 a panel, opens the usual result window. Actions from other menus always confirm first.
 
+## Hooks, notifications and logs
+
+**Before-send hooks.** A `before_send` action (one per extension, needs `send_hook`) receives
+each outgoing text message in `composer` and may return only `replacement`; with `network` it
+may also make `http` requests first (to translate the message, say). Harmony runs up to four
+hooks in order of extension ID, holds the message for at most 1.5 seconds in total (5 seconds
+when a hook's extension has `network`), and sends the original text when a hook fails, is slow or
+returns nothing. Held messages are sent in the
+order they were written. Messages with files or stickers are sent without hooks.
+
+**Notifications.** Event actions (`message_event`, `app_event`, `tick`) with `notifications` may
+return up to three `notifications` (`title`, optional `body`, optional `channel_id` and
+`message_id` to open on click). Harmony shows at most six per minute per extension, prefixed with
+its name, and none while notifications are off or you are in Do Not Disturb.
+
+**Messages from every conversation.** `message_events` covers the open conversation. With
+`all_message_events` as well, a `message_event` action also receives new messages from every
+conversation the account can read (created messages only, no edits or deletes). Message events now
+also carry `author_name`, `guild_id`, `place` (such as `Server · #channel`), `mentions_me` and
+`open`; v2 handlers read them from `input.message`.
+
+**Logs.** With `storage` and a `log_bytes` quota, an output may append `log` lines (up to 32 of
+8 KiB each) and set `log_clear`. Harmony keeps them in the extension's folder, drops the oldest
+lines when the quota is reached, and returns them newest first with the `log_read` request
+(`before` a sequence number, at most 200 per request).
+
+## Network requests
+
+An extension with `network` lists up to eight `origins`: host names such as `api.example.org`,
+or `setting:<id>` for the host of an `https://` URL the user typed into that text setting. The
+enable dialog shows them. The `http` host request asks Harmony to fetch one URL:
+
+```rust
+let request = HttpRequest::get("https://api.example.org/v1/search?q=cats")
+    .secret_param("key", "api-key");                     // ?key=<secret>, added by Harmony
+let request = HttpRequest::post("https://api.example.org/v1/translate", body)
+    .header("Content-Type", "application/json")
+    .secret_header("Authorization", "api-key", "Bearer "); // header value from the secret
+output.request(HostRequest::Http { id: "search".into(), request: Box::new(request) });
+```
+
+Harmony makes the request itself: `https` on port 443 only, to a listed origin, resolving to a
+public address (no private or local networks), no proxy, no cookies, redirects returned in
+`location` rather than followed, and a 20 second timeout. `Authorization`, `Cookie`, `Host` and
+similar headers can only come from secrets. Requests carry up to 12 headers and secret values and
+64 KiB of body (`body_base64` for binary). The answer (`ResponseValue::Http`) has `status`,
+`content_type`, `location` and the body as text or base64, cut at the smaller of `max_bytes` and
+the `network_response_bytes` quota (`truncated` says so). Each extension may make 30 requests a
+minute. `TestHost::web` answers requests by exact URL in tests.
+
+## GIF providers
+
+An extension with `gif_provider` and one `gif_search` action answers the GIF picker. If it
+declares a `provider` choice setting with the values `tenor`, `giphy`, `klipy` and `all`, the
+picker shows that choice as a dropdown beside its search field, names the chosen providers in the
+search placeholder, and saves a new pick to the setting. `klipy` is Harmony's built-in search and
+does not run the extension; `all` runs both and shows Klipy, Tenor and Giphy results in turn.
+
+The search text arrives as the value `query` (empty for trending) and the current choice as
+`provider`; return up to 50 `gifs` (`id`, `title`, `url` to send, `preview` to show, `width`,
+`height`). Prefix IDs with `tenor-` or `giphy-` to badge results with their provider; IDs use
+letters, digits, `-` and `_`. Results the picker would reject (other media hosts, previews with a
+query string, oversized fields) are dropped individually. A panel text returned instead of GIFs is
+shown as the reason. Only the newest search waits while one runs.
+
 ## Panel images
 
 `Element::Image { url, alt, size }` shows an image from Discord's own hosts
@@ -267,6 +334,11 @@ every listed capability:
 | `attachment_contents` | Read the files attached to messages you choose an action on |
 | `server_profiles` | Look up public details of servers you have joined |
 | `ui_contributions` | Add badges, notes and buttons to the slots it lists |
+| `send_hook` | Read and change each message as I send it |
+| `notifications` | Show system notifications |
+| `all_message_events` | Receive new messages from every conversation I can read |
+| `network` | Contact the listed sites (shown in the dialog) |
+| `gif_provider` | Answer GIF picker searches |
 
 ## Testing without the app
 
@@ -337,13 +409,16 @@ output.contribute(ContributionOp::remove(Slot::MessageBadge, "old"));
 | Slot | Target | Drawn | Text |
 | --- | --- | --- | --- |
 | `message.badge` | `message` | after the timestamp; under the content on rows that continue the previous message | 32 characters |
-| `message.accessory` | `message` | a line under the message content | 300 characters |
+| `message.accessory` | `message` | a line under the message content | 2,000 characters, up to 8 lines |
 | `user.badge` | `user` | after the name in messages and the member list | 32 characters |
-| `composer.button` | `app` | an icon button beside the emoji and GIF buttons; runs the declared `panel` action in `action` | 24 characters (accessible name) |
+| `composer.button` | `app` | an icon button beside the emoji and GIF buttons; runs the declared `panel` action in `action`, and `secondary_action` on a right-click or Shift-click; `color` tints the icon | 24 characters (accessible name) |
 
 An item has `text`, an optional `tooltip`, a `#RRGGBB` `color`, an `icon` from Harmony's set
-(`tag`, `star`, `info`, `warning`, `check`, `sparkle`, `link`, `pin`, `bell`, `shield`) and an
-optional `animation` (`pulse`, `shimmer` or `rainbow`, 500–10,000 ms per cycle). Harmony runs
+(`tag`, `star`, `info`, `warning`, `check`, `sparkle`, `link`, `pin`, `bell`, `shield`,
+`search`, `external`, `copy`, `code`, `server`, `eye`, `globe`, `translate`) and an
+optional `animation` (`pulse`, `shimmer` or `rainbow`, 500–10,000 ms per cycle). Accessory
+lines may add a smaller `note` line, `dismissible` (a Dismiss link that removes the line on this
+device until the extension sets it again) and `italic` (quote style). Harmony runs
 the animation itself and repaints only while animated items exist; your code is never run per
 frame. Every item's tooltip names the extension that added it.
 
@@ -364,5 +439,4 @@ contributions.
 ## Planned (not in this release)
 
 More slots (channel and server list decorations, settings sections) and declarative content
-matchers follow the same model. Later phases add hooks, notifications and commands (Phase 3),
-host-made network requests that can use secrets (Phase 4), and media services (Phase 5).
+matchers follow the same model. A later phase adds media services (Phase 5).

@@ -39,6 +39,10 @@ impl Lookups {
 		self.active.clear();
 		self.commands.clear();
 	}
+	/// Queues a command for the app to send, such as a message released by its hooks.
+	pub fn push_command(&mut self, command: Command) {
+		self.commands.push(command);
+	}
 	pub fn take_commands(&mut self) -> Vec<Command> {
 		std::mem::take(&mut self.commands)
 	}

@@ -663,6 +663,15 @@ folder and its credential-store entries. One account may install at most 128 plu
 512 MiB of packages. Attachment reads for `attachment_contents` are streamed into memory up
 to 160 KiB per request and never written to disk; server lookups are kept in memory only
 until the requesting action continues (at most eight results). See `extension-sdk-v2.md`.
+Extension logs (`log.jsonl` in the plugin's folder) exist only for extensions that declare a
+`log_bytes` quota, which the enable dialog shows; the oldest lines are dropped at the quota, the
+log is removed with the extension or on logout, and Message Logger Enhanced keeps other people's
+deleted and edited messages there, unencrypted, until you clear it. Messages held for
+`before_send` hooks stay in memory for at most 1.5 seconds and are dropped, not sent, if the
+account changes meanwhile. Extension `http` answers are read into memory up to the
+`network_response_bytes` quota and handed to the extension, never written to disk; the
+per-extension request counter (30 a minute) is in memory only. A pending GIF picker search for a
+provider extension is one in-memory request, dropped on account change.
 Interface contributions (badges, lines and composer buttons) live in memory only, bounded to
 256 items per slot and 512 per extension, and are dropped on disable, failure, expiry or an
 account change; extensions that want them back keep their own data and redraw on activation.

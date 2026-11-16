@@ -419,6 +419,11 @@ pub(crate) struct Picker {
 	pub hide_nitro_emojis: bool,
 	/// Device preference: resting on the GIF button loads the picker home before it opens.
 	pub preload: bool,
+	/// With a GIF provider extension on: its chosen source (`klipy`, `tenor`, `giphy` or `all`),
+	/// shown as a dropdown beside the GIF search and as a badge on each result.
+	pub gif_provider: Option<String>,
+	/// A source picked in that dropdown this frame, for the owner to save.
+	pub gif_provider_pick: Option<String>,
 	stickers: crate::stickers::Browser,
 	reaction: Option<(Target, egui::Rect, egui::Id)>,
 	// ponytail: session-only usage; persist if cross-launch favorites are needed.
@@ -448,6 +453,8 @@ impl Default for Picker {
 		Self {
 			hide_nitro_emojis: false,
 			preload: false,
+			gif_provider: None,
+			gif_provider_pick: None,
 			stickers: crate::stickers::Browser::default(),
 			reaction: None,
 			frequent: Vec::with_capacity(32),
@@ -1327,6 +1334,7 @@ impl Picker {
 									self.focus = true;
 								}
 								let remove = clearable == Some(true);
+								let provider = self.gif_provider.clone().filter(|_| gifs_tab);
 								egui::Frame::new()
 									.fill(colors.raised)
 									.corner_radius(6)
@@ -1334,7 +1342,14 @@ impl Picker {
 									.inner_margin(egui::Margin::symmetric(10, 0))
 									.show(ui, |ui| {
 										ui.set_width(
-											ui.available_width() - if remove { 38.0 } else { 0.0 },
+											ui.available_width()
+												- if remove { 38.0 } else { 0.0 } - if provider
+												.is_some()
+											{
+												GIF_SOURCE_WIDTH + 8.0
+											} else {
+												0.0
+											},
 										);
 										ui.set_height(30.0);
 										ui.horizontal_centered(|ui| {
@@ -1345,23 +1360,31 @@ impl Picker {
 												16.0,
 												colors.muted,
 											);
+											let names = provider.as_deref().map(gif_source_names);
+											let translate = |key: &str| {
+												let text = crate::i18n::translate_if_key(key);
+												match &names {
+													Some(names) => text.replace("KLIPY", names),
+													None => text,
+												}
+											};
 											let (text, hint, label) = if gifs_tab {
 												(
 													&mut self.gif_query,
-													"emoji-picker-search-klipy",
-													"emoji-picker-search-gifs-label",
+													translate("emoji-picker-search-klipy"),
+													translate("emoji-picker-search-gifs-label"),
 												)
 											} else if stickers_tab {
 												(
 													&mut self.stickers.query,
-													"emoji-picker-search-stickers",
-													"emoji-picker-search-stickers-label",
+													translate("emoji-picker-search-stickers"),
+													translate("emoji-picker-search-stickers-label"),
 												)
 											} else {
 												(
 													&mut self.query,
-													"emoji-picker-search-emoji",
-													"emoji-picker-search-emoji-label",
+													translate("emoji-picker-search-emoji"),
+													translate("emoji-picker-search-emoji-label"),
 												)
 											};
 											let search_id = ui.scope_id().with("picker-search");
@@ -1391,12 +1414,10 @@ impl Picker {
 													.frame(egui::Frame::NONE)
 													.min_size(egui::vec2(0.0, 30.0))
 													.align(egui::Align2::LEFT_CENTER)
-													.hint_text(crate::i18n::translate_if_key(hint))
+													.hint_text(hint)
 													.desired_width(ui.available_width()),
 											);
-											let search = search.accessible_name(
-												crate::i18n::translate_if_key(label),
-											);
+											let search = search.accessible_name(label);
 											if search.changed() {
 												if gifs_tab {
 													self.gif_changed_at =
@@ -1407,6 +1428,22 @@ impl Picker {
 											}
 										});
 									});
+								if let Some(current) = &provider {
+									crate::design::Select::from_id_salt("gif-provider-source")
+										.selected_text(gif_source_label(current))
+										.width(GIF_SOURCE_WIDTH)
+										.show_ui(ui, |ui| {
+											for (value, label) in GIF_SOURCES {
+												if ui
+													.selectable_label(current == value, label)
+													.clicked() && current != value
+												{
+													self.gif_provider = Some(value.to_owned());
+													self.gif_provider_pick = Some(value.to_owned());
+												}
+											}
+										});
+								}
 								if remove
 									&& crate::icons::button(
 										ui,
@@ -2109,6 +2146,7 @@ impl Picker {
 		demo: bool,
 		hovered: &mut Option<String>,
 	) -> Option<GifAction> {
+		let badges = self.gif_provider.is_some();
 		let mut action = None;
 		ui.scope_builder(
 			egui::UiBuilder::new()
@@ -2187,6 +2225,7 @@ impl Picker {
 								colors,
 								demo,
 								hovered,
+								badges,
 							);
 							if grid_action.is_some() {
 								action = grid_action;
@@ -2238,6 +2277,7 @@ impl Picker {
 										colors,
 										demo,
 										hovered,
+										badges,
 									);
 								}
 							}
@@ -2529,6 +2569,88 @@ fn gif_home(
 	chosen.map(Ok)
 }
 
+/// Width of the GIF source dropdown beside the search field.
+const GIF_SOURCE_WIDTH: f32 = 140.0;
+/// The GIF source dropdown: value and label, in the order shown.
+const GIF_SOURCES: [(&str, &str); 4] = [
+	("tenor", "Tenor"),
+	("giphy", "Giphy"),
+	("klipy", "Klipy"),
+	("all", "All 3"),
+];
+
+/// Provider names for the search placeholder ("Search Tenor", "Search Klipy, Tenor, Giphy").
+fn gif_source_names(source: &str) -> String {
+	match source {
+		"all" => "Klipy, Tenor, Giphy".to_owned(),
+		_ => GIF_SOURCES
+			.iter()
+			.find(|(value, _)| *value == source)
+			.map_or("Klipy", |(_, label)| label)
+			.to_owned(),
+	}
+}
+
+/// The dropdown's closed text: one provider's name, or "3 providers".
+fn gif_source_label(source: &str) -> &'static str {
+	match source {
+		"all" => "3 providers",
+		_ => GIF_SOURCES
+			.iter()
+			.find(|(value, _)| *value == source)
+			.map_or("Klipy", |(_, label)| label),
+	}
+}
+
+/// Which provider a result came from: extension results carry a `tenor-`/`giphy-` ID prefix,
+/// others are recognized by their page address.
+fn gif_badge(gif: &model::Gif) -> Option<&'static str> {
+	if gif.id.starts_with("tenor-") {
+		return Some("Tenor");
+	}
+	if gif.id.starts_with("giphy-") {
+		return Some("Giphy");
+	}
+	let host = gif
+		.url
+		.strip_prefix("https://")?
+		.split(['/', '?', '#'])
+		.next()?;
+	let on = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
+	if on("klipy.com") {
+		Some("Klipy")
+	} else if on("tenor.com") {
+		Some("Tenor")
+	} else if on("giphy.com") {
+		Some("Giphy")
+	} else {
+		None
+	}
+}
+
+/// The provider badge in a tile's bottom-left corner.
+fn paint_gif_badge(ui: &egui::Ui, rect: egui::Rect, text: &str, colors: &crate::design::Palette) {
+	let galley = ui.painter().layout_no_wrap(
+		text.to_owned(),
+		egui::FontId::proportional(11.0),
+		egui::Color32::WHITE,
+	);
+	let size = galley.size() + egui::vec2(10.0, 4.0);
+	let badge = egui::Rect::from_min_size(
+		egui::pos2(rect.left() + 6.0, rect.bottom() - 6.0 - size.y),
+		size,
+	);
+	if !rect.contains_rect(badge) {
+		return;
+	}
+	ui.painter().rect_filled(badge, size.y / 2.0, colors.accent);
+	ui.painter().galley(
+		badge.center() - galley.size() / 2.0,
+		galley,
+		egui::Color32::WHITE,
+	);
+}
+
 /// Two-column masonry of static previews; the star toggles a favorite, a click sends.
 #[allow(clippy::too_many_arguments)]
 fn gif_grid(
@@ -2540,6 +2662,7 @@ fn gif_grid(
 	colors: &crate::design::Palette,
 	demo: bool,
 	hovered: &mut Option<String>,
+	badges: bool,
 ) -> Option<GifAction> {
 	let mut action = None;
 	egui::ScrollArea::vertical()
@@ -2605,6 +2728,9 @@ fn gif_grid(
 							colors.muted,
 						);
 					}
+				}
+				if badges && let Some(badge) = gif_badge(gif) {
+					paint_gif_badge(ui, rect, badge, colors);
 				}
 				if lifted {
 					ui.painter().rect_stroke(

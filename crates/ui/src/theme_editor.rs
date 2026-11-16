@@ -135,6 +135,7 @@ impl ThemeEditor {
 		Self {
 			package: Box::new(Package {
 				manifest: Manifest {
+					origins: Vec::new(),
 					slots: Vec::new(),
 					api_version: extensions::API_VERSION,
 					id: identity(),

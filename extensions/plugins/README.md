@@ -63,16 +63,26 @@ Each is off until enabled in Settings > Extensions and asks for its permissions 
 | **Server Info** | `context_menus`, `server_profiles` | **Server Info** in a server's menu: icon, name and description, then owner, creation date, vanity link, locale, verification, boosts, members, roles and banner. |
 | **Copy File Contents** | `media_links`, `attachment_contents`, `clipboard_write` | A copy button on text file attachments (up to 64 KiB) that copies the file at once and shows a check mark. |
 | **User Tags** | `context_menus`, `storage`, `ui_contributions` | Put your own colored label on people from their menu; it appears after their name in chat and the member list. A composer button lists and removes tags. Tags stay in local storage. |
+| **ClearURLs** | `send_hook` | Removes tracking parameters from links in each message as you send it (`utm_*`, click IDs, and per-site share trackers such as YouTube and Spotify `si`). |
+| **Message Notifier** | `message_events`, `all_message_events`, `notifications`, `context_menus`, `storage` | Choose people from their menu or by ID; get a system notification when they send a message in a conversation you are not looking at. |
+| **Message Logger Enhanced** | `message_events`, `storage`, `ui_contributions`, `notifications` | Logs deleted and edited messages you saw (on disk, up to 8 MiB), shows earlier text under edited messages, notifies about ghost pings, and has a searchable log viewer. |
+| **Translate** | `selected_message`, `network`, `ui_contributions`, `send_hook`, `storage` | Translate from the message hover toolbar or menu; the translation appears under the message "(translated from Spanish - Dismiss)". The composer button opens the Translate window (languages for incoming and your messages, Auto Translate); Shift-click or right-click toggles Auto Translate, which translates your messages before sending. Google Translate needs no key; DeepL uses your API key, kept as a secret. |
+| **GIF Provider Switcher** | `gif_provider`, `network` | A dropdown beside the GIF picker's search chooses Tenor, Giphy, Klipy (built in) or all three; results show a provider badge, and "All 3" interleaves them. Tenor and Giphy use your own API keys, kept as secrets; a content rating applies to both. |
 
 Build and package them like any plugin:
 
 ```sh
-cargo build --locked --release --target wasm32-unknown-unknown -p base-decoder -p reverse-image-search -p server-info -p copy-file-contents -p user-tags
+cargo build --locked --release --target wasm32-unknown-unknown -p base-decoder -p reverse-image-search -p server-info -p copy-file-contents -p user-tags -p clear-urls -p message-notifier -p message-logger-enhanced -p translate -p gif-provider-switcher
 python pack.py plugins/base-decoder/manifest.json target/wasm32-unknown-unknown/release/base_decoder.wasm plugins/packages/base-decoder.harmony-extension
 python pack.py plugins/reverse-image-search/manifest.json target/wasm32-unknown-unknown/release/reverse_image_search.wasm plugins/packages/reverse-image-search.harmony-extension
 python pack.py plugins/server-info/manifest.json target/wasm32-unknown-unknown/release/server_info.wasm plugins/packages/server-info.harmony-extension
 python pack.py plugins/copy-file-contents/manifest.json target/wasm32-unknown-unknown/release/copy_file_contents.wasm plugins/packages/copy-file-contents.harmony-extension
 python pack.py plugins/user-tags/manifest.json target/wasm32-unknown-unknown/release/user_tags.wasm plugins/packages/user-tags.harmony-extension
+python pack.py plugins/clear-urls/manifest.json target/wasm32-unknown-unknown/release/clear_urls.wasm plugins/packages/clear-urls.harmony-extension
+python pack.py plugins/message-notifier/manifest.json target/wasm32-unknown-unknown/release/message_notifier.wasm plugins/packages/message-notifier.harmony-extension
+python pack.py plugins/message-logger-enhanced/manifest.json target/wasm32-unknown-unknown/release/message_logger_enhanced.wasm plugins/packages/message-logger-enhanced.harmony-extension
+python pack.py plugins/translate/manifest.json target/wasm32-unknown-unknown/release/translate.wasm plugins/packages/translate.harmony-extension
+python pack.py plugins/gif-provider-switcher/manifest.json target/wasm32-unknown-unknown/release/gif_provider_switcher.wasm plugins/packages/gif-provider-switcher.harmony-extension
 ```
 
 ## ABI and limits

@@ -36,6 +36,10 @@ pub struct Manifest {
 	/// API v2: interface slots this extension adds items to; needs `ui_contributions`.
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub slots: Vec<crate::Slot>,
+	/// API v2: sites Harmony may contact for this extension: host names, or `setting:<id>`
+	/// for the host of a URL the user typed into that text setting.
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub origins: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -209,6 +213,16 @@ pub enum Capability {
 	ServerProfiles,
 	/// API v2: add items Harmony draws in the declared `slots`.
 	UiContributions,
+	/// API v2: read and change each message as it is sent (`before_send`).
+	SendHook,
+	/// API v2: show system notifications from event actions, rate limited.
+	Notifications,
+	/// API v2: new messages from every readable conversation; needs `message_events`.
+	AllMessageEvents,
+	/// API v2: HTTPS requests Harmony makes to the sites listed in `origins`.
+	Network,
+	/// API v2: answer the GIF picker's searches with a `gif_search` action.
+	GifProvider,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -233,6 +247,12 @@ pub enum Surface {
 	/// API v2: an icon button on file attachments matching `accepts`; receives the file as
 	/// the only `media` link. A result that only copies text is copied at once.
 	Attachment,
+	/// API v2: runs as each text message is sent, with its text as the composer text; return
+	/// `replacement` to change it. Harmony sends the original if the hook fails or is slow.
+	BeforeSend,
+	/// API v2: answers the GIF picker. The search text is the value `query` (empty for
+	/// trending); return `gifs`. Needs `gif_provider`.
+	GifSearch,
 }
 
 /// Declared entry point; its ID arrives in `Invocation::action`.

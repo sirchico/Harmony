@@ -1,0 +1,33 @@
+{
+  "api_version": 2,
+  "id": "message-notifier",
+  "name": "Message Notifier",
+  "version": "1.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/message-notifier",
+  "kind": "plugin",
+  "capabilities": ["message_events", "all_message_events", "notifications", "context_menus", "storage"],
+  "actions": [
+    { "id": "message", "label": "Watch for messages", "surface": "message_event" },
+    { "id": "toggle", "label": "Notify me about their messages", "surface": "user" }
+  ],
+  "requires": {
+    "features": { "events.all_messages": "^1.0", "notifications": "^1.0", "settings": "^1.0" }
+  },
+  "settings": [
+    {
+      "id": "users",
+      "label": "Also notify me about these user IDs",
+      "description": "Separate IDs with commas. You can also choose people from their menu.",
+      "type": "text",
+      "max_chars": 2000
+    },
+    {
+      "id": "preview",
+      "label": "Show the message text in the notification",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

@@ -142,6 +142,9 @@ ICONS = [
     ("clock", "fill/clock-fill.svg", "4abe98cfc61350de60baf70ce93e85b3a9acbb80e34f9cf19688661aaddbc140"),
     ("speaker-slash", "fill/speaker-slash-fill.svg", "029fae09171e356142aef7db03006e84e6bd1534960e2f9cc4a2b73e8325004c"),
     ("palette", "fill/palette-fill.svg", "c8f6bdc5d4ddff5ad039a926e13efe7ceb92f5a57e6a755df516ca05deadba53"),
+    ("translate", "bold/translate-bold.svg", "70d1bda4a6d605d2ac170436317028db98682358528012d3c40f91a2558b152c"),
+    ("desktop", "fill/desktop-fill.svg", "aff6ce463c312f9e0d2e3eaeb0e1a5f025b155e454eb44112176e92ad1399300"),
+    ("virtual-reality", "fill/virtual-reality-fill.svg", "73e299ea3452d46f41147cc84e978fe9405225a5b02eb23c46bb3e5fbc77947d"),
 ]
 LICENSE_SHA256 = "ddbe6082ec3cf979db47e5af549d2849c5d6182b3e005ef91ce1dbb9eb122f11"
 

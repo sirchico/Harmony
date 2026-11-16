@@ -85,9 +85,10 @@ pub struct EventInvocation {
 	pub message_event: Option<MessageEvent>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MessageEventKind {
+	#[default]
 	Create,
 	Update,
 	Delete,

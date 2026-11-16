@@ -1,6 +1,8 @@
 //! Only identity, scope and bounded status/activity metadata survive presence decoding.
 use crate::DecodeError;
-use model::{ActivityImage, ClientPlatforms, Id, MAX_RICH_ACTIVITIES, Patch, RichActivity};
+use model::{
+	ActivityImage, ClientPlatforms, Id, MAX_RICH_ACTIVITIES, Patch, Platform, RichActivity,
+};
 use serde::{
 	Deserialize, Deserializer,
 	de::{MapAccess, SeqAccess, Visitor},
@@ -302,29 +304,48 @@ pub(crate) struct ClientStatus {
 	web: Option<String>,
 	#[serde(default)]
 	vr: Option<String>,
+	#[serde(default)]
+	embedded: Option<String>,
 }
 
 impl ClientStatus {
 	pub(crate) fn platforms(&self) -> ClientPlatforms {
 		let active =
 			|status: &Option<String>| matches!(status.as_deref(), Some("online" | "idle" | "dnd"));
-		ClientPlatforms {
+		let mut platforms = ClientPlatforms {
 			desktop: active(&self.desktop),
 			mobile: active(&self.mobile),
 			web: active(&self.web),
 			vr: active(&self.vr),
+			embedded: active(&self.embedded),
+			..ClientPlatforms::default()
+		};
+		for (platform, status) in [
+			(Platform::Desktop, &self.desktop),
+			(Platform::Mobile, &self.mobile),
+			(Platform::Web, &self.web),
+			(Platform::Embedded, &self.embedded),
+			(Platform::Vr, &self.vr),
+		] {
+			match status.as_deref() {
+				Some("idle") => platforms.idle |= platform.bit(),
+				Some("dnd") => platforms.dnd |= platform.bit(),
+				_ => {}
+			}
 		}
+		platforms
 	}
 }
 
 impl From<ClientPlatforms> for ClientStatus {
 	fn from(platforms: ClientPlatforms) -> Self {
-		let active = || "online".to_owned();
+		let status = |platform| platforms.status(platform).map(str::to_owned);
 		Self {
-			desktop: platforms.desktop.then(active),
-			mobile: platforms.mobile.then(active),
-			web: platforms.web.then(active),
-			vr: platforms.vr.then(active),
+			desktop: status(Platform::Desktop),
+			mobile: status(Platform::Mobile),
+			web: status(Platform::Web),
+			vr: status(Platform::Vr),
+			embedded: status(Platform::Embedded),
 		}
 	}
 }
@@ -900,6 +921,10 @@ mod tests {
 				mobile: true,
 				web: true,
 				vr: true,
+				embedded: false,
+				// Each platform keeps its own status for the platform indicators.
+				idle: model::Platform::Mobile.bit(),
+				dnd: model::Platform::Web.bit(),
 			})
 		);
 		assert_eq!(

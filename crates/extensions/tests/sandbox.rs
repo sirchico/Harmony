@@ -3,6 +3,7 @@ use extensions::*;
 fn plugin(wasm: &str) -> Package {
 	Package {
 		manifest: Manifest {
+			origins: Vec::new(),
 			slots: Vec::new(),
 			api_version: API_VERSION,
 			id: "test-plugin".into(),
@@ -475,6 +476,11 @@ fn rgb_cycle_package_executes_through_the_real_abi() {
 
 fn message_event() -> MessageEvent {
 	MessageEvent {
+		open: false,
+		author_name: None,
+		guild_id: None,
+		place: None,
+		mentions_me: false,
 		kind: MessageEventKind::Create,
 		channel_id: "1".into(),
 		message_id: "2".into(),

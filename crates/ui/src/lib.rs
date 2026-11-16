@@ -3046,6 +3046,7 @@ impl MessagingUi {
 		} else {
 			None
 		};
+		let with_files = !self.selected_files().is_empty();
 		if let Some(command) = state.prepare_send_with_attachments(
 			&self
 				.selected_files()
@@ -3056,7 +3057,20 @@ impl MessagingUi {
 			// Consume this selection once, before desktop dispatch.
 			self.stage_pending_upload(ctx, &command);
 			self.timeline.follow_latest(state);
-			commands.push(command);
+			// Text messages pass through `before_send` extensions first; uploads go at once.
+			if !with_files
+				&& self.extensions.has_send_hooks()
+				&& matches!(command, Command::Send { sticker: None, .. })
+			{
+				self.extensions.queue(
+					ctx,
+					ExtensionRequest::BeforeSend {
+						command: Box::new(command),
+					},
+				);
+			} else {
+				commands.push(command);
+			}
 		} else if let Some(original) = original_draft {
 			state.drafts.insert(channel, original);
 		}
@@ -3833,10 +3847,19 @@ impl MessagingUi {
                             .add_enabled_ui(!application_command && !self.ime_active && !ime_this_frame, |ui| {
                                 self.emoji_picker.hide_nitro_emojis = self.hide_nitro_emojis;
                                 self.emoji_picker.preload = self.preload_on_hover;
+                                self.emoji_picker.gif_provider =
+                                    self.extensions.gif_provider_choice();
                                 self.emoji_picker
                                     .show(ui, state, channel, &mut self.avatars, commands)
                             })
                             .inner;
+                        if let Some(source) = self.emoji_picker.gif_provider_pick.take() {
+                            self.extensions.set_gif_provider_choice(ui.ctx(), source);
+                            // Results from the previous source are dropped and asked for again.
+                            if let Some(command) = state.reset_gif_results() {
+                                commands.push(command);
+                            }
+                        }
                         // Extension buttons (API v2 `composer.button`), drawn by Harmony.
                         let extension_buttons = self.contributions.composer().clone();
                         for shown in extension_buttons.items.iter().rev() {
@@ -3845,9 +3868,24 @@ impl MessagingUi {
                                 .icon
                                 .map_or(crate::icons::Icon::Sparkle, crate::contributions::icon);
                             let label = shown.item.tooltip.clone().unwrap_or_else(|| shown.item.text.clone());
-                            if crate::icons::toggle(ui, icon, 28.0, false, &label).clicked()
-                                && let Some(action) = &shown.item.action
-                            {
+                            let tint = shown
+                                .item
+                                .color
+                                .as_deref()
+                                .and_then(|color| extensions::parse_color(color).ok())
+                                .map(|[r, g, b, _]| egui::Color32::from_rgb(r, g, b));
+                            let button = crate::icons::toggle_tinted(ui, icon, 28.0, false, &label, tint);
+                            // Right-click or Shift-click runs the button's secondary action.
+                            let secondary = button.secondary_clicked()
+                                || (button.clicked() && ui.input(|input| input.modifiers.shift));
+                            let action = if secondary {
+                                shown.item.secondary_action.as_ref()
+                            } else if button.clicked() {
+                                shown.item.action.as_ref()
+                            } else {
+                                None
+                            };
+                            if let Some(action) = action {
                                 self.extensions.queue(
                                     ui.ctx(),
                                     ExtensionRequest::Invoke {
@@ -4722,6 +4760,10 @@ impl MessagingUi {
 	pub fn show(&mut self, ui: &mut egui::Ui, state: &mut State) -> Vec<Command> {
 		interface_tweaks::publish(ui.ctx(), &self.interface_tweaks);
 		contributions::publish(ui.ctx(), &self.contributions);
+		if let Some((id, key)) = contributions::take_dismissed(ui.ctx()) {
+			self.extensions
+				.queue(ui.ctx(), ExtensionRequest::DismissContribution { id, key });
+		}
 		if let Some((key, effects)) = self.extensions.direct_effects.take() {
 			for effect in effects {
 				match effect {

@@ -974,7 +974,9 @@ fn run(root: &Path, job: Job, gate: &Gate) -> Result<Event, String> {
 			}
 			if invocation.selected_message.is_some()
 				&& !stored.grants.contains(&Capability::SelectedMessage)
-				|| invocation.composer.is_some() && !stored.grants.contains(&Capability::Composer)
+				|| invocation.composer.is_some()
+					&& !stored.grants.contains(&Capability::Composer)
+					&& !stored.grants.contains(&Capability::SendHook)
 				|| invocation.message_event.is_some()
 					&& !stored.grants.contains(&Capability::MessageEvents)
 				|| invocation.app_event.is_some() && !stored.grants.contains(&Capability::AppEvents)
@@ -1013,6 +1015,9 @@ fn run(root: &Path, job: Job, gate: &Gate) -> Result<Event, String> {
 				gate.check()?;
 				v2::apply_kv(&directory, manifest, &output.kv, gate)?;
 				output.kv.clear();
+				v2::apply_log(&directory, manifest, &output.log, output.log_clear, gate)?;
+				output.log.clear();
+				output.log_clear = false;
 				if output.requests.is_empty() {
 					break output;
 				}
@@ -1479,6 +1484,7 @@ fn load(
 						local_theme: false,
 						active_theme: false,
 						manifest: Manifest {
+							origins: Vec::new(),
 							slots: Vec::new(),
 							api_version: extensions::API_VERSION,
 							id: id.clone(),
@@ -1513,6 +1519,7 @@ fn load(
 						settings: BTreeMap::new(),
 						secrets: BTreeMap::new(),
 						quotas: v2::quotas(&Manifest {
+							origins: Vec::new(),
 							slots: Vec::new(),
 							api_version: extensions::API_VERSION,
 							id: String::new(),
@@ -1994,6 +2001,116 @@ fn download_prefix(
 		})
 }
 
+/// An extension's HTTPS request: (status, content type, redirect location, body, truncated).
+/// The host was already checked against the extension's origins; this checks the address is
+/// public, pins it, and never follows redirects.
+type HttpAnswer = (u16, Option<String>, Option<String>, Vec<u8>, bool);
+
+fn extension_http(
+	url: &url::Url,
+	method: extensions::HttpMethod,
+	headers: &[(String, String)],
+	body: Option<Vec<u8>>,
+	limit: usize,
+	gate: &Gate,
+) -> Result<HttpAnswer, String> {
+	tokio::runtime::Builder::new_current_thread()
+		.enable_all()
+		.build()
+		.map_err(|_| "Extension network unavailable")?
+		.block_on(async {
+			tokio::select! {
+				biased;
+				_ = gate.wake_cancel.notified() => Err("Extension operation cancelled".into()),
+				result = tokio::time::timeout(
+					Duration::from_secs(20),
+					extension_http_async(url, method, headers, body, limit, gate),
+				) => result.map_err(|_| "The site did not answer in time")?,
+			}
+		})
+}
+
+async fn extension_http_async(
+	url: &url::Url,
+	method: extensions::HttpMethod,
+	headers: &[(String, String)],
+	body: Option<Vec<u8>>,
+	limit: usize,
+	gate: &Gate,
+) -> Result<HttpAnswer, String> {
+	gate.check()?;
+	let host = url.host_str().ok_or("Invalid address")?;
+	let addresses: Vec<_> = tokio::net::lookup_host((host, 443))
+		.await
+		.map_err(|_| "The site's name could not be resolved")?
+		.take(16)
+		.collect();
+	if addresses.is_empty() || addresses.iter().any(|address| !public_ip(address.ip())) {
+		return Err("Extensions cannot reach private networks".into());
+	}
+	let client = wreq::Client::builder()
+		.no_proxy()
+		.no_gzip()
+		.redirect(wreq::redirect::Policy::none())
+		.resolve_to_addrs(host.to_owned(), addresses.iter().copied())
+		.timeout(Duration::from_secs(20))
+		.build()
+		.map_err(|_| "Extension network unavailable")?;
+	let method = match method {
+		extensions::HttpMethod::Get => wreq::Method::GET,
+		extensions::HttpMethod::Post => wreq::Method::POST,
+		extensions::HttpMethod::Put => wreq::Method::PUT,
+		extensions::HttpMethod::Patch => wreq::Method::PATCH,
+		extensions::HttpMethod::Delete => wreq::Method::DELETE,
+	};
+	let mut request = client
+		.request(method, url.as_str())
+		.header(wreq::header::ACCEPT_ENCODING, "identity");
+	for (name, value) in headers {
+		request = request.header(name.as_str(), value.as_str());
+	}
+	if let Some(body) = body {
+		request = request.body(body);
+	}
+	let response = request
+		.send()
+		.await
+		.map_err(|_| "The request could not be sent")?;
+	let status = response.status().as_u16();
+	let header = |name| {
+		response
+			.headers()
+			.get(name)
+			.and_then(|value| value.to_str().ok())
+			.map(|value| value.chars().take(512).collect::<String>())
+	};
+	let content_type = header(wreq::header::CONTENT_TYPE);
+	let location = header(wreq::header::LOCATION);
+	if response
+		.headers()
+		.get(wreq::header::CONTENT_ENCODING)
+		.is_some_and(|encoding| encoding != "identity")
+	{
+		return Err("The site answered in an unsupported encoding".into());
+	}
+	let mut bytes = Vec::new();
+	let mut stream = std::pin::pin!(response.bytes_stream());
+	while let Some(chunk) = futures_util::StreamExt::next(&mut stream)
+		.await
+		.transpose()
+		.map_err(|_| "The answer was interrupted")?
+	{
+		gate.check()?;
+		if bytes.len().saturating_add(chunk.len()) > limit {
+			let room = limit - bytes.len();
+			bytes.extend_from_slice(&chunk[..room]);
+			return Ok((status, content_type, location, bytes, true));
+		}
+		bytes.extend_from_slice(&chunk);
+	}
+	Ok((status, content_type, location, bytes, false))
+}
+
 async fn download_https(raw: &str, limit: usize, gate: &Gate) -> Result<Vec<u8>, String> {
 	fetch_https(raw, limit, gate, false)
 		.await
@@ -2177,6 +2294,7 @@ mod tests {
 	fn theme(id: &str) -> Package {
 		Package {
 			manifest: Manifest {
+				origins: Vec::new(),
 				slots: Vec::new(),
 				api_version: 1,
 				id: id.into(),
@@ -2217,6 +2335,11 @@ mod tests {
 			invocation: Invocation {
 				action: "message-event".into(),
 				message_event: Some(Box::new(extensions::MessageEvent {
+					open: false,
+					author_name: None,
+					guild_id: None,
+					place: None,
+					mentions_me: false,
 					kind: extensions::MessageEventKind::Create,
 					channel_id: "1".into(),
 					message_id: "2".into(),
@@ -3239,5 +3362,127 @@ mod tests {
 		);
 		// Running again changes nothing.
 		assert_eq!(load(&root, None, &gate()).unwrap().len(), loaded.len());
+	}
+
+	/// Phase 3 through the real worker: a send hook rewrites outgoing text, and the logger keeps
+	/// edits and deletions in its on-disk log (bounded by its quota) and pages it back.
+	#[test]
+	fn hooks_logs_and_notifications_run_through_the_worker() {
+		let profile = Profile::new();
+		let root = profile.0.join("extensions");
+		let install = |bytes: &[u8]| {
+			let package = extensions::parse_package(bytes).unwrap();
+			let installed = enable(
+				&root,
+				source(&profile, &package),
+				package.manifest.capabilities.clone(),
+				Some("account"),
+				&gate(),
+			)
+			.unwrap();
+			assert!(installed.error.is_none(), "{:?}", installed.error);
+		};
+		let invoke = |id: &str, invocation: Invocation| {
+			let Event::Invoked { output, .. } = run(
+				&root,
+				Job::Invoke {
+					id: id.into(),
+					account: "account".into(),
+					invocation,
+				},
+				&gate(),
+			)
+			.unwrap() else {
+				panic!("{id} must finish inside the worker");
+			};
+			output
+		};
+		install(include_bytes!(
+			"../../../extensions/plugins/packages/clear-urls.harmony-extension"
+		));
+		let cleaned = invoke(
+			"clear-urls",
+			Invocation {
+				action: "clean".into(),
+				composer: Some("https://youtu.be/x?si=abc&t=3".into()),
+				..Default::default()
+			},
+		);
+		assert_eq!(
+			cleaned.replacement.as_deref(),
+			Some("https://youtu.be/x?t=3")
+		);
+
+		install(include_bytes!(
+			"../../../extensions/plugins/packages/message-logger-enhanced.harmony-extension"
+		));
+		let event = |kind, id: &str, content: Option<&str>, mentions_me| Invocation {
+			action: "message".into(),
+			message_event: Some(Box::new(extensions::MessageEvent {
+				kind,
+				channel_id: "30".into(),
+				message_id: id.into(),
+				author_id: (kind != extensions::MessageEventKind::Delete).then(|| "7".into()),
+				content: content.map(Into::into),
+				author_name: (kind != extensions::MessageEventKind::Delete).then(|| "Robin".into()),
+				place: Some("Game Night · #general".into()),
+				mentions_me,
+				open: true,
+				..Default::default()
+			})),
+			..Default::default()
+		};
+		use extensions::MessageEventKind::{Create, Delete, Update};
+		invoke(
+			"message-logger-enhanced",
+			event(Create, "100", Some("first"), false),
+		);
+		let edited = invoke(
+			"message-logger-enhanced",
+			event(Update, "100", Some("second"), false),
+		);
+		assert!(matches!(
+			&edited.contributions[..],
+			[extensions::ContributionOp::Set { item, .. }] if item.text.contains("first")
+		));
+		invoke(
+			"message-logger-enhanced",
+			event(Create, "101", Some("hi <@1>"), true),
+		);
+		let deleted = invoke("message-logger-enhanced", event(Delete, "101", None, false));
+		assert_eq!(deleted.notifications.len(), 1, "ghost ping");
+		// The worker stored both log lines on disk and pages them back newest first.
+		let directory = scope(&root, ExtensionKind::Plugin, Some("account"))
+			.unwrap()
+			.join("message-logger-enhanced");
+		let log = fs::read_to_string(directory.join("log.jsonl")).unwrap();
+		assert_eq!(log.lines().count(), 2);
+		let viewer = invoke(
+			"message-logger-enhanced",
+			Invocation {
+				action: "open".into(),
+				..Default::default()
+			},
+		);
+		let texts: Vec<_> = viewer
+			.panel
+			.iter()
+			.filter_map(|element| match element {
+				extensions::Element::Text { text } => Some(text.as_str()),
+				_ => None,
+			})
+			.collect();
+		let ghost = texts.iter().position(|text| text.starts_with("Ghost ping"));
+		let edit = texts.iter().position(|text| text.starts_with("Edited"));
+		assert!(ghost.unwrap() < edit.unwrap(), "{texts:?}");
+		invoke(
+			"message-logger-enhanced",
+			Invocation {
+				action: "open".into(),
+				button: Some("clear".into()),
+				..Default::default()
+			},
+		);
+		assert!(!directory.join("log.jsonl").exists());
 	}
 }

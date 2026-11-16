@@ -1272,6 +1272,7 @@ mod tests {
 	use super::*;
 	fn manifest(capabilities: Vec<Capability>) -> Manifest {
 		Manifest {
+			origins: Vec::new(),
 			slots: Vec::new(),
 			api_version: API_VERSION,
 			id: "snapshot-test".into(),

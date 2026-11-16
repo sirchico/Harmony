@@ -16,6 +16,29 @@ pub fn available(state: &State) -> bool {
 		})
 }
 
+/// Names and placement for a message, as Harmony shows them.
+fn describe(state: &State, message: &Message) -> (String, Option<String>, Option<String>, bool) {
+	let channel = state.channel(message.channel);
+	let guild = channel.and_then(|channel| channel.guild);
+	let place = channel.map(|channel| {
+		match guild.and_then(|guild| state.guilds.iter().find(|known| known.id == guild)) {
+			Some(server) => format!("{} · #{}", server.name, channel.name),
+			None => channel.name.clone(),
+		}
+	});
+	let own = state.user.as_ref().map(|user| user.id);
+	let mentions_me = message.mention_everyone
+		|| own.is_some_and(|own| message.mentions.iter().any(|user| user.id == own));
+	(
+		state.message_author_name(message).to_owned(),
+		guild.map(|guild| guild.0.to_string()),
+		place
+			.filter(|place| !place.is_empty())
+			.map(|place| place.chars().take(200).collect()),
+		mentions_me,
+	)
+}
+
 fn public(message: &Message) -> bool {
 	!message.ephemeral && message.flags & 64 == 0
 }
@@ -98,6 +121,42 @@ pub fn capture(state: &State, event: &Event) -> Vec<Candidate> {
 	candidates
 }
 
+/// A new message in a conversation other than the open one, for extensions granted
+/// `all_message_events`. Built from the incoming message itself: other conversations are not
+/// in the loaded timeline. Only public messages from other people in readable channels.
+pub fn capture_elsewhere(state: &State, event: &Event) -> Option<MessageEvent> {
+	let Event::Message(message) = event else {
+		return None;
+	};
+	let own = state.user.as_ref().map(|user| user.id);
+	(state.user.is_some()
+		&& (state.demo || state.auth == AuthState::Authenticated)
+		&& state.gateway_connected
+		&& state.selected != Some(message.channel)
+		&& message.channel.0 != 0
+		&& public(message)
+		&& message.author.id.0 != 0
+		&& Some(message.author.id) != own
+		&& !message.content.is_empty()
+		&& message.content.len() <= MAX_EVENT_CONTENT_BYTES
+		&& state.can_read_history(message.channel))
+	.then(|| {
+		let (author_name, guild_id, place, mentions_me) = describe(state, message);
+		MessageEvent {
+			kind: MessageEventKind::Create,
+			channel_id: message.channel.0.to_string(),
+			message_id: message.id.0.to_string(),
+			author_id: Some(message.author.id.0.to_string()),
+			content: Some(message.content.clone()),
+			author_name: Some(author_name.chars().take(200).collect()),
+			guild_id,
+			place,
+			mentions_me,
+			open: false,
+		}
+	})
+}
+
 impl Candidate {
 	pub fn admit(self, state: &State) -> Option<MessageEvent> {
 		if !available(state)
@@ -107,6 +166,7 @@ impl Candidate {
 		{
 			return None;
 		}
+		let mut described = (None, None, None, false);
 		let (author_id, content) = if self.kind == MessageEventKind::Delete {
 			if !state.timeline.is_deleted(self.id) {
 				return None;
@@ -122,17 +182,30 @@ impl Candidate {
 			{
 				return None;
 			}
+			let (author_name, guild_id, place, mentions_me) = describe(state, message);
+			described = (
+				Some(author_name.chars().take(200).collect()),
+				guild_id,
+				place,
+				mentions_me,
+			);
 			(
 				Some(message.author.id.0.to_string()),
 				self.content.then(|| message.content.clone()),
 			)
 		};
+		let (author_name, guild_id, place, mentions_me) = described;
 		Some(MessageEvent {
 			kind: self.kind,
 			channel_id: self.channel.0.to_string(),
 			message_id: self.id.0.to_string(),
 			author_id,
 			content,
+			author_name,
+			guild_id,
+			place,
+			mentions_me,
+			open: true,
 		})
 	}
 }

@@ -1,0 +1,35 @@
+{
+  "api_version": 2,
+  "id": "message-logger-enhanced",
+  "name": "Message Logger Enhanced",
+  "version": "1.0.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/message-logger-enhanced",
+  "kind": "plugin",
+  "capabilities": ["message_events", "storage", "ui_contributions", "notifications"],
+  "slots": ["message.accessory"],
+  "actions": [
+    { "id": "message", "label": "Log edits and deletions", "surface": "message_event" },
+    { "id": "open", "label": "Message Logger", "surface": "panel" }
+  ],
+  "requires": {
+    "features": { "storage.kv": "^1.0", "storage.log": "^1.0", "host_requests": "^1.0", "ui.contributions": "^1.0", "notifications": "^1.0" }
+  },
+  "settings": [
+    {
+      "id": "edits-in-chat",
+      "label": "Show earlier text under edited messages",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "ghost-pings",
+      "label": "Notify me about ghost pings",
+      "description": "A message that mentioned you was deleted before you saw it.",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "quotas": { "storage_bytes": 4194304, "log_bytes": 8388608 }
+}

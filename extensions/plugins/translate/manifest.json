@@ -1,0 +1,95 @@
+{
+  "api_version": 2,
+  "id": "translate",
+  "name": "Translate",
+  "version": "1.1.0",
+  "author": "Harmony contributors",
+  "license": "MIT OR Apache-2.0",
+  "source": "https://github.com/sirchico/Harmony/tree/main/extensions/plugins/translate",
+  "kind": "plugin",
+  "capabilities": [
+    "selected_message",
+    "network",
+    "ui_contributions",
+    "send_hook",
+    "storage"
+  ],
+  "slots": [
+    "message.accessory",
+    "composer.button"
+  ],
+  "origins": [
+    "translate.googleapis.com",
+    "api-free.deepl.com",
+    "api.deepl.com"
+  ],
+  "actions": [
+    {
+      "id": "restore",
+      "label": "Show the translate button",
+      "surface": "activation"
+    },
+    {
+      "id": "translate",
+      "label": "Translate",
+      "surface": "message_toolbar",
+      "icon": "translate"
+    },
+    {
+      "id": "translate-menu",
+      "label": "Translate",
+      "surface": "message"
+    },
+    {
+      "id": "open",
+      "label": "Translate",
+      "surface": "panel"
+    },
+    {
+      "id": "toggle-auto",
+      "label": "Toggle Auto Translate",
+      "surface": "panel"
+    },
+    {
+      "id": "auto",
+      "label": "Auto Translate your messages",
+      "surface": "before_send"
+    }
+  ],
+  "requires": {
+    "features": {
+      "network": "^1.0",
+      "ui.contributions": "^1.0",
+      "secrets": "^1.0",
+      "hooks.before_send": "^1.0"
+    }
+  },
+  "settings": [
+    {
+      "id": "service",
+      "label": "Translation provider",
+      "type": "choice",
+      "options": [
+        {
+          "value": "google",
+          "label": "Google Translate"
+        },
+        {
+          "value": "deepl",
+          "label": "DeepL Free — API key required"
+        },
+        {
+          "value": "deepl-pro",
+          "label": "DeepL Pro — API key required"
+        }
+      ],
+      "default": "google"
+    },
+    {
+      "id": "deepl-key",
+      "label": "DeepL API Key",
+      "description": "Your DeepL API key (from deepl.com/your-account). Kept in your system's credential store and only sent to DeepL.",
+      "type": "secret"
+    }
+  ]
+}

@@ -24,6 +24,12 @@ pub const FEATURES: &[(&str, &str)] = &[
 	("attachments.read", "1.0.0"),
 	("lookups.server_profile", "1.0.0"),
 	("ui.contributions", "1.0.0"),
+	("hooks.before_send", "1.0.0"),
+	("notifications", "1.0.0"),
+	("storage.log", "1.0.0"),
+	("events.all_messages", "1.0.0"),
+	("network", "1.0.0"),
+	("gifs.provider", "1.0.0"),
 ];
 
 /// Capabilities that only an `api_version: 2` manifest may request.
@@ -32,6 +38,11 @@ pub const V2_CAPABILITIES: &[Capability] = &[
 	Capability::AttachmentContents,
 	Capability::ServerProfiles,
 	Capability::UiContributions,
+	Capability::SendHook,
+	Capability::Notifications,
+	Capability::AllMessageEvents,
+	Capability::Network,
+	Capability::GifProvider,
 ];
 
 pub const MAX_SETTINGS: usize = 32;
@@ -446,10 +457,15 @@ pub(crate) fn validate_manifest(manifest: &Manifest) -> Result<(), Error> {
 		|| !manifest.settings.is_empty()
 		|| !manifest.quotas.is_empty()
 		|| !manifest.slots.is_empty()
+		|| !manifest.origins.is_empty()
 		|| manifest.actions.iter().any(|action| {
 			matches!(
 				action.surface,
-				crate::Surface::MessageToolbar | crate::Surface::Image | crate::Surface::Attachment
+				crate::Surface::MessageToolbar
+					| crate::Surface::Image
+					| crate::Surface::Attachment
+					| crate::Surface::BeforeSend
+					| crate::Surface::GifSearch
 			) || action.icon.is_some()
 				|| !action.choices.is_empty()
 				|| action.accepts.is_some()
@@ -528,6 +544,8 @@ pub(crate) fn validate_manifest(manifest: &Manifest) -> Result<(), Error> {
 	}
 	manifest.quotas.validate(&ResourceLimits::DEFAULT)?;
 	crate::contributions::validate_manifest(manifest)?;
+	crate::phase3::validate_manifest(manifest)?;
+	crate::network::validate_manifest(manifest)?;
 	for action in &manifest.actions {
 		validate_action(action)?;
 	}
@@ -582,6 +600,11 @@ fn validate_action(action: &crate::Action) -> Result<(), Error> {
 		(None, _) => {}
 	}
 	Ok(())
+}
+
+/// The manifest's quotas within this host's limits.
+pub fn quotas_of(manifest: &Manifest) -> EffectiveQuotas {
+	manifest.quotas.effective(&ResourceLimits::DEFAULT)
 }
 
 /// Outcome of matching a manifest's feature requirements against this host.
@@ -732,6 +755,20 @@ pub enum HostRequest {
 	},
 	/// Public details of a server the account is in. Needs `server_profiles`.
 	ServerProfile { id: String, guild_id: String },
+	/// An HTTPS request Harmony makes to one of the manifest's `origins`. Needs `network`.
+	Http {
+		id: String,
+		request: Box<crate::HttpRequest>,
+	},
+	/// Lines of this extension's log, newest first, before `before` (a `seq`) when given.
+	/// Needs `storage` and a log quota.
+	LogRead {
+		id: String,
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		before: Option<u64>,
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		limit: Option<u32>,
+	},
 }
 
 impl HostRequest {
@@ -740,7 +777,9 @@ impl HostRequest {
 			Self::KvGet { id, .. }
 			| Self::KvList { id, .. }
 			| Self::AttachmentRead { id, .. }
-			| Self::ServerProfile { id, .. } => id,
+			| Self::ServerProfile { id, .. }
+			| Self::LogRead { id, .. }
+			| Self::Http { id, .. } => id,
 		}
 	}
 	pub fn capability(&self) -> Capability {
@@ -748,6 +787,8 @@ impl HostRequest {
 			Self::KvGet { .. } | Self::KvList { .. } => Capability::Storage,
 			Self::AttachmentRead { .. } => Capability::AttachmentContents,
 			Self::ServerProfile { .. } => Capability::ServerProfiles,
+			Self::LogRead { .. } => Capability::Storage,
+			Self::Http { .. } => Capability::Network,
 		}
 	}
 	/// Whether the extension worker can answer it from local files, without the app.
@@ -786,6 +827,12 @@ impl HostRequest {
 				}
 			}
 			Self::ServerProfile { guild_id, .. } => crate::app::entity_id(guild_id)?,
+			Self::Http { .. } => {}
+			Self::LogRead { limit, .. } => {
+				if limit.is_some_and(|limit| limit == 0 || limit > crate::MAX_LOG_READ) {
+					return Err(Error::Limit);
+				}
+			}
 		}
 		Ok(())
 	}
@@ -928,6 +975,14 @@ pub enum ResponseValue {
 	},
 	ServerProfile {
 		profile: Box<ServerProfile>,
+	},
+	Http {
+		response: Box<crate::HttpResponse>,
+	},
+	LogEntries {
+		entries: Vec<crate::LogEntry>,
+		/// Whether older lines remain.
+		more: bool,
 	},
 }
 
@@ -1140,6 +1195,9 @@ pub(crate) fn validate_output(output: &crate::Output, manifest: &Manifest) -> Re
 			if !manifest.capabilities.contains(&request.capability()) {
 				return Err(Error::Capability);
 			}
+			if let HostRequest::Http { request, .. } = request {
+				request.validate(manifest)?;
+			}
 		}
 		// A round that asks for more information shows nothing yet; the final round does.
 		if output.replacement.is_some()
@@ -1150,6 +1208,7 @@ pub(crate) fn validate_output(output: &crate::Output, manifest: &Manifest) -> Re
 			|| output.api_proxy.is_some()
 			|| output.interface_tweaks.is_some()
 			|| !output.contributions.is_empty()
+			|| !output.notifications.is_empty()
 		{
 			return Err(Error::Invalid);
 		}
@@ -1173,10 +1232,19 @@ pub const SURFACES: &[crate::Surface] = &[
 	crate::Surface::MessageToolbar,
 	crate::Surface::Image,
 	crate::Surface::Attachment,
+	crate::Surface::BeforeSend,
+	crate::Surface::GifSearch,
 ];
 
 /// Host request kinds this host answers.
-pub const REQUEST_KINDS: &[&str] = &["kv_get", "kv_list", "attachment_read", "server_profile"];
+pub const REQUEST_KINDS: &[&str] = &[
+	"kv_get",
+	"kv_list",
+	"attachment_read",
+	"server_profile",
+	"log_read",
+	"http",
+];
 
 #[cfg(test)]
 mod tests {

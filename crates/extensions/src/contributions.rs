@@ -40,7 +40,7 @@ impl Slot {
 	/// Longest `text` for this slot, in characters.
 	pub fn max_text(self) -> usize {
 		match self {
-			Slot::MessageAccessory => 300,
+			Slot::MessageAccessory => 2000,
 			Slot::ComposerButton => 24,
 			Slot::MessageBadge | Slot::UserBadge => 32,
 		}
@@ -89,6 +89,8 @@ pub enum ContributionIcon {
 	Code,
 	Server,
 	Eye,
+	Globe,
+	Translate,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -127,11 +129,25 @@ pub struct ContributionItem {
 	pub action: Option<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub animation: Option<Animation>,
+	/// `message.accessory` only: a smaller second line, such as "translated from Spanish".
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub note: Option<String>,
+	/// `message.accessory` only: adds a Dismiss link that hides the item.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub dismissible: bool,
+	/// `message.accessory` only: draws the text in italics, like a quotation.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub italic: bool,
+	/// `composer.button` only: a declared `panel` action run by a right-click or Shift-click.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub secondary_action: Option<String>,
 }
 
 /// One change to the extension's contributions, applied after its output is validated.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
+// A wire type built once per output; boxing the item would only complicate authors' code.
+#[allow(clippy::large_enum_variant)]
 pub enum ContributionOp {
 	/// Adds or replaces the item with this key in the slot.
 	Set {
@@ -176,6 +192,14 @@ fn short_text(text: &str, max_chars: usize) -> bool {
 		&& !text.chars().any(char::is_control)
 }
 
+/// Accessory lines may wrap onto a few lines of their own.
+fn accessory_text(text: &str) -> bool {
+	!text.trim().is_empty()
+		&& text.chars().count() <= Slot::MessageAccessory.max_text()
+		&& text.lines().count() <= 8
+		&& !text.chars().any(|c| c.is_control() && c != '\n')
+}
+
 impl ContributionOp {
 	pub fn slot(&self) -> Option<Slot> {
 		match self {
@@ -198,8 +222,18 @@ impl ContributionOp {
 				item,
 				ttl_ms,
 			} => {
+				let text_ok = if *slot == Slot::MessageAccessory {
+					accessory_text(&item.text)
+				} else {
+					short_text(&item.text, slot.max_text())
+				};
+				let accessory_only = item.note.is_some() || item.dismissible || item.italic;
 				if !valid_key(key)
-					|| !short_text(&item.text, slot.max_text())
+					|| !text_ok || (accessory_only && *slot != Slot::MessageAccessory)
+					|| item
+						.note
+						.as_deref()
+						.is_some_and(|note| !short_text(note, 200))
 					|| item
 						.tooltip
 						.as_deref()
@@ -239,6 +273,13 @@ impl ContributionOp {
 					}
 					(None, Slot::ComposerButton) | (Some(_), _) => return Err(Error::Invalid),
 					(None, _) => {}
+				}
+				if let Some(action) = &item.secondary_action
+					&& (*slot != Slot::ComposerButton
+						|| !manifest.actions.iter().any(|declared| {
+							declared.id == *action && declared.surface == crate::Surface::Panel
+						})) {
+					return Err(Error::Invalid);
 				}
 			}
 			Self::Remove { key, .. } => {

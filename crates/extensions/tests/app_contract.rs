@@ -109,6 +109,7 @@ fn sdk_manifests_round_trip_all_capabilities_and_surfaces_through_host_validatio
 
 fn test_manifest(capabilities: Vec<Capability>) -> Manifest {
 	Manifest {
+		origins: Vec::new(),
 		slots: Vec::new(),
 		api_version: API_VERSION,
 		id: "app-check".into(),
@@ -932,6 +933,8 @@ fn discovery_is_forward_tolerant_and_does_not_change_legacy_input() {
 	});
 	// Every capability is available to v2 manifests; v1 keeps its original set.
 	supported.api_version = extensions::API_V2;
+	// `network` needs at least one site to contact.
+	supported.origins = vec!["api.example.org".into()];
 	supported.validate().unwrap();
 	assert!(host.supports("rich_presence"));
 	assert!(host.supports("api_proxy"));

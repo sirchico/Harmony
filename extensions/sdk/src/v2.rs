@@ -79,6 +79,14 @@ pub struct ExtensionInvocation {
 	/// 0 on the first call of an action, then 1, 2, ... for each continuation.
 	#[serde(default)]
 	pub round: u8,
+	/// The message event of a `message_event` action, with the names and mention flag API v2
+	/// adds. (It is read from the same input as the v1 event, which is then left empty.)
+	#[serde(
+		default,
+		rename = "message_event",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub message: Option<MessageEventInfo>,
 	/// The panel button that re-ran this action. Buttons whose IDs are not declared actions
 	/// keep the action and its target (message, menu item) and arrive here instead.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -155,7 +163,93 @@ pub struct ExtensionOutput {
 	/// Changes to the items Harmony draws for you; see [`crate::ContributionOp`].
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub contributions: Vec<crate::ContributionOp>,
+	/// System notifications to show (event actions with `notifications`).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub notifications: Vec<Notification>,
+	/// Lines to append to this extension's log (needs `storage` and a log quota).
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub log: Vec<String>,
+	/// Empties the log before `log` lines are appended.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub log_clear: bool,
+	/// GIF picker results (`gif_search` actions only), at most [`MAX_GIF_RESULTS`].
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub gifs: Vec<GifResult>,
 }
+
+/// Most GIFs one search may return.
+pub const MAX_GIF_RESULTS: usize = 50;
+
+/// One GIF for the picker. `url` is sent when it is chosen; `preview` is shown in the picker
+/// and must be a Tenor, Klipy or Giphy media address without a query string.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GifResult {
+	pub id: String,
+	#[serde(default)]
+	pub title: String,
+	pub url: String,
+	pub preview: String,
+	pub width: u32,
+	pub height: u32,
+}
+
+/// A message event as API v2 delivers it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MessageEventInfo {
+	pub kind: crate::MessageEventKind,
+	pub channel_id: String,
+	pub message_id: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub author_id: Option<String>,
+	/// The text, for created messages and edits that changed it. Deletes never carry text.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub content: Option<String>,
+	/// The author's name as Harmony shows it (created and edited messages).
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub author_name: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub guild_id: Option<String>,
+	/// Where the message is, such as `Server · #channel`, or a conversation's name.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub place: Option<String>,
+	/// Whether it mentions the current account directly or with @everyone.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub mentions_me: bool,
+	/// Whether its conversation is the one open on screen.
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub open: bool,
+}
+
+/// A system notification. Harmony shows a few per minute per extension, prefixed with the
+/// extension's name, and none while notifications are off or you are in Do Not Disturb.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Notification {
+	pub title: String,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub body: String,
+	/// Clicking the notification opens this conversation.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub channel_id: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub message_id: Option<String>,
+}
+
+/// One line of the extension's log.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LogEntry {
+	pub seq: u64,
+	pub at_ms: u64,
+	pub text: String,
+}
+
+/// Outgoing text a `before_send` hook may return, in bytes.
+pub const MAX_SEND_TEXT: usize = 16 * 1024;
+/// How long Harmony waits for all `before_send` hooks together, in milliseconds.
+pub const SEND_HOOK_BUDGET_MS: u64 = 1500;
+/// The hold when your extension has `network`: a hook may then make `http` requests.
+pub const SEND_HOOK_NETWORK_BUDGET_MS: u64 = 5000;
+/// Most lines one `log_read` returns.
+pub const MAX_LOG_READ: u32 = 200;
 
 impl ExtensionOutput {
 	/// Adds, replaces or removes one interface item.
@@ -221,6 +315,19 @@ pub enum HostRequest {
 	},
 	/// Public details of a server the account is in. Needs `server_profiles`.
 	ServerProfile { id: String, guild_id: String },
+	/// An HTTPS request Harmony makes to one of the manifest's `origins`. Needs `network`.
+	Http {
+		id: String,
+		request: Box<HttpRequest>,
+	},
+	/// This extension's log lines, newest first, older than `before` (a `seq`) when given.
+	LogRead {
+		id: String,
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		before: Option<u64>,
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		limit: Option<u32>,
+	},
 }
 
 /// The answer to one request: `value` on success, `error` otherwise.
@@ -249,6 +356,121 @@ pub enum ResponseValue {
 	ServerProfile {
 		profile: Box<ServerProfile>,
 	},
+	LogEntries {
+		entries: Vec<LogEntry>,
+		more: bool,
+	},
+	Http {
+		response: Box<HttpResponse>,
+	},
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum HttpMethod {
+	Get,
+	Post,
+	Put,
+	Patch,
+	Delete,
+}
+
+/// A header Harmony fills from one of your `secret` settings; your code never sees the value.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretHeader {
+	pub header: String,
+	pub secret: String,
+	/// Text before the secret, such as `"Bearer "`.
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub prefix: String,
+}
+
+/// A query parameter Harmony fills from one of your `secret` settings, for services that take
+/// their API key in the address.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretParam {
+	pub param: String,
+	pub secret: String,
+}
+
+/// An HTTPS request. Only `https://` on port 443 to a listed origin; redirects are returned,
+/// not followed; `Authorization`, `Cookie` and similar headers can only come from secrets.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HttpRequest {
+	pub method: HttpMethod,
+	pub url: String,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub headers: Vec<(String, String)>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub secret_headers: Vec<SecretHeader>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub secret_params: Vec<SecretParam>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub body: Option<String>,
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub body_base64: bool,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub max_bytes: Option<u32>,
+}
+
+impl HttpRequest {
+	pub fn get(url: impl Into<String>) -> Self {
+		Self {
+			method: HttpMethod::Get,
+			url: url.into(),
+			headers: Vec::new(),
+			secret_headers: Vec::new(),
+			secret_params: Vec::new(),
+			body: None,
+			body_base64: false,
+			max_bytes: None,
+		}
+	}
+	pub fn post(url: impl Into<String>, body: impl Into<String>) -> Self {
+		Self {
+			method: HttpMethod::Post,
+			body: Some(body.into()),
+			..Self::get(url)
+		}
+	}
+	pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+		self.headers.push((name.into(), value.into()));
+		self
+	}
+	/// Adds `header: prefix + <secret value>`, filled in by Harmony.
+	pub fn secret_header(
+		mut self,
+		header: impl Into<String>,
+		secret: impl Into<String>,
+		prefix: impl Into<String>,
+	) -> Self {
+		self.secret_headers.push(SecretHeader {
+			header: header.into(),
+			secret: secret.into(),
+			prefix: prefix.into(),
+		});
+		self
+	}
+	/// Appends `param=<secret value>` to the address, filled in by Harmony.
+	pub fn secret_param(mut self, param: impl Into<String>, secret: impl Into<String>) -> Self {
+		self.secret_params.push(SecretParam {
+			param: param.into(),
+			secret: secret.into(),
+		});
+		self
+	}
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HttpResponse {
+	pub status: u16,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub content_type: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub location: Option<String>,
+	pub encoding: ContentEncoding,
+	pub body: String,
+	pub truncated: bool,
 }
 
 /// Why a request failed. Unknown future codes deserialize as `Other`.
@@ -401,6 +623,14 @@ pub mod testing {
 			BTreeMap<(crate::Slot, String), (crate::ContributionTarget, crate::ContributionItem)>,
 		/// Every input the handler received, in order.
 		pub inputs: Vec<ExtensionInvocation>,
+		/// The extension's log, oldest first.
+		pub log: Vec<LogEntry>,
+		/// Every notification the handler asked for.
+		pub notifications: Vec<Notification>,
+		/// Answers to `http` requests by exact URL: (status, body). Unknown URLs fail.
+		pub web: BTreeMap<String, (u16, String)>,
+		/// Every `http` request the handler made, in order.
+		pub requests: Vec<HttpRequest>,
 	}
 
 	impl TestHost {
@@ -441,11 +671,50 @@ pub mod testing {
 					serde_json::from_slice(&output).map_err(|error| error.to_string())?;
 				self.apply_kv(&output.kv);
 				self.apply_contributions(&output.contributions);
+				if output.log_clear {
+					self.log.clear();
+				}
+				for line in &output.log {
+					let seq = self.log.last().map_or(1, |entry| entry.seq + 1);
+					self.log.push(LogEntry {
+						seq,
+						at_ms: 0,
+						text: line.clone(),
+					});
+				}
+				self.notifications
+					.extend(output.notifications.iter().cloned());
 				if output.requests.is_empty() {
 					return Ok(output);
 				}
 				if output.requests.len() > MAX_REQUESTS_PER_ROUND {
 					return Err("more than 8 requests in one round".into());
+				}
+				for request in &output.requests {
+					// The same limits Harmony enforces, so a test fails where the app would.
+					let too_big = match request {
+						HostRequest::KvGet { keys, .. } => keys.is_empty() || keys.len() > 64,
+						HostRequest::KvList { limit, .. } => {
+							limit.is_some_and(|n| n == 0 || n > 256)
+						}
+						HostRequest::LogRead { limit, .. } => {
+							limit.is_some_and(|n| n == 0 || n > MAX_LOG_READ)
+						}
+						HostRequest::AttachmentRead { max_bytes, .. } => {
+							max_bytes.is_some_and(|n| n == 0 || n > MAX_ATTACHMENT_READ_BYTES)
+						}
+						HostRequest::ServerProfile { .. } => false,
+						HostRequest::Http { request, .. } => {
+							!request.url.starts_with("https://")
+								|| request
+									.body
+									.as_ref()
+									.is_some_and(|body| body.len() > 64 * 1024)
+						}
+					};
+					if too_big {
+						return Err(format!("request outside Harmony's limits: {request:?}"));
+					}
 				}
 				if input.round >= MAX_REQUEST_ROUNDS {
 					return Err("the action took more than 4 request rounds".into());
@@ -456,6 +725,11 @@ pub mod testing {
 					|| !output.contributions.is_empty()
 				{
 					return Err("a round with requests may only return kv and continuation".into());
+				}
+				for request in &output.requests {
+					if let HostRequest::Http { request, .. } = request {
+						self.requests.push(request.as_ref().clone());
+					}
 				}
 				input.responses = output
 					.requests
@@ -569,6 +843,36 @@ pub mod testing {
 					}
 					None => missing(id),
 				},
+				HostRequest::Http { id, request } => match self.web.get(&request.url) {
+					Some((status, body)) => ok(
+						id,
+						ResponseValue::Http {
+							response: Box::new(HttpResponse {
+								status: *status,
+								content_type: None,
+								location: None,
+								encoding: ContentEncoding::Text,
+								body: body.clone(),
+								truncated: false,
+							}),
+						},
+					),
+					None => missing(id),
+				},
+				HostRequest::LogRead { id, before, limit } => {
+					let limit = limit.unwrap_or(MAX_LOG_READ) as usize;
+					let mut entries: Vec<LogEntry> = self
+						.log
+						.iter()
+						.rev()
+						.filter(|entry| before.is_none_or(|before| entry.seq < before))
+						.take(limit + 1)
+						.cloned()
+						.collect();
+					let more = entries.len() > limit;
+					entries.truncate(limit);
+					ok(id, ResponseValue::LogEntries { entries, more })
+				}
 				HostRequest::ServerProfile { id, guild_id } => match self.servers.get(guild_id) {
 					Some(profile) => ok(
 						id,

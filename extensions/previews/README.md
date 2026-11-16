@@ -37,7 +37,9 @@ HARMONY_PREVIEW_PACKAGE=/path/to/plugins/packages/api-proxy.harmony-extension ca
 ```
 
 Previews for Base64 Decoder, ViewRaw, Server Info, Text Commands, External Search Tools, Offline
-Composer Tools, User Tags, Copy File Contents and Reverse Image Search are rendered the same way
+Composer Tools, User Tags, Copy File Contents, Reverse Image Search, ClearURLs, Message Notifier,
+Message Logger Enhanced, Translate and GIF Provider Switcher are rendered the same way
 from each package's real output on synthetic data: its result window, the tags it draws next to
-names, the copy button on a text file, or the image menu with its submenu open. Reproduce with
+names, the copy button on a text file, the image menu with its submenu open, a translation
+under a message (answered by a synthetic service reply), or the GIF picker on synthetic results. Reproduce with
 `--extension=ID` as above; no package is downloaded and no account is used.

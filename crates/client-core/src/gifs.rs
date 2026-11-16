@@ -184,6 +184,12 @@ impl State {
 			request: self.gifs.request,
 		})
 	}
+	/// The GIF source changed: forget loaded and cached results so the picker asks again.
+	pub fn reset_gif_results(&mut self) -> Option<Command> {
+		self.gifs.cache.clear();
+		self.gifs.cache_bytes = 0;
+		self.clear_gifs()
+	}
 	pub fn clear_gifs(&mut self) -> Option<Command> {
 		let loading = self.gifs.view.as_ref().is_some_and(|view| view.loading);
 		self.gifs.view = None;

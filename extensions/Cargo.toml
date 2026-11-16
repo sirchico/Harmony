@@ -15,6 +15,11 @@ members = [
 	"plugins/server-info",
 	"plugins/copy-file-contents",
 	"plugins/user-tags",
+	"plugins/clear-urls",
+	"plugins/message-notifier",
+	"plugins/message-logger-enhanced",
+	"plugins/translate",
+	"plugins/gif-provider-switcher",
 ]
 resolver = "3"
 

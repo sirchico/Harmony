@@ -144,13 +144,14 @@ pub enum Icon {
 	Clock,
 	SpeakerSlash,
 	Palette,
+	Translate,
 	/// Horizontally mirrored reply glyph from the shared atlas.
 	Forward,
 }
 
 impl Icon {
 	/// Canonical atlas cells; Forward reuses the mirrored Reply cell.
-	pub const ALL: [Icon; 125] = [
+	pub const ALL: [Icon; 126] = [
 		Icon::ChevronDown,
 		Icon::ChevronRight,
 		Icon::Gear,
@@ -276,6 +277,7 @@ impl Icon {
 		Icon::Clock,
 		Icon::SpeakerSlash,
 		Icon::Palette,
+		Icon::Translate,
 	];
 	/// Upstream icon name recorded in `index.tsv`.
 	fn asset(self) -> &'static str {
@@ -405,6 +407,7 @@ impl Icon {
 			Icon::Clock => "clock",
 			Icon::SpeakerSlash => "speaker-slash",
 			Icon::Palette => "palette",
+			Icon::Translate => "translate",
 		}
 	}
 	fn cell(self) -> usize {
@@ -686,13 +689,27 @@ fn button_with_tooltip(
 
 /// Toggleable variant: `active` keeps the icon in the strong text colour.
 pub fn toggle(ui: &mut egui::Ui, icon: Icon, size: f32, active: bool, label: &str) -> Response {
+	toggle_tinted(ui, icon, size, active, label, None)
+}
+
+/// [`toggle`] whose glyph keeps `tint` (an extension's "on" color) instead of the muted color.
+pub fn toggle_tinted(
+	ui: &mut egui::Ui,
+	icon: Icon,
+	size: f32,
+	active: bool,
+	label: &str,
+	tint: Option<Color32>,
+) -> Response {
 	let label = crate::i18n::translate_if_key(label);
 	let colors = design::palette(ui);
 	let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), Sense::click());
 	if response.hovered() || response.has_focus() {
 		ui.painter().rect_filled(rect, 6, colors.hover);
 	}
-	let color = if active || response.hovered() || response.has_focus() {
+	let color = if let Some(tint) = tint {
+		tint
+	} else if active || response.hovered() || response.has_focus() {
 		colors.text_strong
 	} else {
 		colors.muted
